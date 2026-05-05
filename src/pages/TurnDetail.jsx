@@ -20,7 +20,7 @@ export default function TurnDetail({ navigate, goBack, params }) {
   const [editModal, setEditModal] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { if (cycle) loadData() else setLoading(false) }, [day, cycle])
+  useEffect(() => { if (cycle) { loadData() } else { setLoading(false) } }, [day, cycle])
 
   async function loadData() {
     setLoading(true)
