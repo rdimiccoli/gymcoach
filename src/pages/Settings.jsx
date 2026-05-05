@@ -41,7 +41,8 @@ export default function Settings({ navigate, goHome, session }) {
   async function saveTurn() {
     if (!turnTime.trim()) return
     setSaving(true)
-    await supabase.from('turns').insert({ coach_id: session.user.id, name: `${turnTime} — ${turnType}`, time: turnTime, type: turnType })
+    const { error } = await supabase.from('turns').insert({ coach_id: session.user.id, name: `${turnTime} — ${turnType}`, time: turnTime, type: turnType })
+console.log('turn error:', error)
     await loadData()
     setTurnName(''); setTurnTime(''); setTurnType('Misto')
     setSaving(false)
