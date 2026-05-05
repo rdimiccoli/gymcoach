@@ -39,7 +39,7 @@ export default function Settings({ navigate, goHome, session }) {
   }
 
   async function saveTurn() {
-    if (!turnName.trim() || !turnTime.trim()) return
+    if (!turnTime.trim()) return
     setSaving(true)
     await supabase.from('turns').insert({ coach_id: session.user.id, name: `${turnTime} — ${turnType}`, time: turnTime, type: turnType })
     await loadData()
