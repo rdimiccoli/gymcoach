@@ -116,13 +116,16 @@ export default function Home({ navigate, goHome, session }) {
       <div style={scroll}>
 
         {/* Header */}
-        <div style={{ paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px' }}>
-          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
-            {dayName.toUpperCase()} · {dateStr}
+        <div style={{ paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+              {dayName.toUpperCase()} · {dateStr}
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
+              COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
+            </div>
           </div>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
-            COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
-          </div>
+          <img src="/logo_OAD.png" alt="OAD" style={{ height: '44px', mixBlendMode: 'screen', flexShrink: 0 }} />
         </div>
 
         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>

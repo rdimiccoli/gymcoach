@@ -1,7 +1,7 @@
 export default function TopBar({ title, subtitle, onBack }) {
   return (
     <div style={{
-      padding: '12px 18px 10px',
+      padding: '10px 18px 10px',
       display: 'flex', alignItems: 'center', gap: '12px',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
       flexShrink: 0,
@@ -19,7 +19,7 @@ export default function TopBar({ title, subtitle, onBack }) {
           flexShrink: 0,
         }}>‹</button>
       )}
-      <div>
+      <div style={{ flex: 1 }}>
         <div style={{
           fontFamily: 'Barlow Condensed, sans-serif',
           fontSize: '20px', fontWeight: '700',
@@ -28,6 +28,7 @@ export default function TopBar({ title, subtitle, onBack }) {
         }}>{title}</div>
         {subtitle && <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '1px', letterSpacing: '0.5px' }}>{subtitle}</div>}
       </div>
+      <img src="/logo_OAD.png" alt="OAD" style={{ height: '32px', mixBlendMode: 'screen', flexShrink: 0, opacity: 0.85 }} />
     </div>
   )
 }
