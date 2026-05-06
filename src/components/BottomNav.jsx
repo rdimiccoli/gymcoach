@@ -12,7 +12,6 @@ export default function BottomNav({ active, navigate, goHome }) {
       display: 'flex',
       justifyContent: 'space-around',
       flexShrink: 0,
-      backdropFilter: 'blur(20px)',
     }}>
       {items.map(item => (
         <div key={item.id} onClick={item.action} style={{

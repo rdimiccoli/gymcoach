@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import TopBar from '../components/TopBar'
+import BottomNav from '../components/BottomNav'
 
-export default function CycleForm({ navigate, goBack, params }) {
+export default function CycleForm({ navigate, goBack, goHome, params }) {
   const { turnId, cycleId, readOnly } = params
   const [step, setStep] = useState('info')
   const [cycleName, setCycleName] = useState('')
@@ -12,7 +13,7 @@ export default function CycleForm({ navigate, goBack, params }) {
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [activeSuperset, setActiveSuperset] = useState(null) // label of superset being extended
+  const [activeSuperset, setActiveSuperset] = useState(null)
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
@@ -29,23 +30,12 @@ export default function CycleForm({ navigate, goBack, params }) {
 
   async function loadExistingCycle() {
     const { data: cycle } = await supabase.from('cycles').select('*').eq('id', cycleId).single()
-    if (cycle) {
-      setCycleName(cycle.name)
-      setStartDate(cycle.start_date || new Date().toISOString().split('T')[0])
-    }
-    const { data: exData } = await supabase
-      .from('cycle_exercises')
-      .select('*, exercises(name)')
-      .eq('cycle_id', cycleId)
-      .order('sort_order')
+    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || new Date().toISOString().split('T')[0]) }
+    const { data: exData } = await supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order')
     if (exData) {
       const map = { 1: [], 2: [], 3: [] }
       exData.forEach(e => {
-        map[e.day] = [...(map[e.day] || []), {
-          id: e.id, exerciseId: e.exercise_id, name: e.exercises.name,
-          repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
-          supersetGroup: e.superset_group || null
-        }]
+        map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
       })
       setExList(map)
     }
@@ -56,19 +46,15 @@ export default function CycleForm({ navigate, goBack, params }) {
   async function createCycle() {
     if (!cycleName.trim()) return
     setSaving(true)
-    const { data } = await supabase.from('cycles')
-      .insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true })
-      .select().single()
+    const { data } = await supabase.from('cycles').insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true }).select().single()
     setCurrentCycleId(data.id)
     setSaving(false)
     setStep('exercises')
   }
 
-  // Generate unique superset label (SS-A, SS-B, ...)
   function generateSupersetLabel() {
     const existing = new Set(exList[day].map(e => e.supersetGroup).filter(Boolean))
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    for (const l of letters) {
+    for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
       if (!existing.has(`SS-${l}`)) return `SS-${l}`
     }
     return `SS-${Date.now()}`
@@ -76,24 +62,19 @@ export default function CycleForm({ navigate, goBack, params }) {
 
   async function addExercise(ex) {
     const supersetGroup = activeSuperset || null
-    const newEx = {
-      exerciseId: ex.id, name: ex.name,
-      repsA: '3x8', repsB: '3x10', repsC: '3x12',
-      supersetGroup
-    }
+    const newEx = { exerciseId: ex.id, name: ex.name, repsA: '3x8', repsB: '3x10', repsC: '3x12', supersetGroup }
     if (currentCycleId) {
       const { data } = await supabase.from('cycle_exercises').insert({
         cycle_id: currentCycleId, exercise_id: ex.id, day,
         reps_a: newEx.repsA, reps_b: newEx.repsB, reps_c: newEx.repsC,
-        sort_order: exList[day].length,
-        superset_group: supersetGroup
+        sort_order: exList[day].length, superset_group: supersetGroup
       }).select().single()
       newEx.id = data.id
     }
     setExList(prev => ({ ...prev, [day]: [...prev[day], newEx] }))
     setShowSearch(false)
     setSearch('')
-    // keep activeSuperset so user can keep adding to same group
+    // Keep activeSuperset so user can keep adding to same superserie
   }
 
   async function addNewExercise(name) {
@@ -105,11 +86,7 @@ export default function CycleForm({ navigate, goBack, params }) {
     const ex = exList[day][idx]
     const updated = { ...ex, [field]: val }
     setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === idx ? updated : e) }))
-    if (ex.id) {
-      await supabase.from('cycle_exercises').update({
-        reps_a: updated.repsA, reps_b: updated.repsB, reps_c: updated.repsC
-      }).eq('id', ex.id)
-    }
+    if (ex.id) await supabase.from('cycle_exercises').update({ reps_a: updated.repsA, reps_b: updated.repsB, reps_c: updated.repsC }).eq('id', ex.id)
   }
 
   async function removeExercise(day, idx) {
@@ -118,43 +95,21 @@ export default function CycleForm({ navigate, goBack, params }) {
     setExList(prev => ({ ...prev, [day]: prev[day].filter((_, i) => i !== idx) }))
   }
 
-  function startNewSuperset() {
-    const label = generateSupersetLabel()
-    setActiveSuperset(label)
-    setShowSearch(true)
-  }
-
-  function addToExistingSuperset(label) {
-    setActiveSuperset(label)
-    setShowSearch(true)
-  }
-
-  function stopSuperset() {
-    setActiveSuperset(null)
-  }
-
-  // Group exercises for display
   function getGroups() {
-    const groups = []
-    const seen = {}
+    const groups = [], seen = {}
     exList[day].forEach((ex, idx) => {
       const sg = ex.supersetGroup
       if (!sg) {
         groups.push({ type: 'single', exercises: [{ ...ex, idx }] })
       } else {
-        if (!seen[sg]) {
-          seen[sg] = { type: 'superset', label: sg, exercises: [] }
-          groups.push(seen[sg])
-        }
+        if (!seen[sg]) { seen[sg] = { type: 'superset', label: sg, exercises: [] }; groups.push(seen[sg]) }
         seen[sg].exercises.push({ ...ex, idx })
       }
     })
     return groups
   }
 
-  const filtered = allExercises.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = allExercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a' }}>
@@ -162,14 +117,12 @@ export default function CycleForm({ navigate, goBack, params }) {
     </div>
   )
 
-  // STEP 1: Info
   if (step === 'info') return (
     <div style={page}>
       <TopBar title="NUOVO CICLO" subtitle="Informazioni base" onBack={goBack} />
       <div style={scroll}>
         <div style={fieldLabel}>NOME CICLO</div>
-        <input value={cycleName} onChange={e => setCycleName(e.target.value)}
-          placeholder="es. 3° Ciclo Pari 2026" style={inp} />
+        <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="es. 3° Ciclo Pari 2026" style={inp} />
         <div style={{ ...fieldLabel, marginTop: '16px' }}>DATA DI INIZIO</div>
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} />
         <button onClick={createCycle} disabled={!cycleName.trim() || saving}
@@ -177,17 +130,16 @@ export default function CycleForm({ navigate, goBack, params }) {
           {saving ? 'CREAZIONE...' : 'AVANTI → INSERISCI ESERCIZI'}
         </button>
       </div>
+      <BottomNav active="cycles" navigate={navigate} goHome={goHome} />
     </div>
   )
 
-  // STEP 2: Exercises
   const groups = getGroups()
 
   return (
     <div style={{ ...page, position: 'relative' }}>
       <TopBar title={cycleName.toUpperCase()} subtitle={readOnly ? 'Sola lettura' : 'Gestione esercizi'} onBack={goBack} />
 
-      {/* Day tabs */}
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => { setDay(d); setActiveSuperset(null) }} style={{
@@ -200,7 +152,6 @@ export default function CycleForm({ navigate, goBack, params }) {
       </div>
 
       <div style={scroll}>
-
         {groups.length === 0 && (
           <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', marginBottom: '12px' }}>
             Nessun esercizio per il Giorno {day}
@@ -209,8 +160,6 @@ export default function CycleForm({ navigate, goBack, params }) {
 
         {groups.map((group, gi) => (
           <div key={gi} style={{ marginBottom: '10px' }}>
-
-            {/* Superset header */}
             {group.type === 'superset' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                 <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>⚡ SUPERSERIE {group.label}</div>
@@ -226,16 +175,14 @@ export default function CycleForm({ navigate, goBack, params }) {
                 borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: readOnly ? 0 : '10px' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                    {ex.name}
-                  </div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                   {!readOnly && (
                     <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px' }}>✕</button>
                   )}
                 </div>
                 {!readOnly && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                    {[['repsA','Sett.1-2'],['repsB','Sett.3-4'],['repsC','Sett.5-6']].map(([field, label]) => (
+                    {[['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
                       <div key={field}>
                         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                         <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={repsInp} />
@@ -246,31 +193,28 @@ export default function CycleForm({ navigate, goBack, params }) {
               </div>
             ))}
 
-            {/* Button to add more to this superset */}
+            {/* Add more to THIS superset */}
             {!readOnly && group.type === 'superset' && (
-              <button onClick={() => addToExistingSuperset(group.label)} style={{
-                width: '100%', background: 'rgba(217,92,26,0.1)',
-                border: '1px dashed rgba(217,92,26,0.4)',
+              <button onClick={() => { setActiveSuperset(group.label); setShowSearch(true) }} style={{
+                width: '100%', background: 'rgba(217,92,26,0.08)',
+                border: '1px dashed rgba(217,92,26,0.35)',
                 color: '#D95C1A', borderRadius: '6px', padding: '9px',
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px',
                 fontWeight: '700', letterSpacing: '1.5px', marginBottom: '4px'
-              }}>
-                ⚡ + AGGIUNGI A QUESTA SUPERSERIE
-              </button>
+              }}>⚡ + AGGIUNGI A {group.label}</button>
             )}
           </div>
         ))}
 
-        {/* Add buttons */}
         {!readOnly && (
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
             <button onClick={() => { setActiveSuperset(null); setShowSearch(true) }}
               style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '12px', letterSpacing: '1px' }}>
               + ESERCIZIO
             </button>
-            <button onClick={startNewSuperset}
-              style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '12px', letterSpacing: '1px', background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.4)', color: '#D95C1A' }}>
-              ⚡ NUOVA SUPERSERIE
+            <button onClick={() => { setActiveSuperset(generateSupersetLabel()); setShowSearch(true) }}
+              style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '12px', letterSpacing: '1px', background: 'rgba(217,92,26,0.12)', border: '1px solid rgba(217,92,26,0.35)', color: '#D95C1A' }}>
+              ⚡ NUOVA SS
             </button>
           </div>
         )}
@@ -281,26 +225,25 @@ export default function CycleForm({ navigate, goBack, params }) {
         <div style={{ height: '24px' }} />
       </div>
 
-      {/* Search overlay */}
       {showSearch && (
         <div style={{ position: 'absolute', inset: 0, background: '#0a0a0a', zIndex: 50, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             {activeSuperset && (
-              <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '8px' }}>
-                ⚡ Stai aggiungendo alla superserie {activeSuperset}
+              <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>
+                ⚡ AGGIUNGENDO A SUPERSERIE {activeSuperset}
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
-              <button onClick={() => { setShowSearch(false); setSearch(''); stopSuperset() }}
+              <button onClick={() => { setShowSearch(false); setSearch(''); setActiveSuperset(null) }}
                 style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', fontSize: '13px', whiteSpace: 'nowrap' }}>Annulla</button>
             </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
             {search.length > 1 && filtered.length === 0 && (
               <button onClick={() => addNewExercise(search)} style={{ ...bigBtn, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(217,92,26,0.4)', color: '#D95C1A', marginBottom: '8px' }}>
-                + AGGIUNGI "{search.toUpperCase()}" AL DATABASE
+                + AGGIUNGI "{search.toUpperCase()}"
               </button>
             )}
             {filtered.map(ex => (
@@ -309,13 +252,13 @@ export default function CycleForm({ navigate, goBack, params }) {
                 borderRadius: '6px', marginBottom: '6px',
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600',
                 color: '#fff', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', letterSpacing: '0.5px'
-              }}>
-                {ex.name}
-              </div>
+              }}>{ex.name}</div>
             ))}
           </div>
         </div>
       )}
+
+      <BottomNav active="cycles" navigate={navigate} goHome={goHome} />
     </div>
   )
 }

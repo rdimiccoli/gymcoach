@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function CyclesList({ navigate, goBack, goHome, session }) {
+export default function CyclesList({ navigate, goHome, session }) {
   const [turns, setTurns] = useState([])
   const [cyclesByTurn, setCyclesByTurn] = useState({})
   const [loading, setLoading] = useState(true)
@@ -24,48 +24,54 @@ export default function CyclesList({ navigate, goBack, goHome, session }) {
     setLoading(false)
   }
 
-  async function deactivateAndCreate(turnId) {
-    // Deactivate current active cycle
+  async function newCycle(turnId) {
     await supabase.from('cycles').update({ is_active: false }).eq('turn_id', turnId).eq('is_active', true)
-    navigate('cycle-form', { turnId, onDone: loadData })
+    navigate('cycle-form', { turnId })
   }
 
   return (
     <div style={page}>
-      <TopBar title="Cicli" subtitle="Storico e gestione" />
+      <TopBar title="CICLI" subtitle="Storico e gestione" />
       <div style={scroll}>
-        {loading && <div style={{ color: '#444', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
 
         {turns.map(turn => (
-          <div key={turn.id} style={{ marginBottom: '20px' }}>
-            <div style={sectionLabel}>{turn.name}</div>
+          <div key={turn.id} style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={sectionLabel}>{turn.name}</div>
+              <button onClick={() => newCycle(turn.id)} style={orangeSmall}>+ NUOVO CICLO</button>
+            </div>
 
-            {/* New cycle button */}
-            <button onClick={() => deactivateAndCreate(turn.id)} style={newBtn}>
-              + Nuovo ciclo
-            </button>
-
-            {/* Cycles list */}
             {(cyclesByTurn[turn.id] || []).map(cycle => (
               <div key={cycle.id}
                 onClick={() => navigate('cycle-form', { turnId: turn.id, cycleId: cycle.id, readOnly: !cycle.is_active })}
-                style={{ background: '#1e1e1e', border: '0.5px solid #2a2a2a', borderRadius: '12px', padding: '12px 14px', marginBottom: '7px', cursor: 'pointer' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: '#fff', fontSize: '13px', fontWeight: '600', marginBottom: '3px' }}>{cycle.name}</div>
-                    <div style={{ color: '#555', fontSize: '11px' }}>
-                      {cycle.start_date ? `Iniziato il ${new Date(cycle.start_date).toLocaleDateString('it-IT')}` : 'Data non impostata'}
+                style={{
+                  background: cycle.is_active ? 'rgba(217,92,26,0.08)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${cycle.is_active ? 'rgba(217,92,26,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                  borderLeft: cycle.is_active ? '2px solid #D95C1A' : '2px solid rgba(255,255,255,0.1)',
+                  borderRadius: '6px', padding: '13px 16px', marginBottom: '7px', cursor: 'pointer'
+                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{cycle.name}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
+                      {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
                     </div>
                   </div>
-                  <div style={{ background: cycle.is_active ? '#D95C1A' : '#2a2a2a', color: cycle.is_active ? '#fff' : '#555', fontSize: '10px', padding: '3px 9px', borderRadius: '20px', flexShrink: 0 }}>
-                    {cycle.is_active ? 'In corso' : 'Completato'}
+                  <div style={{
+                    background: cycle.is_active ? '#D95C1A' : 'rgba(255,255,255,0.06)',
+                    color: cycle.is_active ? '#fff' : 'rgba(255,255,255,0.3)',
+                    fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700',
+                    letterSpacing: '1.5px', padding: '4px 10px', borderRadius: '3px'
+                  }}>
+                    {cycle.is_active ? 'IN CORSO' : 'COMPLETATO'}
                   </div>
                 </div>
               </div>
             ))}
 
             {!(cyclesByTurn[turn.id]?.length) && (
-              <div style={{ color: '#333', fontSize: '12px', textAlign: 'center', padding: '16px', background: '#1a1a1a', borderRadius: '11px' }}>
+              <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px', textAlign: 'center', padding: '16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
                 Nessun ciclo ancora
               </div>
             )}
@@ -73,8 +79,8 @@ export default function CyclesList({ navigate, goBack, goHome, session }) {
         ))}
 
         {!loading && turns.length === 0 && (
-          <div style={{ color: '#444', fontSize: '13px', textAlign: 'center', padding: '32px' }}>
-            Aggiungi prima un turno dalle Impostazioni.
+          <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+            Aggiungi prima un turno dal Setup.
           </div>
         )}
         <div style={{ height: '20px' }} />
@@ -84,7 +90,7 @@ export default function CyclesList({ navigate, goBack, goHome, session }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', overflow: 'hidden' }
-const scroll = { flex: 1, overflowY: 'auto', padding: '14px 16px' }
-const sectionLabel = { color: '#555', fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }
-const newBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '11px', borderRadius: '11px', fontSize: '13px', fontWeight: '700', marginBottom: '8px' }
+const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', overflow: 'hidden' }
+const scroll = { flex: 1, overflowY: 'auto', padding: '16px' }
+const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
+const orangeSmall = { background: '#D95C1A', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px' }
