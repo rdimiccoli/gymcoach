@@ -45,16 +45,15 @@ export default function Login() {
 
         {/* Logo */}
         <div style={{ marginBottom: '48px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '10px' }}>
-            <img src="/logo_OAD.png" alt="OAD" style={{ height: '56px', mixBlendMode: 'screen' }} />
-            <div style={{
-              fontFamily: 'Barlow Condensed, sans-serif',
-              fontSize: '64px', fontWeight: '900',
-              letterSpacing: '4px',
-              color: '#fff',
-              lineHeight: 1,
-            }}>GYM<span style={{ color: '#D95C1A' }}>COACH</span></div>
-          </div>
+          <img src="/logo_OAD.png" alt="OAD" style={{ height: '40px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
+          <div style={{
+            fontFamily: 'Barlow Condensed, sans-serif',
+            fontSize: '64px', fontWeight: '900',
+            letterSpacing: '4px',
+            color: '#fff',
+            lineHeight: 1,
+            marginBottom: '8px',
+          }}>GYM<span style={{ color: '#D95C1A' }}>COACH</span></div>
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>
             Gestione schede · Carichi · Progressi
           </div>
