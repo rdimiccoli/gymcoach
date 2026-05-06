@@ -5,9 +5,24 @@ import BottomNav from '../components/BottomNav'
 const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']
 
 const PHASES = [
-  { num: 1, label: 'Settimana 1 - 2', weekRange: [1,2], gradient: 'linear-gradient(135deg,#D95C1A,#E87A40)' },
-  { num: 2, label: 'Settimana 3 - 4', weekRange: [3,4], gradient: 'linear-gradient(135deg,#1A6ED9,#409CE8)' },
-  { num: 3, label: 'Settimana 5 - 6', weekRange: [5,6], gradient: 'linear-gradient(135deg,#1AAD5C,#40C87A)' },
+  {
+    num: 1, label: 'SETTIMANA 1 — 2', sub: 'Fase iniziale del ciclo',
+    weekRange: [1,2],
+    img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=70',
+    accent: '#D95C1A',
+  },
+  {
+    num: 2, label: 'SETTIMANA 3 — 4', sub: 'Fase intermedia del ciclo',
+    weekRange: [3,4],
+    img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=70',
+    accent: '#1A6ED9',
+  },
+  {
+    num: 3, label: 'SETTIMANA 5 — 6', sub: 'Fase finale del ciclo',
+    weekRange: [5,6],
+    img: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=70',
+    accent: '#1AAD5C',
+  },
 ]
 
 export default function Home({ navigate, goHome, session }) {
@@ -20,7 +35,7 @@ export default function Home({ navigate, goHome, session }) {
 
   const today = new Date()
   const dayName = WEEKDAYS[today.getDay()]
-  const dateStr = `${dayName} ${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`
+  const dateStr = `${today.getDate().toString().padStart(2,'0')}·${(today.getMonth()+1).toString().padStart(2,'0')}·${today.getFullYear()}`
 
   useEffect(() => { loadData() }, [])
 
@@ -54,22 +69,40 @@ export default function Home({ navigate, goHome, session }) {
 
   if (loading) return <Loader />
 
-  // TURNS LIST after phase selected
+  // TURNS LIST
   if (selectedPhase) {
     return (
       <div style={page}>
-        <div style={topBar}>
-          <button onClick={() => setSelectedPhase(null)} style={backBtn}>‹</button>
-          <div>
-            <div style={topTitle}>{selectedPhase.label}</div>
-            <div style={topSub}>Seleziona il turno</div>
+        {/* Hero header */}
+        <div style={{ position: 'relative', height: '160px', flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `url(${selectedPhase.img})`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
+            filter: 'brightness(0.35)',
+          }} />
+          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 0%, #0a0a0a 100%)` }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={() => setSelectedPhase(null)} style={{
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '3px', width: '34px', height: '34px',
+              color: '#fff', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>‹</button>
+            <div>
+              <div style={{ color: selectedPhase.accent, fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>FASE {selectedPhase.num}</div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '22px', fontWeight: '800', color: '#fff', letterSpacing: '1px' }}>{selectedPhase.label}</div>
+            </div>
           </div>
         </div>
+
         <div style={scroll}>
-          {turns.length === 0 && <Empty text="Nessun turno. Vai in Impostazioni per aggiungerne uno." />}
-          {turns.map(turn => (
-            <TurnCard key={turn.id} turn={turn} cycle={cycles[turn.id]} count={clientCounts[turn.id]}
-              onPress={() => navigate('turn', { turn, cycle: cycles[turn.id], phase: selectedPhase })} />
+          <div style={sectionLabel}>SELEZIONA TURNO</div>
+          {turns.length === 0 && <Empty />}
+          {turns.map((turn, i) => (
+            <div key={turn.id} className={`fadeUp-${Math.min(i+1,3)}`}>
+              <TurnCard turn={turn} cycle={cycles[turn.id]} count={clientCounts[turn.id]} accent={selectedPhase.accent}
+                onPress={() => navigate('turn', { turn, cycle: cycles[turn.id], phase: selectedPhase })} />
+            </div>
           ))}
         </div>
         <BottomNav active="home" navigate={navigate} goHome={goHome} />
@@ -77,69 +110,119 @@ export default function Home({ navigate, goHome, session }) {
     )
   }
 
-  // HOME — 3 big phase buttons
+  // HOME — 3 phase cards with gym images
   return (
     <div style={page}>
       <div style={scroll}>
-        <div style={{ color: '#555', fontSize: '12px', marginBottom: '2px' }}>Buongiorno,</div>
-        <div style={{ color: '#fff', fontSize: '21px', fontWeight: '700', marginBottom: '4px' }}>Coach {coach?.name} 👋</div>
-        <div style={{ color: '#444', fontSize: '11px', marginBottom: '24px' }}>{dateStr}</div>
-        <div style={sectionLabel}>Seleziona la fase del ciclo</div>
-        {PHASES.map(ph => (
-          <div key={ph.num} onClick={() => setSelectedPhase(ph)} style={{
-            background: ph.gradient, borderRadius: '16px', padding: '22px 20px',
-            marginBottom: '12px', cursor: 'pointer', position: 'relative',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+
+        {/* Header */}
+        <div style={{ paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px' }}>
+          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+            {dayName.toUpperCase()} · {dateStr}
+          </div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
+            COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
+          SELEZIONA FASE DEL CICLO
+        </div>
+
+        {/* Phase cards */}
+        {PHASES.map((ph, i) => (
+          <div key={ph.num} className={`fadeUp-${i+1}`} onClick={() => setSelectedPhase(ph)} style={{
+            position: 'relative', height: '140px', borderRadius: '6px',
+            marginBottom: '10px', overflow: 'hidden', cursor: 'pointer',
           }}>
-            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
-              Fase {ph.num}
+            {/* Background image */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url(${ph.img})`,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              filter: 'brightness(0.4)',
+              transition: 'transform 0.3s ease',
+            }} />
+
+            {/* Color overlay */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `linear-gradient(135deg, ${ph.accent}55 0%, rgba(0,0,0,0.5) 100%)`,
+            }} />
+
+            {/* Left accent bar */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '3px', background: ph.accent }} />
+
+            {/* Content */}
+            <div style={{ position: 'absolute', inset: 0, padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <div style={{ color: ph.accent, fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+                FASE {ph.num}
+              </div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px', lineHeight: 1 }}>
+                {ph.label}
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '4px', fontWeight: '300' }}>
+                {ph.sub}
+              </div>
             </div>
-            <div style={{ color: '#fff', fontSize: '22px', fontWeight: '800' }}>{ph.label}</div>
-            <div style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: '28px' }}>›</div>
+
+            {/* Arrow */}
+            <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.25)', fontSize: '24px' }}>›</div>
           </div>
         ))}
+
+        <div style={{ height: '12px' }} />
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
   )
 }
 
-function TurnCard({ turn, cycle, count, onPress }) {
+function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
   return (
     <div onClick={onPress} style={{
-      background: '#1e1e1e', border: '0.5px solid #2a2a2a', borderRadius: '13px',
-      padding: '13px 14px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: '6px',
+      padding: '16px 18px',
+      marginBottom: '8px',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      cursor: 'pointer', position: 'relative', overflow: 'hidden',
     }}>
-      <div>
-        <div style={{ color: '#fff', fontSize: '15px', fontWeight: '600' }}>{turn.name}</div>
-        <div style={{ color: '#555', fontSize: '11px', marginTop: '2px' }}>
-          {cycle ? cycle.name : 'Nessun ciclo attivo'} · {count} clienti
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '2px', background: accent }} />
+      <div style={{ paddingLeft: '8px' }}>
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
+        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
+          {cycle ? cycle.name : 'Nessun ciclo attivo'}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{ background: '#2a2a2a', color: '#666', fontSize: '11px', padding: '3px 10px', borderRadius: '20px' }}>{count}</div>
-        <div style={{ color: '#444', fontSize: '18px' }}>›</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.5px' }}>{count} ATL</div>
+        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px' }}>›</div>
       </div>
     </div>
   )
 }
 
-function Empty({ text }) {
-  return <div style={{ color: '#444', fontSize: '13px', textAlign: 'center', padding: '32px 16px', background: '#1a1a1a', borderRadius: '12px' }}>{text}</div>
+function Empty() {
+  return (
+    <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+      Nessun turno. Vai in Setup per aggiungerne uno.
+    </div>
+  )
 }
 
 function Loader() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#111' }}>
-      <div style={{ color: '#D95C1A', fontSize: '22px', fontWeight: '700' }}>GYMCOACH</div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a', gap: '12px' }}>
+      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '36px', fontWeight: '900', letterSpacing: '4px' }}>
+        GYM<span style={{ color: '#D95C1A' }}>COACH</span>
+      </div>
+      <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', letterSpacing: '2px' }}>CARICAMENTO...</div>
     </div>
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '20px 16px' }
-const sectionLabel = { color: '#555', fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }
-const topBar = { padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '0.5px solid #2a2a2a', flexShrink: 0 }
-const backBtn = { background: '#2a2a2a', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: '#fff', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }
-const topTitle = { color: '#fff', fontSize: '14px', fontWeight: '600' }
-const topSub = { color: '#555', fontSize: '11px', marginTop: '1px' }
+const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }

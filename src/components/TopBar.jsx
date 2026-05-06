@@ -1,19 +1,32 @@
 export default function TopBar({ title, subtitle, onBack }) {
   return (
     <div style={{
-      padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-      borderBottom: '0.5px solid #2a2a2a', flexShrink: 0, background: '#111'
+      padding: '12px 18px 10px',
+      display: 'flex', alignItems: 'center', gap: '12px',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      flexShrink: 0,
+      background: 'rgba(10,10,10,0.95)',
+      backdropFilter: 'blur(20px)',
     }}>
       {onBack && (
         <button onClick={onBack} style={{
-          background: '#2a2a2a', border: 'none', borderRadius: '50%',
-          width: '32px', height: '32px', color: '#fff', fontSize: '18px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          background: 'rgba(255,255,255,0.06)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '3px',
+          width: '34px', height: '34px',
+          color: '#fff', fontSize: '20px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
         }}>‹</button>
       )}
       <div>
-        <div style={{ color: '#fff', fontSize: '14px', fontWeight: '600' }}>{title}</div>
-        {subtitle && <div style={{ color: '#555', fontSize: '11px', marginTop: '1px' }}>{subtitle}</div>}
+        <div style={{
+          fontFamily: 'Barlow Condensed, sans-serif',
+          fontSize: '20px', fontWeight: '700',
+          color: '#fff', letterSpacing: '1px',
+          textTransform: 'uppercase',
+        }}>{title}</div>
+        {subtitle && <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '1px', letterSpacing: '0.5px' }}>{subtitle}</div>}
       </div>
     </div>
   )
