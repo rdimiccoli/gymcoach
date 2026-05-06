@@ -193,10 +193,24 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                           {group.exercises.map(ex => {
                             const kg = loads[`${client.id}_${ex.id}`]
+                            const prev = prevLoads[`${client.id}_${ex.exercise_id}`]
+                            const diff = (kg > 0 && prev !== undefined) ? parseFloat((kg - prev).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '3px', padding: '3px 9px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>{ex.exercises.name.split(' ')[0].toUpperCase()}</span>
-                                <span style={{ color: '#fff', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{kg > 0 ? `${kg}kg` : '—'}</span>
+                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '3px', padding: '4px 9px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>{ex.exercises.name.split(' ')[0].toUpperCase()}</span>
+                                  <span style={{ color: '#fff', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{kg > 0 ? `${kg}kg` : '—'}</span>
+                                  {diff !== null && (
+                                    <span style={{ fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'rgba(255,255,255,0.2)' }}>
+                                      {diff > 0 ? `↑+${diff}` : diff < 0 ? `↓${diff}` : '='}
+                                    </span>
+                                  )}
+                                </div>
+                                {prev !== undefined && (
+                                  <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                    prec. {prev}kg
+                                  </div>
+                                )}
                               </div>
                             )
                           })}
