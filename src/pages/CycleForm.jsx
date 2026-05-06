@@ -4,7 +4,7 @@ import TopBar from '../components/TopBar'
 
 export default function CycleForm({ navigate, goBack, params }) {
   const { turnId, cycleId, readOnly } = params
-  const [step, setStep] = useState('info') // info | exercises
+  const [step, setStep] = useState('info')
   const [cycleName, setCycleName] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [day, setDay] = useState(1)
@@ -12,6 +12,7 @@ export default function CycleForm({ navigate, goBack, params }) {
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [pendingSuperset, setPendingSuperset] = useState(null) // group label being built
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
@@ -42,7 +43,8 @@ export default function CycleForm({ navigate, goBack, params }) {
       exData.forEach(e => {
         map[e.day] = [...(map[e.day] || []), {
           id: e.id, exerciseId: e.exercise_id, name: e.exercises.name,
-          repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c
+          repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
+          supersetGroup: e.superset_group || null
         }]
       })
       setExList(map)
@@ -63,14 +65,18 @@ export default function CycleForm({ navigate, goBack, params }) {
   }
 
   async function addExercise(ex) {
-    if (exList[day].find(e => e.exerciseId === ex.id)) return
-    const newEx = { exerciseId: ex.id, name: ex.name, repsA: '3x8', repsB: '3x10', repsC: '3x12' }
-
+    if (exList[day].find(e => e.exerciseId === ex.id && e.supersetGroup === pendingSuperset)) return
+    const newEx = {
+      exerciseId: ex.id, name: ex.name,
+      repsA: '3x8', repsB: '3x10', repsC: '3x12',
+      supersetGroup: pendingSuperset || null
+    }
     if (currentCycleId) {
       const { data } = await supabase.from('cycle_exercises').insert({
         cycle_id: currentCycleId, exercise_id: ex.id, day,
         reps_a: newEx.repsA, reps_b: newEx.repsB, reps_c: newEx.repsC,
-        sort_order: exList[day].length
+        sort_order: exList[day].length,
+        superset_group: newEx.supersetGroup
       }).select().single()
       newEx.id = data.id
     }
@@ -101,114 +107,172 @@ export default function CycleForm({ navigate, goBack, params }) {
     setExList(prev => ({ ...prev, [day]: prev[day].filter((_, i) => i !== idx) }))
   }
 
+  // Group exercises visually: single or superset
+  function getGroups() {
+    const groups = []
+    const seen = {}
+    exList[day].forEach((ex, idx) => {
+      const sg = ex.supersetGroup
+      if (!sg) {
+        groups.push({ type: 'single', exercises: [{ ...ex, idx }] })
+      } else {
+        if (!seen[sg]) {
+          seen[sg] = { type: 'superset', label: sg, exercises: [] }
+          groups.push(seen[sg])
+        }
+        seen[sg].exercises.push({ ...ex, idx })
+      }
+    })
+    return groups
+  }
+
   const filtered = allExercises.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) &&
-    !exList[day].find(ex => ex.exerciseId === e.id)
+    e.name.toLowerCase().includes(search.toLowerCase())
   )
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#111' }}>
-      <div style={{ color: '#D95C1A', fontSize: '18px' }}>Caricamento...</div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a' }}>
+      <div style={{ color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', letterSpacing: '2px' }}>CARICAMENTO...</div>
     </div>
   )
 
-  // STEP 1: Info ciclo
+  // STEP 1: Info
   if (step === 'info') return (
     <div style={page}>
-      <TopBar title="Nuovo ciclo" subtitle="Informazioni base" onBack={goBack} />
+      <TopBar title="NUOVO CICLO" subtitle="Informazioni base" onBack={goBack} />
       <div style={scroll}>
-        <div style={fieldLabel}>Nome del ciclo</div>
+        <div style={fieldLabel}>NOME CICLO</div>
         <input value={cycleName} onChange={e => setCycleName(e.target.value)}
-          placeholder="es. 3° Ciclo Pari 2026"
-          style={inp} />
-
-        <div style={{ ...fieldLabel, marginTop: '14px' }}>Data di inizio</div>
+          placeholder="es. 3° Ciclo Pari 2026" style={inp} />
+        <div style={{ ...fieldLabel, marginTop: '16px' }}>DATA DI INIZIO</div>
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} />
-
         <button onClick={createCycle} disabled={!cycleName.trim() || saving}
-          style={{ ...bigBtn, marginTop: '24px', opacity: !cycleName.trim() ? 0.4 : 1 }}>
-          {saving ? 'Creazione...' : 'Avanti → Inserisci esercizi'}
+          style={{ ...bigBtn, marginTop: '28px', opacity: !cycleName.trim() ? 0.3 : 1 }}>
+          {saving ? 'CREAZIONE...' : 'AVANTI → INSERISCI ESERCIZI'}
         </button>
       </div>
     </div>
   )
 
   // STEP 2: Exercises
+  const groups = getGroups()
+
   return (
     <div style={{ ...page, position: 'relative' }}>
-      <TopBar title={cycleName} subtitle={readOnly ? 'Sola lettura' : 'Modifica esercizi'} onBack={goBack} />
+      <TopBar title={cycleName.toUpperCase()} subtitle={readOnly ? 'Sola lettura' : 'Gestione esercizi'} onBack={goBack} />
 
       {/* Day tabs */}
-      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
-            flex: 1, padding: '8px', borderRadius: '10px', border: 'none', fontSize: '12px', fontWeight: '600',
-            background: day === d ? '#D95C1A' : '#1e1e1e', color: day === d ? '#fff' : '#555'
-          }}>Giorno {d}</button>
+            flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px',
+            background: day === d ? '#D95C1A' : 'rgba(255,255,255,0.05)',
+            color: day === d ? '#fff' : 'rgba(255,255,255,0.3)'
+          }}>GIORNO {d}</button>
         ))}
       </div>
 
       <div style={scroll}>
-        {exList[day].length === 0 && (
-          <div style={{ color: '#333', fontSize: '12px', textAlign: 'center', padding: '24px', background: '#1a1a1a', borderRadius: '11px', marginBottom: '10px' }}>
+
+        {groups.length === 0 && (
+          <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', marginBottom: '12px' }}>
             Nessun esercizio per il Giorno {day}
           </div>
         )}
 
-        {exList[day].map((ex, idx) => (
-          <div key={idx} style={{ background: '#1e1e1e', border: '0.5px solid #2a2a2a', borderRadius: '12px', padding: '12px 13px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div style={{ color: '#fff', fontSize: '13px', fontWeight: '600', flex: 1 }}>{ex.name}</div>
-              {!readOnly && (
-                <button onClick={() => removeExercise(day, idx)} style={{ background: 'none', border: 'none', color: '#E85C1A', fontSize: '16px', padding: '0 4px' }}>✕</button>
-              )}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-              {[['repsA','Sett.1-2'],['repsB','Sett.3-4'],['repsC','Sett.5-6']].map(([field, label]) => (
-                <div key={field}>
-                  <div style={{ color: '#444', fontSize: '9px', marginBottom: '3px', textAlign: 'center' }}>{label}</div>
-                  <input
-                    value={ex[field]} readOnly={readOnly}
-                    onChange={e => updateReps(day, idx, field, e.target.value)}
-                    style={{ ...repsInp, background: readOnly ? '#1a1a1a' : '#2a2a2a' }}
-                  />
+        {/* Exercise groups */}
+        {groups.map((group, gi) => (
+          <div key={gi} style={{ marginBottom: '10px' }}>
+
+            {/* Superset header */}
+            {group.type === 'superset' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>⚡ SUPERSERIE — {group.label}</div>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(217,92,26,0.3)' }} />
+              </div>
+            )}
+
+            {group.exercises.map((ex) => (
+              <div key={ex.idx} style={{
+                background: group.type === 'superset' ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
+                borderLeft: group.type === 'superset' ? '2px solid #D95C1A' : undefined,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: readOnly ? 0 : '10px' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
+                    {ex.name}
+                  </div>
+                  {!readOnly && (
+                    <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.6)', fontSize: '16px', padding: '0 4px' }}>✕</button>
+                  )}
                 </div>
-              ))}
-            </div>
+                {!readOnly && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                    {[['repsA','Sett.1-2'],['repsB','Sett.3-4'],['repsC','Sett.5-6']].map(([field, label]) => (
+                      <div key={field}>
+                        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
+                        <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)}
+                          style={repsInp} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ))}
 
         {!readOnly && (
-          <button onClick={() => setShowSearch(true)} style={{ ...bigBtn, background: '#1e1e1e', border: '0.5px solid #2a2a2a', color: '#D95C1A' }}>
-            + Aggiungi esercizio
-          </button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+            {/* Add single exercise */}
+            <button onClick={() => { setPendingSuperset(null); setShowSearch(true) }}
+              style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '11px' }}>
+              + ESERCIZIO
+            </button>
+            {/* Add to superset */}
+            <button onClick={() => {
+              const label = prompt('Nome superserie (es. SS-A):')
+              if (label) { setPendingSuperset(label); setShowSearch(true) }
+            }} style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '11px', background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.4)', color: '#D95C1A' }}>
+              ⚡ SUPERSERIE
+            </button>
+          </div>
         )}
 
         {!readOnly && exList[day].length > 0 && (
-          <button onClick={goBack} style={{ ...bigBtn, marginTop: '8px' }}>
-            ✓ Salva e torna
-          </button>
+          <button onClick={goBack} style={{ ...bigBtn, marginTop: '10px' }}>✓ SALVA E TORNA</button>
         )}
-        <div style={{ height: '20px' }} />
+        <div style={{ height: '24px' }} />
       </div>
 
       {/* Search overlay */}
       {showSearch && (
-        <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 50, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #2a2a2a', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, background: '#0a0a0a', zIndex: 50, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {pendingSuperset && (
+              <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '0', whiteSpace: 'nowrap' }}>⚡ {pendingSuperset}</div>
+            )}
             <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
-            <button onClick={() => { setShowSearch(false); setSearch('') }} style={{ color: '#888', background: 'none', border: 'none', fontSize: '14px' }}>Annulla</button>
+            <button onClick={() => { setShowSearch(false); setSearch(''); setPendingSuperset(null) }}
+              style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', fontSize: '13px', whiteSpace: 'nowrap' }}>Annulla</button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 16px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
             {search.length > 1 && filtered.length === 0 && (
-              <button onClick={() => addNewExercise(search)} style={{ ...bigBtn, background: '#1e1e1e', border: '0.5px solid #D95C1A', color: '#D95C1A' }}>
-                + Aggiungi "{search}" al database
+              <button onClick={() => addNewExercise(search)} style={{ ...bigBtn, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(217,92,26,0.4)', color: '#D95C1A' }}>
+                + AGGIUNGI "{search.toUpperCase()}" AL DATABASE
               </button>
             )}
             {filtered.map(ex => (
-              <div key={ex.id} onClick={() => addExercise(ex)}
-                style={{ padding: '12px 14px', background: '#1e1e1e', borderRadius: '10px', marginBottom: '6px', color: '#fff', fontSize: '13px', cursor: 'pointer', border: '0.5px solid #2a2a2a' }}>
+              <div key={ex.id} onClick={() => addExercise(ex)} style={{
+                padding: '14px 16px', background: 'rgba(255,255,255,0.04)',
+                borderRadius: '6px', marginBottom: '6px',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600',
+                color: '#fff', cursor: 'pointer',
+                border: '1px solid rgba(255,255,255,0.07)', letterSpacing: '0.5px'
+              }}>
                 {ex.name}
               </div>
             ))}
@@ -219,9 +283,9 @@ export default function CycleForm({ navigate, goBack, params }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', overflow: 'hidden', position: 'relative' }
-const scroll = { flex: 1, overflowY: 'auto', padding: '14px 16px' }
-const fieldLabel = { color: '#555', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }
-const inp = { width: '100%', background: '#1e1e1e', border: '0.5px solid #333', borderRadius: '11px', padding: '13px 14px', color: '#fff', fontSize: '14px', outline: 'none' }
-const repsInp = { width: '100%', border: '0.5px solid #333', borderRadius: '8px', padding: '7px 6px', color: '#fff', fontSize: '12px', outline: 'none', textAlign: 'center' }
-const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '13px', borderRadius: '11px', fontSize: '14px', fontWeight: '700' }
+const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
+const scroll = { flex: 1, overflowY: 'auto', padding: '16px' }
+const fieldLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '14px', outline: 'none' }
+const repsInp = { width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '7px 6px', color: '#fff', fontSize: '12px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600' }
+const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px' }
