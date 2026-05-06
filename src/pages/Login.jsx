@@ -7,6 +7,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resetSent, setResetSent] = useState(false)
+  const [showReset, setShowReset] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -15,6 +19,16 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError('Email o password errati')
     setLoading(false)
+  }
+
+  const handleReset = async () => {
+    if (!resetEmail.trim()) return
+    setResetLoading(true)
+    await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: window.location.origin,
+    })
+    setResetLoading(false)
+    setResetSent(true)
   }
 
   return (
@@ -97,6 +111,39 @@ export default function Login() {
             {loading ? 'Accesso...' : 'ACCEDI'}
           </button>
         </form>
+
+        {/* Forgot password */}
+        {!showReset ? (
+          <div style={{ textAlign: 'center', marginTop: '18px' }}>
+            <span
+              onClick={() => { setShowReset(true); setResetEmail(email) }}
+              style={{ color: 'rgba(217,92,26,0.7)', fontSize: '12px', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
+              PASSWORD DIMENTICATA?
+            </span>
+          </div>
+        ) : resetSent ? (
+          <div style={{ marginTop: '18px', background: 'rgba(217,92,26,0.08)', border: '1px solid rgba(217,92,26,0.25)', borderRadius: '4px', padding: '14px', textAlign: 'center' }}>
+            <div style={{ color: '#D95C1A', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ EMAIL INVIATA</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Controlla la tua casella e segui il link per reimpostare la password.</div>
+            <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
+          </div>
+        ) : (
+          <div style={{ marginTop: '18px' }}>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginBottom: '8px', letterSpacing: '0.5px' }}>Inserisci la tua email per ricevere il link di reset:</div>
+            <input
+              value={resetEmail}
+              onChange={e => setResetEmail(e.target.value)}
+              placeholder="Email" type="email"
+              style={{ ...inp, marginBottom: '8px' }}
+            />
+            <button onClick={handleReset} disabled={resetLoading || !resetEmail.trim()} style={{ ...btn, background: 'transparent', border: '1px solid rgba(217,92,26,0.5)', color: '#D95C1A' }}>
+              {resetLoading ? 'INVIO...' : 'INVIA LINK DI RESET'}
+            </button>
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <span onClick={() => setShowReset(false)} style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', cursor: 'pointer' }}>← Torna al login</span>
+            </div>
+          </div>
+        )}
 
         <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', textAlign: 'center', marginTop: '24px', letterSpacing: '1px' }}>
           RISERVATO AI COACH

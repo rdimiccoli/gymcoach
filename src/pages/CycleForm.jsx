@@ -214,7 +214,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             </button>
             <button onClick={() => { setActiveSuperset(generateSupersetLabel()); setShowSearch(true) }}
               style={{ ...bigBtn, flex: 1, fontSize: '12px', padding: '12px', letterSpacing: '1px', background: 'rgba(217,92,26,0.12)', border: '1px solid rgba(217,92,26,0.35)', color: '#D95C1A' }}>
-              ⚡ NUOVA SS
+              ⚡ NUOVA SUPERSERIE
             </button>
           </div>
         )}
