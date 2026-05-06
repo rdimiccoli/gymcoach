@@ -337,5 +337,5 @@ function LoadModal({ client, group, loads, prevLoads, onSave, onClose }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px' }

@@ -214,7 +214,7 @@ function Empty() {
 
 function Loader() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a', gap: '12px' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '36px', fontWeight: '900', letterSpacing: '4px' }}>
         GYM<span style={{ color: '#D95C1A' }}>COACH</span>
       </div>
@@ -223,6 +223,6 @@ function Loader() {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#0a0a0a', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '20px 16px' }
 const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }

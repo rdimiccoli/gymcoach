@@ -1,10 +1,17 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; background: #0a0a0a; }
+html, body, #root {
+  height: 100%;
+  height: 100dvh;
+  background: #0a0a0a;
+}
 
 body {
   font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #fff;
   overflow: hidden;
+  /* Prevent bounce/overscroll on iOS */
+  position: fixed;
+  width: 100%;
 }
 
 h1, h2, h3, .condensed {

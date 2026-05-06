@@ -121,7 +121,7 @@ export default function ClientProfile({ navigate, goBack, params }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#111', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '14px 16px' }
 const sectionLabel = { color: '#555', fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }
 const statBox = { background: '#1e1e1e', border: '0.5px solid #2a2a2a', borderRadius: '11px', padding: '11px 13px' }
