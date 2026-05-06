@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -68,12 +69,24 @@ export default function Login() {
               style={inp} required
             />
           </div>
-          <div style={{ marginBottom: '6px' }}>
+          <div style={{ marginBottom: '6px', position: 'relative' }}>
             <input
-              type="password" placeholder="Password" value={password}
+              type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
               onChange={e => setPassword(e.target.value)}
-              style={inp} required
+              style={{ ...inp, paddingRight: '48px' }} required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              style={{
+                position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: showPassword ? '#D95C1A' : 'rgba(255,255,255,0.3)',
+                fontSize: '18px', lineHeight: 1, padding: '4px',
+              }}
+            >
+              {showPassword ? '👁' : '👁‍🗨'}
+            </button>
           </div>
 
           {error && (
