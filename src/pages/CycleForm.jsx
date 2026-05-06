@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -17,6 +17,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
+
+  // Drag state
+  const [draggingIdx, setDraggingIdx] = useState(null)
+  const [dragOverIdx, setDragOverIdx] = useState(null)
+  const rowRefs = useRef({})
+  const dragStateRef = useRef({ startY: 0, currentIdx: null })
 
   useEffect(() => {
     loadExercises()
@@ -74,7 +80,6 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     setExList(prev => ({ ...prev, [day]: [...prev[day], newEx] }))
     setShowSearch(false)
     setSearch('')
-    // Keep activeSuperset so user can keep adding to same superserie
   }
 
   async function addNewExercise(name) {
@@ -82,18 +87,63 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     await addExercise(data)
   }
 
-  async function updateReps(day, idx, field, val) {
-    const ex = exList[day][idx]
+  async function updateReps(d, idx, field, val) {
+    const ex = exList[d][idx]
     const updated = { ...ex, [field]: val }
-    setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === idx ? updated : e) }))
+    setExList(prev => ({ ...prev, [d]: prev[d].map((e, i) => i === idx ? updated : e) }))
     if (ex.id) await supabase.from('cycle_exercises').update({ reps_a: updated.repsA, reps_b: updated.repsB, reps_c: updated.repsC }).eq('id', ex.id)
   }
 
-  async function removeExercise(day, idx) {
-    const ex = exList[day][idx]
+  async function removeExercise(d, idx) {
+    const ex = exList[d][idx]
     if (ex.id) await supabase.from('cycle_exercises').delete().eq('id', ex.id)
-    setExList(prev => ({ ...prev, [day]: prev[day].filter((_, i) => i !== idx) }))
+    setExList(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) }))
   }
+
+  // ── Drag & Drop ────────────────────────────────────────────────────────────
+  const getIndexFromY = useCallback((y) => {
+    const list = exList[day]
+    for (let i = 0; i < list.length; i++) {
+      const el = rowRefs.current[i]
+      if (!el) continue
+      const rect = el.getBoundingClientRect()
+      if (y < rect.bottom) return i
+    }
+    return list.length - 1
+  }, [exList, day])
+
+  function onDragHandleTouchStart(e, idx) {
+    e.stopPropagation()
+    dragStateRef.current = { startY: e.touches[0].clientY, currentIdx: idx }
+    setDraggingIdx(idx)
+    setDragOverIdx(idx)
+  }
+
+  function onDragHandleTouchMove(e) {
+    e.preventDefault()
+    const y = e.touches[0].clientY
+    const overIdx = getIndexFromY(y)
+    setDragOverIdx(overIdx)
+  }
+
+  async function onDragHandleTouchEnd() {
+    if (draggingIdx === null || dragOverIdx === null || draggingIdx === dragOverIdx) {
+      setDraggingIdx(null); setDragOverIdx(null); return
+    }
+    const newList = [...exList[day]]
+    const [moved] = newList.splice(draggingIdx, 1)
+    newList.splice(dragOverIdx, 0, moved)
+    setExList(prev => ({ ...prev, [day]: newList }))
+
+    // Save new sort_order to Supabase
+    await Promise.all(newList.map((ex, i) => {
+      if (ex.id) return supabase.from('cycle_exercises').update({ sort_order: i }).eq('id', ex.id)
+    }))
+
+    setDraggingIdx(null)
+    setDragOverIdx(null)
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   function getGroups() {
     const groups = [], seen = {}
@@ -151,6 +201,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         ))}
       </div>
 
+      {!readOnly && exList[day].length > 1 && (
+        <div style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+          <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', textAlign: 'center' }}>
+            ⠿ TIENI PREMUTO E TRASCINA PER RIORDINARE
+          </div>
+        </div>
+      )}
+
       <div style={scroll}>
         {groups.length === 0 && (
           <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', marginBottom: '12px' }}>
@@ -167,33 +225,55 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               </div>
             )}
 
-            {group.exercises.map((ex) => (
-              <div key={ex.idx} style={{
-                background: group.type === 'superset' ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                borderLeft: group.type === 'superset' ? '2px solid #D95C1A' : undefined,
-                borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: readOnly ? 0 : '10px' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
+            {group.exercises.map((ex) => {
+              const isDragging = draggingIdx === ex.idx
+              const isOver = dragOverIdx === ex.idx && draggingIdx !== ex.idx
+              return (
+                <div
+                  key={ex.idx}
+                  ref={el => rowRefs.current[ex.idx] = el}
+                  style={{
+                    background: isDragging ? 'rgba(217,92,26,0.15)' : group.type === 'superset' ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.04)',
+                    border: isOver ? '2px dashed #D95C1A' : `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                    borderLeft: !isOver && group.type === 'superset' ? '2px solid #D95C1A' : undefined,
+                    borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
+                    opacity: isDragging ? 0.5 : 1,
+                    transition: 'border 0.1s, opacity 0.1s',
+                    touchAction: 'none',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: readOnly ? 0 : '10px' }}>
+                    {/* Drag handle */}
+                    {!readOnly && (
+                      <div
+                        onTouchStart={e => onDragHandleTouchStart(e, ex.idx)}
+                        onTouchMove={onDragHandleTouchMove}
+                        onTouchEnd={onDragHandleTouchEnd}
+                        style={{
+                          fontSize: '20px', color: 'rgba(255,255,255,0.2)',
+                          cursor: 'grab', padding: '0 2px', userSelect: 'none',
+                          flexShrink: 0, lineHeight: 1,
+                        }}
+                      >⠿</div>
+                    )}
+                    <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
+                    {!readOnly && (
+                      <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px', flexShrink: 0 }}>✕</button>
+                    )}
+                  </div>
                   {!readOnly && (
-                    <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px' }}>✕</button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                      {[['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
+                        <div key={field}>
+                          <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
+                          <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={repsInp} />
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {!readOnly && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                    {[['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
-                      <div key={field}>
-                        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                        <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={repsInp} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
 
-            {/* Add more to THIS superset */}
             {!readOnly && group.type === 'superset' && (
               <button onClick={() => { setActiveSuperset(group.label); setShowSearch(true) }} style={{
                 width: '100%', background: 'rgba(217,92,26,0.08)',

@@ -58,14 +58,14 @@ export default function CyclesList({ navigate, goHome, session }) {
                       {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
                     </div>
                   </div>
-                  <div style={{
-                    background: cycle.is_active ? '#D95C1A' : 'rgba(255,255,255,0.06)',
-                    color: cycle.is_active ? '#fff' : 'rgba(255,255,255,0.3)',
-                    fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700',
-                    letterSpacing: '1.5px', padding: '4px 10px', borderRadius: '3px'
-                  }}>
-                    {cycle.is_active ? 'IN CORSO' : 'COMPLETATO'}
-                  </div>
+                  {cycle.is_active ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e', animation: 'pulse 2s infinite', flexShrink: 0 }} />
+                      <span style={{ color: '#22c55e', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>IN CORSO</span>
+                    </div>
+                  ) : (
+                    <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>COMPLETATA</div>
+                  )}
                 </div>
               </div>
             ))}
