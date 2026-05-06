@@ -6,19 +6,19 @@ const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Vener
 
 const PHASES = [
   {
-    num: 1, label: 'SETTIMANA 1 — 2', sub: 'Fase iniziale del ciclo',
+    num: 1, label: 'SETTIMANA 1 — 2', sub: 'Fase iniziale della scheda',
     weekRange: [1,2],
     img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=70',
     accent: '#D95C1A',
   },
   {
-    num: 2, label: 'SETTIMANA 3 — 4', sub: 'Fase intermedia del ciclo',
+    num: 2, label: 'SETTIMANA 3 — 4', sub: 'Fase intermedia della scheda',
     weekRange: [3,4],
     img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=70',
     accent: '#1A6ED9',
   },
   {
-    num: 3, label: 'SETTIMANA 5 — 6', sub: 'Fase finale del ciclo',
+    num: 3, label: 'SETTIMANA 5 — 6', sub: 'Fase finale della scheda',
     weekRange: [5,6],
     img: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=70',
     accent: '#1AAD5C',
@@ -126,7 +126,7 @@ export default function Home({ navigate, goHome, session }) {
         </div>
 
         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
-          SELEZIONA FASE DEL CICLO
+          SELEZIONA FASE DELLA SCHEDA
         </div>
 
         {/* Phase cards */}
@@ -193,7 +193,7 @@ function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
       <div style={{ paddingLeft: '8px' }}>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
-          {cycle ? cycle.name : 'Nessun ciclo attivo'}
+          {cycle ? cycle.name : 'Nessuna scheda attiva'}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

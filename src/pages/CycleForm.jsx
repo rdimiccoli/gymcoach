@@ -119,10 +119,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   if (step === 'info') return (
     <div style={page}>
-      <TopBar title="NUOVO CICLO" subtitle="Informazioni base" onBack={goBack} />
+      <TopBar title="NUOVA SCHEDA" subtitle="Informazioni base" onBack={goBack} />
       <div style={scroll}>
-        <div style={fieldLabel}>NOME CICLO</div>
-        <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="es. 3° Ciclo Pari 2026" style={inp} />
+        <div style={fieldLabel}>NOME SCHEDA</div>
+        <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="es. 3a Scheda Pari 2026" style={inp} />
         <div style={{ ...fieldLabel, marginTop: '16px' }}>DATA DI INIZIO</div>
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} />
         <button onClick={createCycle} disabled={!cycleName.trim() || saving}

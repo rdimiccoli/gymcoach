@@ -114,9 +114,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
 
   if (!cycle) return (
     <div style={page}>
-      <TopBar title={turn.name} subtitle="Nessun ciclo attivo" onBack={goBack} />
+      <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nessun ciclo attivo.<br /><span style={{ fontSize: '12px' }}>Vai in Cicli per crearne uno.</span></div>
+        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '12px' }}>Vai in Schede per crearne una.</span></div>
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
@@ -292,7 +292,7 @@ function LoadModal({ client, group, loads, prevLoads, onSave, onClose }) {
         return (
           <div key={ex.id} style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '2px' }}>{ex.exercises.name.toUpperCase()}</div>
-            {prev !== undefined && <div style={{ color: '#D95C1A', fontSize: '10px', marginBottom: '12px' }}>💡 Ciclo precedente: {prev} kg</div>}
+            {prev !== undefined && <div style={{ color: '#D95C1A', fontSize: '10px', marginBottom: '12px' }}>💡 Scheda precedente: {prev} kg</div>}
             {prev === undefined && <div style={{ height: '8px' }} />}
 
             {/* Manual input */}

@@ -39,7 +39,7 @@ export default function CyclesList({ navigate, goHome, session }) {
           <div key={turn.id} style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div style={sectionLabel}>{turn.name}</div>
-              <button onClick={() => newCycle(turn.id)} style={orangeSmall}>+ NUOVO CICLO</button>
+              <button onClick={() => newCycle(turn.id)} style={orangeSmall}>+ NUOVA SCHEDA</button>
             </div>
 
             {(cyclesByTurn[turn.id] || []).map(cycle => (
@@ -72,7 +72,7 @@ export default function CyclesList({ navigate, goHome, session }) {
 
             {!(cyclesByTurn[turn.id]?.length) && (
               <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px', textAlign: 'center', padding: '16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
-                Nessun ciclo ancora
+                Nessuna scheda ancora
               </div>
             )}
           </div>
