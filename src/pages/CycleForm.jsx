@@ -352,12 +352,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       border: isOver ? `2px dashed ${accentColor}` : `1px solid ${borderColor}`,
                       borderLeft: !isOver && group.type !== 'single' ? `2px solid ${accentColor}` : undefined,
                       borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
-                      opacity: isDragging ? 0.5 : 1, transition: 'border 0.1s', touchAction: 'none',
+                      opacity: isDragging ? 0.5 : 1, transition: 'border 0.1s',
                     }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: readOnly ? 0 : '10px' }}>
                       {!readOnly && (
                         <div onTouchStart={e => onDragStart(e, ex.idx)} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-                          style={{ fontSize: '20px', color: 'rgba(255,255,255,0.2)', cursor: 'grab', padding: '0 2px', userSelect: 'none', flexShrink: 0 }}>⠿</div>
+                          style={{ fontSize: '20px', color: 'rgba(255,255,255,0.2)', cursor: 'grab', padding: '4px 6px', userSelect: 'none', flexShrink: 0, touchAction: 'none' }}>⠿</div>
                       )}
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
