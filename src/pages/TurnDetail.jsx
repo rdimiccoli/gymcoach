@@ -9,18 +9,17 @@ const REPS_FOR_WEEK = (ex, week) => {
   return ex.reps_c
 }
 
+const isCIR = g => g?.startsWith('CIR-')
+const isSS = g => g?.startsWith('SS-')
+
 function groupExercises(exercises) {
-  const groups = []
-  const seen = {}
+  const groups = [], seen = {}
   exercises.forEach(ex => {
     const sg = ex.superset_group
     if (!sg) {
       groups.push({ type: 'single', exercises: [ex] })
     } else {
-      if (!seen[sg]) {
-        seen[sg] = { type: 'superset', label: sg, exercises: [] }
-        groups.push(seen[sg])
-      }
+      if (!seen[sg]) { seen[sg] = { type: 'superset', label: sg, exercises: [] }; groups.push(seen[sg]) }
       seen[sg].exercises.push(ex)
     }
   })
@@ -32,14 +31,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   const [day, setDay] = useState(1)
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
+  // loads[clientId_exId_week] = kg
   const [loads, setLoads] = useState({})
-  const [prevLoads, setPrevLoads] = useState({})
-  const [notes, setNotes] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { if (cycle) { loadData() } else { setLoading(false) } }, [day, cycle])
+  useEffect(() => { if (cycle) loadData(); else setLoading(false) }, [day, cycle])
 
   async function loadData() {
     setLoading(true)
@@ -56,47 +54,26 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
       const clIds = cl.map(c => c.id)
-
-      const { data: loadData } = await supabase.from('client_loads').select('*')
+      // Load ALL weeks for each client/exercise
+      const { data: loadData } = await supabase
+        .from('client_loads').select('*')
         .in('client_id', clIds).in('cycle_exercise_id', exIds)
       const loadMap = {}
-      loadData?.forEach(l => { loadMap[`${l.client_id}_${l.cycle_exercise_id}`] = l.kg })
+      loadData?.forEach(l => {
+        loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
+      })
       setLoads(loadMap)
-
-      const { data: noteData } = await supabase.from('client_notes').select('*')
-        .in('client_id', clIds).in('cycle_exercise_id', exIds)
-      const noteMap = {}
-      noteData?.forEach(n => { noteMap[`${n.client_id}_${n.cycle_exercise_id}`] = n.note })
-      setNotes(noteMap)
-
-      const { data: prevCycles } = await supabase.from('cycles').select('id')
-        .eq('turn_id', turn.id).eq('is_active', false)
-        .order('created_at', { ascending: false }).limit(1)
-      if (prevCycles?.[0]) {
-        const { data: prevEx } = await supabase.from('cycle_exercises').select('id, exercise_id')
-          .eq('cycle_id', prevCycles[0].id).eq('day', day)
-        if (prevEx?.length) {
-          const { data: prevLoad } = await supabase.from('client_loads').select('*')
-            .in('client_id', clIds).in('cycle_exercise_id', prevEx.map(e => e.id))
-          const prevMap = {}
-          prevLoad?.forEach(l => {
-            const ex = prevEx.find(e => e.id === l.cycle_exercise_id)
-            if (ex) prevMap[`${l.client_id}_${ex.exercise_id}`] = l.kg
-          })
-          setPrevLoads(prevMap)
-        }
-      }
     }
     setLoading(false)
   }
 
-  async function saveLoads(clientId, loadUpdates) {
+  async function saveLoads(clientId, clientWeek, loadUpdates) {
     const newLoads = { ...loads }
     for (const { cycleExId, kg } of loadUpdates) {
-      newLoads[`${clientId}_${cycleExId}`] = kg
+      newLoads[`${clientId}_${cycleExId}_${clientWeek}`] = kg
       await supabase.from('client_loads').upsert(
-        { client_id: clientId, cycle_exercise_id: cycleExId, kg },
-        { onConflict: 'client_id,cycle_exercise_id' }
+        { client_id: clientId, cycle_exercise_id: cycleExId, kg, week: clientWeek },
+        { onConflict: 'client_id,cycle_exercise_id,week' }
       )
     }
     setLoads(newLoads)
@@ -108,6 +85,20 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
     const newWeek = client.current_week + 1
     await supabase.from('clients').update({ current_week: newWeek }).eq('id', client.id)
     setClients(prev => prev.map(c => c.id === client.id ? { ...c, current_week: newWeek } : c))
+  }
+
+  // Get current kg and previous kg+reps for a client/exercise
+  function getLoadInfo(client, ex) {
+    const week = client.current_week
+    const currentKg = loads[`${client.id}_${ex.id}_${week}`]
+    // Find most recent previous week with a load
+    let prevWeek = null
+    for (let w = week - 1; w >= 1; w--) {
+      if (loads[`${client.id}_${ex.id}_${w}`] !== undefined) { prevWeek = w; break }
+    }
+    const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
+    const prevReps = prevWeek !== null ? REPS_FOR_WEEK(ex, prevWeek) : undefined
+    return { currentKg, prevKg, prevReps }
   }
 
   const groups = groupExercises(exercises)
@@ -151,15 +142,18 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
             <div key={gi} style={{ marginBottom: '8px' }}>
               <div onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
                 style={{
-                  background: group.type === 'superset' ? 'rgba(217,92,26,0.08)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.25)' : 'rgba(255,255,255,0.07)'}`,
-                  borderLeft: group.type === 'superset' ? '2px solid #D95C1A' : undefined,
+                  background: group.type === 'circuit' ? 'rgba(59,130,246,0.06)' : group.type === 'superset' ? 'rgba(217,92,26,0.08)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${group.type === 'circuit' ? 'rgba(59,130,246,0.25)' : group.type === 'superset' ? 'rgba(217,92,26,0.25)' : 'rgba(255,255,255,0.07)'}`,
+                  borderLeft: group.type === 'circuit' ? '2px solid #3b82f6' : group.type === 'superset' ? '2px solid #D95C1A' : undefined,
                   borderRadius: isExpanded ? '6px 6px 0 0' : '6px',
                   padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
                 }}>
                 <div style={{ flex: 1 }}>
                   {group.type === 'superset' && (
                     <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
+                  )}
+                  {group.type === 'circuit' && (
+                    <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
                   )}
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {group.exercises.map(e => e.exercises.name).join(' + ')}
@@ -171,17 +165,21 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.06)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map(client => {
+                    const currentReps = REPS_FOR_WEEK(group.exercises[0], client.current_week)
                     const isLate = client.current_week < 3
                     return (
                       <div key={client.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div>
                             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                               {client.name} {client.surname}
                               {isLate && <span style={{ color: '#E8A030', fontSize: '9px', marginLeft: '8px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
                             </div>
                             <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
-                              Sett.<span style={{ color: '#D95C1A' }}> {client.current_week}</span> · {REPS_FOR_WEEK(group.exercises[0], client.current_week)}
+                              {group.type === 'circuit'
+                                ? <span style={{ color: '#3b82f6' }}>Circuito · {group.exercises[0].reps_c} giri</span>
+                                : <span>Sett.<span style={{ color: '#D95C1A' }}> {client.current_week}</span> · {currentReps}</span>
+                              }
                             </div>
                           </div>
                           <button onClick={() => setEditModal({ client, group })} style={{
@@ -190,25 +188,36 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                             color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
                           }}>CARICHI</button>
                         </div>
+
+                        {/* Load badges */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                           {group.exercises.map(ex => {
-                            const kg = loads[`${client.id}_${ex.id}`]
-                            const prev = prevLoads[`${client.id}_${ex.exercise_id}`]
-                            const diff = (kg > 0 && prev !== undefined) ? parseFloat((kg - prev).toFixed(2)) : null
+                            const { currentKg, prevKg, prevReps } = getLoadInfo(client, ex)
+                            const diff = (currentKg > 0 && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '3px', padding: '4px 9px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>{ex.exercises.name.split(' ')[0].toUpperCase()}</span>
-                                  <span style={{ color: '#fff', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{kg > 0 ? `${kg}kg` : '—'}</span>
+                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '5px 9px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px' }}>
+                                    {ex.exercises.name.split(' ')[0].toUpperCase()}
+                                  </span>
+                                  <span style={{ color: '#fff', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                    {currentKg > 0 ? `${currentKg}kg` : '—'}
+                                  </span>
+                                  {currentKg > 0 && (
+                                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                      × {currentReps}
+                                    </span>
+                                  )}
                                   {diff !== null && (
                                     <span style={{ fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'rgba(255,255,255,0.2)' }}>
                                       {diff > 0 ? `↑+${diff}` : diff < 0 ? `↓${diff}` : '='}
                                     </span>
                                   )}
                                 </div>
-                                {prev !== undefined && (
-                                  <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                    prec. {prev}kg
+                                {/* Previous load */}
+                                {prevKg !== undefined && (
+                                  <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '2px' }}>
+                                    prec. {prevKg}kg × {prevReps}
                                   </div>
                                 )}
                               </div>
@@ -254,8 +263,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
           client={editModal.client}
           group={editModal.group}
           loads={loads}
-          prevLoads={prevLoads}
-          onSave={(updates) => saveLoads(editModal.client.id, updates)}
+          onSave={(updates) => saveLoads(editModal.client.id, editModal.client.current_week, updates)}
           onClose={() => setEditModal(null)}
         />
       )}
@@ -265,12 +273,25 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   )
 }
 
-function LoadModal({ client, group, loads, prevLoads, onSave, onClose }) {
+function LoadModal({ client, group, loads, onSave, onClose }) {
+  const week = client.current_week
+
   const [kgMap, setKgMap] = useState(() => {
     const m = {}
-    group.exercises.forEach(ex => { m[ex.id] = parseFloat(loads[`${client.id}_${ex.id}`]) || 0 })
+    group.exercises.forEach(ex => {
+      m[ex.id] = parseFloat(loads[`${client.id}_${ex.id}_${week}`]) || 0
+    })
     return m
   })
+
+  // Get previous week's load for reference
+  function getPrevLoad(ex) {
+    for (let w = week - 1; w >= 1; w--) {
+      const kg = loads[`${client.id}_${ex.id}_${w}`]
+      if (kg !== undefined) return { kg, reps: REPS_FOR_WEEK(ex, w) }
+    }
+    return null
+  }
 
   const change = (exId, delta) => {
     setKgMap(prev => ({ ...prev, [exId]: Math.max(0, parseFloat((prev[exId] + delta).toFixed(2))) }))
@@ -283,11 +304,7 @@ function LoadModal({ client, group, loads, prevLoads, onSave, onClose }) {
   }
 
   const handleSave = () => {
-    const updates = group.exercises.map(ex => ({
-      cycleExId: ex.id,
-      kg: parseFloat(kgMap[ex.id]) || 0
-    }))
-    onSave(updates)
+    onSave(group.exercises.map(ex => ({ cycleExId: ex.id, kg: parseFloat(kgMap[ex.id]) || 0 })))
   }
 
   return (
@@ -295,32 +312,45 @@ function LoadModal({ client, group, loads, prevLoads, onSave, onClose }) {
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
         {client.name.toUpperCase()} {client.surname.toUpperCase()}
       </div>
+      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
+        {group.type === 'circuit'
+          ? <span style={{ color: '#3b82f6' }}>🔄 Circuito · {group.exercises[0].reps_c} giri</span>
+          : <span>Settimana {week} · {REPS_FOR_WEEK(group.exercises[0], week)}</span>
+        }
+      </div>
       {group.type === 'superset' && (
         <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>⚡ SUPERSERIE</div>
       )}
-      {group.type === 'single' && <div style={{ height: '14px' }} />}
+      {group.type === 'circuit' && (
+        <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>🔄 CIRCUITO — inserisci i carichi usati</div>
+      )}
 
       {group.exercises.map(ex => {
-        const prev = prevLoads[`${client.id}_${ex.exercise_id}`]
+        const prev = getPrevLoad(ex)
         const val = kgMap[ex.id]
         return (
           <div key={ex.id} style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '2px' }}>{ex.exercises.name.toUpperCase()}</div>
-            {prev !== undefined && <div style={{ color: '#D95C1A', fontSize: '10px', marginBottom: '12px' }}>💡 Scheda precedente: {prev} kg</div>}
-            {prev === undefined && <div style={{ height: '8px' }} />}
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '4px' }}>
+              {ex.exercises.name.toUpperCase()}
+            </div>
 
-            {/* Manual input */}
+            {/* Previous load reference */}
+            {prev ? (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(217,92,26,0.08)', border: '1px solid rgba(217,92,26,0.2)', borderRadius: '3px', padding: '3px 8px', marginBottom: '12px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
+                <span style={{ color: '#D95C1A', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
+                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
+              </div>
+            ) : (
+              <div style={{ height: '4px' }} />
+            )}
+
+            {/* KG input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <input
-                type="number"
-                value={val}
+                type="number" value={val}
                 onChange={e => handleManualInput(ex.id, e.target.value)}
-                style={{
-                  flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '4px', padding: '12px', color: '#fff',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900',
-                  textAlign: 'center', outline: 'none'
-                }}
+                style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
               />
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', color: 'rgba(255,255,255,0.3)', fontWeight: '700' }}>KG</div>
             </div>

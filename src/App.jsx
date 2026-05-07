@@ -8,6 +8,7 @@ import CyclesList from './pages/CyclesList'
 import CycleForm from './pages/CycleForm'
 import Settings from './pages/Settings'
 import Turns from './pages/Turns'
+import CycleShare from './pages/CycleShare'
 import ChangePassword from './pages/ChangePassword'
 
 export default function App() {
@@ -89,6 +90,7 @@ export default function App() {
     'cycle-form': CycleForm,
     settings: Settings,
     turns: Turns,
+    'cycle-share': CycleShare,
   }
 
   const Page = pages[current.page] || Home
