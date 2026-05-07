@@ -24,6 +24,8 @@ export default function App() {
     const hash = window.location.hash
     if (hash.includes('type=recovery')) {
       setIsRecovery(true)
+      // Clear the ugly hash from URL bar without triggering popstate
+      window.history.replaceState(null, '', window.location.pathname)
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,6 +49,9 @@ export default function App() {
   useEffect(() => {
     window.history.pushState({ gymcoach: true }, '')
     const handlePopState = () => {
+      // Don't intercept during password recovery redirect
+      if (window.location.hash.includes('type=recovery')) return
+
       const current = stackRef.current
       if (current.length > 1) {
         setStack(prev => prev.slice(0, -1))

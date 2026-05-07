@@ -16,6 +16,12 @@ export default function Turns({ navigate, goHome, session }) {
   const [clientSurname, setClientSurname] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Edit client modal
+  const [editClient, setEditClient] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editSurname, setEditSurname] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
@@ -67,41 +73,127 @@ export default function Turns({ navigate, goHome, session }) {
     await loadClients(selectedTurn)
   }
 
-  // TURN CLIENTS VIEW
+  // Edit client
+  function openEditClient(client) {
+    setEditClient(client)
+    setEditName(client.name)
+    setEditSurname(client.surname)
+  }
+
+  async function saveEditClient() {
+    if (!editName.trim() || !editSurname.trim()) return
+    setSaving(true)
+    await supabase.from('clients').update({ name: editName.trim(), surname: editSurname.trim() }).eq('id', editClient.id)
+    setClients(prev => prev.map(c => c.id === editClient.id ? { ...c, name: editName.trim(), surname: editSurname.trim() } : c))
+    setSaving(false)
+    setEditClient(null)
+  }
+
+  // Delete client (with all loads)
+  async function confirmDeleteClient(client) {
+    setDeleteConfirm(client)
+  }
+
+  async function executeDeleteClient() {
+    const client = deleteConfirm
+    setDeleteConfirm(null)
+    // Delete loads first (foreign key)
+    await supabase.from('client_loads').delete().eq('client_id', client.id)
+    await supabase.from('clients').delete().eq('id', client.id)
+    setClients(prev => prev.filter(c => c.id !== client.id))
+  }
+
+  // ── TURN CLIENTS VIEW ──────────────────────────────────────────────────────
   if (view === 'turn') return (
     <div style={page}>
       <TopBar title={selectedTurn?.name} subtitle="Gestione clienti" onBack={() => setView('main')} />
       <div style={scroll}>
         <div style={sectionLabel}>AGGIUNGI CLIENTE</div>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nome" style={{ ...inp, flex: 1 }} />
           <input value={clientSurname} onChange={e => setClientSurname(e.target.value)} placeholder="Cognome" style={{ ...inp, flex: 1 }} />
           <button onClick={saveClient} disabled={!clientName.trim() || !clientSurname.trim() || saving}
-            style={{ background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '0 14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', fontSize: '18px', opacity: !clientName.trim() || !clientSurname.trim() ? 0.3 : 1 }}>
+            style={{ background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '0 14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', fontSize: '20px', opacity: !clientName.trim() || !clientSurname.trim() ? 0.3 : 1 }}>
             +
           </button>
         </div>
 
         <div style={sectionLabel}>CLIENTI ({clients.filter(c => c.is_active).length} ATTIVI)</div>
         {clients.map(client => (
-          <div key={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.4 }}>
-            <div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{client.surname} {client.name}</div>
+          <div key={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
+                {client.surname} {client.name}
+              </div>
               <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '1px' }}>Settimana {client.current_week}/6</div>
             </div>
-            <button onClick={() => toggleClient(client)} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '6px 12px', borderRadius: '3px' }}>
-              {client.is_active ? 'ARCHIVIA' : 'RIATTIVA'}
-            </button>
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button onClick={() => openEditClient(client)}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', fontSize: '14px', padding: '6px 10px', borderRadius: '3px' }}>
+                ✏️
+              </button>
+              <button onClick={() => toggleClient(client)}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '6px 10px', borderRadius: '3px' }}>
+                {client.is_active ? 'ARCHIVIA' : 'RIATTIVA'}
+              </button>
+              <button onClick={() => confirmDeleteClient(client)}
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(239,68,68,0.7)', fontSize: '14px', padding: '6px 10px', borderRadius: '3px' }}>
+                🗑
+              </button>
+            </div>
           </div>
         ))}
         {clients.length === 0 && <div style={emptyText}>Nessun cliente ancora.</div>}
         <div style={{ height: '20px' }} />
       </div>
+
+      {/* Edit client modal */}
+      {editClient && (
+        <div style={overlay}>
+          <div style={sheet}>
+            <div style={sheetTitle}>MODIFICA CLIENTE</div>
+            <div style={{ ...fieldLabel, marginTop: '4px' }}>NOME</div>
+            <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inp, marginBottom: '12px' }} />
+            <div style={fieldLabel}>COGNOME</div>
+            <input value={editSurname} onChange={e => setEditSurname(e.target.value)} placeholder="Cognome" style={{ ...inp, marginBottom: '20px' }} />
+            <button onClick={saveEditClient} disabled={saving || !editName.trim() || !editSurname.trim()}
+              style={{ ...bigBtn, marginBottom: '10px', opacity: !editName.trim() || !editSurname.trim() ? 0.3 : 1 }}>
+              {saving ? 'SALVATAGGIO...' : '✓ SALVA MODIFICHE'}
+            </button>
+            <button onClick={() => setEditClient(null)} style={cancelBtn}>Annulla</button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteConfirm && (
+        <div style={overlay}>
+          <div style={sheet}>
+            <div style={sheetTitle}>ELIMINA CLIENTE</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '6px' }}>
+              Sei sicura di voler eliminare
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
+              {deleteConfirm.surname} {deleteConfirm.name}?
+            </div>
+            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '11px', marginBottom: '20px' }}>
+              ⚠ Verranno eliminati anche tutti i suoi carichi storici.
+            </div>
+            <button onClick={executeDeleteClient}
+              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>
+              🗑 SÌ, ELIMINA
+            </button>
+            <button onClick={() => setDeleteConfirm(null)} style={cancelBtn}>Annulla</button>
+          </div>
+        </div>
+      )}
+
       <BottomNav active="turns" navigate={navigate} goHome={goHome} />
     </div>
   )
 
-  // ADD TURN VIEW
+  // ── ADD TURN VIEW ──────────────────────────────────────────────────────────
   if (view === 'addTurn') return (
     <div style={page}>
       <TopBar title="NUOVO TURNO" onBack={() => setView('main')} />
@@ -128,7 +220,7 @@ export default function Turns({ navigate, goHome, session }) {
     </div>
   )
 
-  // MAIN TURNS VIEW
+  // ── MAIN TURNS VIEW ────────────────────────────────────────────────────────
   return (
     <div style={page}>
       <TopBar title="TURNI" />
@@ -137,9 +229,7 @@ export default function Turns({ navigate, goHome, session }) {
           <div style={sectionLabel}>I MIEI TURNI</div>
           <button onClick={() => setView('addTurn')} style={{ background: '#D95C1A', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '6px 14px', borderRadius: '3px' }}>+ AGGIUNGI</button>
         </div>
-
         {loading && <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', padding: '12px', textAlign: 'center' }}>Caricamento...</div>}
-
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
             <div onClick={() => loadClients(turn)} style={{ flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
@@ -152,7 +242,6 @@ export default function Turns({ navigate, goHome, session }) {
             </div>
           </div>
         ))}
-
         {!loading && turns.length === 0 && <div style={emptyText}>Nessun turno ancora.</div>}
         <div style={{ height: '20px' }} />
       </div>
@@ -161,11 +250,15 @@ export default function Turns({ navigate, goHome, session }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px' }
 const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }
 const fieldLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
-const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px' }
+const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
 const row = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '6px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
 const emptyText = { color: 'rgba(255,255,255,0.15)', fontSize: '12px', textAlign: 'center', padding: '20px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }
+const overlay = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
+const sheet = { background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }
+const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }
+const cancelBtn = { background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '10px', fontSize: '13px', cursor: 'pointer' }
