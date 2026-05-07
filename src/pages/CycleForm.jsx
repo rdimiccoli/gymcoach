@@ -17,6 +17,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [exList, setExList] = useState({ 1: [], 2: [], 3: [] })
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
+  const [editExerciseModal, setEditExerciseModal] = useState(null) // { id, name }
+  const [editExerciseName, setEditExerciseName] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [activeGroup, setActiveGroup] = useState(null) // { label, type }
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
@@ -151,6 +153,21 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     })
   }
 
+  async function saveEditExercise() {
+    if (!editExerciseName.trim() || !editExerciseModal) return
+    await supabase.from('exercises').update({ name: editExerciseName.trim() }).eq('id', editExerciseModal.id)
+    // Update name in current exList
+    setExList(prev => {
+      const updated = {}
+      for (const d of [1,2,3]) {
+        updated[d] = prev[d].map(ex => ex.exerciseId === editExerciseModal.id ? { ...ex, name: editExerciseName.trim() } : ex)
+      }
+      return updated
+    })
+    setAllExercises(prev => prev.map(e => e.id === editExerciseModal.id ? { ...e, name: editExerciseName.trim() } : e))
+    setEditExerciseModal(null)
+  }
+
   async function updateReps(d, idx, field, val) {
     const ex = exList[d][idx]
     const updated = { ...ex, [field]: val }
@@ -251,6 +268,26 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           {saving ? (cloneFromId ? 'CLONO...' : 'CREAZIONE...') : (cloneFromId ? '📋 CLONA E INIZIA' : 'AVANTI → INSERISCI ESERCIZI')}
         </button>
       </div>
+      {/* Edit exercise name modal */}
+      {editExerciseModal && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>MODIFICA ESERCIZIO</div>
+            <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)}
+              placeholder="Nome esercizio" autoFocus
+              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+            <button onClick={saveEditExercise} disabled={!editExerciseName.trim()}
+              style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', opacity: !editExerciseName.trim() ? 0.3 : 1 }}>
+              ✓ SALVA
+            </button>
+            <button onClick={() => setEditExerciseModal(null)}
+              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+
       <BottomNav active="cycles" navigate={navigate} goHome={goHome} />
     </div>
   )
@@ -426,11 +463,17 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               </button>
             )}
             {filtered.map(ex => (
-              <div key={ex.id} onClick={() => addExercise(ex)} style={{
-                padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', marginBottom: '6px',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff',
-                cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', letterSpacing: '0.5px'
-              }}>{ex.name}</div>
+              <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <div onClick={() => addExercise(ex)} style={{
+                  flex: 1, padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff',
+                  cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', letterSpacing: '0.5px'
+                }}>{ex.name}</div>
+                <button onClick={() => { setEditExerciseModal(ex); setEditExerciseName(ex.name) }}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '10px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', flexShrink: 0 }}>
+                  ✏️
+                </button>
+              </div>
             ))}
           </div>
         </div>
