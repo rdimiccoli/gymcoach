@@ -10,6 +10,8 @@ export default function CyclesList({ navigate, goHome, session }) {
   const [loading, setLoading] = useState(true)
   const [cloneModal, setCloneModal] = useState(null)
   const [completeModal, setCompleteModal] = useState(null)
+  const [renameModal, setRenameModal] = useState(null) // cycle object
+const [renameValue, setRenameValue] = useState('')
   const [completedAlerts, setCompletedAlerts] = useState([]) // turn ids where all clients at week 6
 
   useEffect(() => { loadData() }, [])
@@ -57,6 +59,13 @@ export default function CyclesList({ navigate, goHome, session }) {
     setCompleteModal(null)
     await loadData()
   }
+
+  async function renameCycle(cycle) {
+  if (!renameValue.trim()) return
+  await supabase.from('cycles').update({ name: renameValue.trim() }).eq('id', cycle.id)
+  setRenameModal(null)
+  await loadData()
+}
 
   return (
     <div style={page}>
@@ -123,6 +132,10 @@ export default function CyclesList({ navigate, goHome, session }) {
                         style={{ flex: 1, background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '4px', padding: '8px', color: '#eab308', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
                         ✓ COMPLETA SCHEDA
                       </button>
+                      <button onClick={() => { setRenameModal(cycle); setRenameValue(cycle.name) }}
+  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '8px', color: 'rgba(255,255,255,0.5)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
+  ✏️ RINOMINA
+</button>
                     </div>
                   )}
                   {!cycle.is_active && (
@@ -153,6 +166,28 @@ export default function CyclesList({ navigate, goHome, session }) {
         <div style={{ height: '20px' }} />
       </div>
 
+{/* Rename modal */}
+{renameModal && (
+  <div style={overlay}>
+    <div style={sheet}>
+      <div style={sheetTitle}>RINOMINA SCHEDA</div>
+      <input
+        value={renameValue}
+        onChange={e => setRenameValue(e.target.value)}
+        placeholder="Nome scheda"
+        style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+        autoFocus
+      />
+      <button onClick={() => renameCycle(renameModal)}
+        disabled={!renameValue.trim()}
+        style={{ ...sheetBtn('#D95C1A'), marginBottom: '10px', opacity: !renameValue.trim() ? 0.3 : 1 }}>
+        <div style={{ fontSize: '14px', fontWeight: '700', color: '#D95C1A', letterSpacing: '1px' }}>✓ SALVA NOME</div>
+      </button>
+      <button onClick={() => setRenameModal(null)} style={cancelBtn}>Annulla</button>
+    </div>
+  </div>
+)}
+      
       {/* Clone modal */}
       {cloneModal && (
         <div style={overlay}>
