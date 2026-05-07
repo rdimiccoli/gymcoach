@@ -207,4 +207,4 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 }
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
-const scroll = { flex: 1, overflowY: 'auto', padding: '16px' }
+const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
