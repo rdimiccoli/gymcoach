@@ -44,7 +44,7 @@ export default function CyclesList({ navigate, goHome, session }) {
 
   async function startNewCycle(turnId, cloneFromId) {
     setCloneModal(null)
-    await supabase.from('cycles').update({ is_active: false }).eq('turn_id', turnId).eq('is_active', true)
+    // Non disattiviamo più le schede precedenti — più schede attive per turno sono permesse
     navigate('cycle-form', { turnId, cloneFromId })
   }
 

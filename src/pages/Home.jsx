@@ -56,8 +56,8 @@ export default function Home({ navigate, goHome, session }) {
     if (t?.length) {
       const cycleMap = {}, countMap = {}
       await Promise.all(t.map(async turn => {
-        const { data: cy } = await supabase.from('cycles').select('*').eq('turn_id', turn.id).eq('is_active', true).limit(1)
-        if (cy?.[0]) cycleMap[turn.id] = cy[0]
+        const { data: cy } = await supabase.from('cycles').select('*').eq('turn_id', turn.id).eq('is_active', true).order('created_at', { ascending: false })
+        if (cy?.length) cycleMap[turn.id] = cy // store array of active cycles
         const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true }).eq('turn_id', turn.id).eq('is_active', true)
         countMap[turn.id] = count || 0
       }))
@@ -100,8 +100,10 @@ export default function Home({ navigate, goHome, session }) {
           {turns.length === 0 && <Empty />}
           {turns.map((turn, i) => (
             <div key={turn.id} className={`fadeUp-${Math.min(i+1,3)}`}>
-              <TurnCard turn={turn} cycle={cycles[turn.id]} count={clientCounts[turn.id]} accent={selectedPhase.accent}
-                onPress={() => navigate('turn', { turn, cycle: cycles[turn.id], phase: selectedPhase })} />
+              {(cycles[turn.id] || [null]).map((cycle, ci) => (
+                <TurnCard key={ci} turn={turn} cycle={cycle} count={ci === 0 ? clientCounts[turn.id] : null} accent={selectedPhase.accent}
+                  onPress={() => navigate('turn', { turn, cycle, phase: selectedPhase })} />
+              ))}
             </div>
           ))}
         </div>
@@ -194,7 +196,7 @@ function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
       <div style={{ paddingLeft: '8px' }}>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
-          {cycle ? cycle.name : 'Nessuna scheda attiva'}
+          {cycle ? <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px' }}>{cycle.name}</span> : <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>Nessuna scheda attiva</span>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
