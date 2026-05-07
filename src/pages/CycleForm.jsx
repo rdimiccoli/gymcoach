@@ -138,6 +138,19 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     await addExercise(data)
   }
 
+  async function moveToDay(fromDay, idx, toDay) {
+    const ex = exList[fromDay][idx]
+    const newSortOrder = exList[toDay].length
+    if (ex.id) {
+      await supabase.from('cycle_exercises').update({ day: toDay, sort_order: newSortOrder }).eq('id', ex.id)
+    }
+    setExList(prev => {
+      const fromList = prev[fromDay].filter((_, i) => i !== idx)
+      const toList = [...prev[toDay], { ...ex }]
+      return { ...prev, [fromDay]: fromList, [toDay]: toList }
+    })
+  }
+
   async function updateReps(d, idx, field, val) {
     const ex = exList[d][idx]
     const updated = { ...ex, [field]: val }
@@ -311,7 +324,15 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       )}
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
-                        <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px' }}>✕</button>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          {[1,2,3].filter(d => d !== day).map(targetDay => (
+                            <button key={targetDay} onClick={() => moveToDay(day, ex.idx, targetDay)}
+                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', lineHeight: 1 }}>
+                              G{targetDay}
+                            </button>
+                          ))}
+                          <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px' }}>✕</button>
+                        </div>
                       )}
                     </div>
 
