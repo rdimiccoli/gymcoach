@@ -57,6 +57,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (exData) {
       const map = { 1: [], 2: [], 3: [] }
       exData.forEach(e => {
+        if (!e.exercises?.name) return // skip if exercise was deleted
         map[e.day].push({
           id: e.id, exerciseId: e.exercise_id, name: e.exercises.name,
           repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
@@ -74,13 +75,16 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       .eq('cycle_id', sourceCycleId).order('sort_order')
     if (!srcEx?.length) return
     const map = { 1: [], 2: [], 3: [] }
-    const inserts = srcEx.map((e, i) => ({
-      cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
-      reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
-      sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
-    }))
+    const inserts = srcEx
+      .filter(e => e.exercises?.name) // skip deleted exercises
+      .map((e, i) => ({
+        cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
+        reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
+        sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
+      }))
     const { data: inserted } = await supabase.from('cycle_exercises').insert(inserts).select('*, exercises(name)')
     inserted?.forEach(e => {
+      if (!e.exercises?.name) return // skip if exercise was deleted
       map[e.day].push({
         id: e.id, exerciseId: e.exercise_id, name: e.exercises.name,
         repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
