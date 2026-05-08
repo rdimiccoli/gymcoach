@@ -198,7 +198,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                               <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '5px 9px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px' }}>
-                                    {ex?.exercises?.name.split(' ')[0].toUpperCase()}
+                                    {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
                                   </span>
                                   <span style={{ color: '#fff', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                     {currentKg > 0 ? `${currentKg}kg` : '—'}
@@ -310,7 +310,7 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
   return (
     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
-        {client.name.toUpperCase()} {client.surname.toUpperCase()}
+        {client?.name?.toUpperCase()} {client?.surname?.toUpperCase()}
       </div>
       <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
@@ -331,7 +331,7 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
         return (
           <div key={ex.id} style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              {ex?.exercises?.name.toUpperCase()}
+              {ex?.exercises?.name?.toUpperCase() ?? ''}
             </div>
 
             {/* Previous load reference */}

@@ -231,7 +231,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     return groups
   }
 
-  const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = allExercises.filter(e => e?.name && e?.name?.toLowerCase() ?? \'\'.includes(search.toLowerCase()))
 
   // ── CIRCUIT LABEL for display ─────────────────────────────────────────────
   const CircuitHeader = ({ group }) => (

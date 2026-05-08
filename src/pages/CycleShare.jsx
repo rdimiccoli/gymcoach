@@ -92,7 +92,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     const client = clients.find(c => c.id === selectedClient)
     const weekRange = WEEK_RANGES[selectedWeekRange]
 
-    let text = `🏋️ *${cycle.name.toUpperCase()}*\n`
+    let text = `🏋️ *${cycle?.name?.toUpperCase() ?? ''}*\n`
     text += `👤 ${client.name} ${client.surname}\n`
     text += `📅 ${weekRange.label}\n`
     text += `━━━━━━━━━━━━━━━━━━━\n\n`
