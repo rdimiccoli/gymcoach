@@ -13,6 +13,7 @@ export default function CyclesList({ navigate, goHome, session }) {
   const [renameValue, setRenameValue] = useState('')
   const [deleteModal, setDeleteModal] = useState(null)
   const [completedAlerts, setCompletedAlerts] = useState([])
+  const [allCycles, setAllCycles] = useState([]) // all cycles across all turns
 
   useEffect(() => { loadData() }, [])
 
@@ -30,16 +31,19 @@ export default function CyclesList({ navigate, goHome, session }) {
       }))
       setCyclesByTurn(cycleMap)
       setCompletedAlerts(alerts)
+      // Flatten all cycles for clone picker
+      const flat = []
+      Object.entries(cycleMap).forEach(([turnId, cycles]) => {
+        const turn = t.find(x => x.id === turnId)
+        cycles.forEach(c => flat.push({ ...c, turnName: turn?.name || '' }))
+      })
+      setAllCycles(flat)
     }
     setLoading(false)
   }
 
   function handleNewCycle(turn) {
-    const existing = cyclesByTurn[turn.id] || []
-    const active = existing.find(c => c.is_active)
-    if (active) setCloneModal({ turnId: turn.id, prevCycle: active })
-    else if (existing.length > 0) setCloneModal({ turnId: turn.id, prevCycle: existing[0] })
-    else startNewCycle(turn.id, null)
+    setCloneModal({ turnId: turn.id })
   }
 
   async function startNewCycle(turnId, cloneFromId) {
