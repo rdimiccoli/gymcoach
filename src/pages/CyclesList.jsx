@@ -180,22 +180,7 @@ export default function CyclesList({ navigate, goHome, session }) {
         <div style={{ height: '20px' }} />
       </div>
 
-      {cloneModal && (
-        <div style={overlay}>
-          <div style={sheet}>
-            <div style={sheetTitle}>NUOVA SCHEDA</div>
-            <div style={sheetSub}>Vuoi partire da zero o clonare la scheda precedente?</div>
-            <button onClick={() => startNewCycle(cloneModal.turnId, cloneModal.prevCycle.id)} style={sheetBtnOrange}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#D95C1A', letterSpacing: '1px', marginBottom: '2px' }}>📋 CLONA SCHEDA PRECEDENTE</div>
-              <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>{cloneModal.prevCycle.name}</div>
-            </button>
-            <button onClick={() => startNewCycle(cloneModal.turnId, null)} style={sheetBtnGrey}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', letterSpacing: '1px' }}>✏️ INIZIA DA ZERO</div>
-            </button>
-            <button onClick={() => setCloneModal(null)} style={cancelBtn}>Annulla</button>
-          </div>
-        </div>
-      )}
+
 
       {completeModal && (
         <div style={overlay}>
