@@ -39,7 +39,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
 
     // Build lookup maps
     const exMap = {}
-    cycleExercises.forEach(e => { exMap[e.id] = { name: e.exercises.name, cycleId: e.cycle_id } })
+    cycleExercises.forEach(e => { exMap[e.id] = { name: e?.exercises?.name, cycleId: e.cycle_id } })
     const cycleMap = {}
     cycles.forEach(c => { cycleMap[c.id] = c })
 

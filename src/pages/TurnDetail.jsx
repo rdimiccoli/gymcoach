@@ -156,7 +156,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                     <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
                   )}
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                    {group.exercises.map(e => e.exercises.name).join(' + ')}
+                    {group.exercises.map(e => e?.exercises?.name).join(' + ')}
                   </div>
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '16px', marginLeft: '8px' }}>{isExpanded ? '∨' : '›'}</div>
@@ -177,7 +177,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                             </div>
                             <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
                               {group.type === 'circuit'
-                                ? <span style={{ color: '#3b82f6' }}>Circuito · {group.exercises[0].reps_c} giri</span>
+                                ? <span style={{ color: '#3b82f6' }}>Circuito · {group.exercises[0]?.reps_c} giri</span>
                                 : <span>Sett.<span style={{ color: '#D95C1A' }}> {client.current_week}</span> · {currentReps}</span>
                               }
                             </div>
@@ -198,7 +198,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                               <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '5px 9px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px' }}>
-                                    {ex.exercises.name.split(' ')[0].toUpperCase()}
+                                    {ex?.exercises?.name.split(' ')[0].toUpperCase()}
                                   </span>
                                   <span style={{ color: '#fff', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                     {currentKg > 0 ? `${currentKg}kg` : '—'}
@@ -314,7 +314,7 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
       </div>
       <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
-          ? <span style={{ color: '#3b82f6' }}>🔄 Circuito · {group.exercises[0].reps_c} giri</span>
+          ? <span style={{ color: '#3b82f6' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
           : <span>Settimana {week} · {REPS_FOR_WEEK(group.exercises[0], week)}</span>
         }
       </div>
@@ -331,7 +331,7 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
         return (
           <div key={ex.id} style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              {ex.exercises.name.toUpperCase()}
+              {ex?.exercises?.name.toUpperCase()}
             </div>
 
             {/* Previous load reference */}

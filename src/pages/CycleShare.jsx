@@ -105,7 +105,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
         if (group.type === 'circuit') {
           text += `\n🔄 CIRCUITO\n`
           group.exercises.forEach(ex => {
-            text += `  • ${ex.exercises.name}\n`
+            text += `  • ${ex?.exercises?.name}\n`
             text += `    ⏱ ${ex.reps_a}  💤 ${ex.reps_b}  🔁 ${ex.reps_c} giri\n`
           })
         } else if (group.type === 'superset') {
@@ -113,7 +113,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
           group.exercises.forEach(ex => {
             const reps = getRepsForRange(ex, selectedWeekRange)
             const kg = getLoadForRange(selectedClient, ex.id, selectedWeekRange)
-            text += `  • ${ex.exercises.name}  ${reps}`
+            text += `  • ${ex?.exercises?.name}  ${reps}`
             if (kg) text += `  ➜ *${kg}kg*`
             text += `\n`
           })
@@ -121,7 +121,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
           const ex = group.exercises[0]
           const reps = getRepsForRange(ex, selectedWeekRange)
           const kg = getLoadForRange(selectedClient, ex.id, selectedWeekRange)
-          text += `• ${ex.exercises.name}  ${reps}`
+          text += `• ${ex?.exercises?.name}  ${reps}`
           if (kg) text += `  ➜ *${kg}kg*`
           text += `\n`
         }
@@ -251,7 +251,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                               background: isCircuit ? 'rgba(59,130,246,0.06)' : isSuperSet ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.03)',
                               borderLeft: (isCircuit || isSuperSet) ? `2px solid ${accent}` : undefined,
                             }}>
-                              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: '#fff' }}>{ex.exercises.name}</span>
+                              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: '#fff' }}>{ex?.exercises?.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
                                 {kg && (
