@@ -24,7 +24,22 @@ export default function Login() {
   const handleReset = async () => {
     if (!resetEmail.trim()) return
     setResetLoading(true)
-    await supabase.auth.resetPasswordForEmail(resetEmail, {
+    setError('')
+
+    // Check if email exists in coaches table before sending reset
+    const { data: coach } = await supabase
+      .from('coaches')
+      .select('id')
+      .eq('email', resetEmail.trim().toLowerCase())
+      .maybeSingle()
+
+    if (!coach) {
+      setError('Nessun account trovato con questa email.')
+      setResetLoading(false)
+      return
+    }
+
+    await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
       redirectTo: window.location.origin,
     })
     setResetLoading(false)
