@@ -182,6 +182,41 @@ export default function CyclesList({ navigate, goHome, session }) {
 
 
 
+      {cloneModal && (
+        <div style={overlay}>
+          <div style={{ ...sheet, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={sheetTitle}>NUOVA SCHEDA</div>
+            <div style={sheetSub}>Inizia da zero oppure clona una scheda esistente.</div>
+            <button onClick={() => startNewCycle(cloneModal.turnId, null)} style={{ ...sheetBtnGrey, flexShrink: 0 }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', letterSpacing: '1px' }}>✏️ INIZIA DA ZERO</div>
+            </button>
+            {allCycles.length > 0 && (
+              <>
+                <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px', flexShrink: 0 }}>📋 CLONA DA UNA SCHEDA ESISTENTE</div>
+                <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+                  {allCycles.map(cycle => (
+                    <button key={cycle.id} onClick={() => startNewCycle(cloneModal.turnId, cycle.id)}
+                      style={{ width: '100%', background: 'rgba(217,92,26,0.06)', border: '1px solid rgba(217,92,26,0.2)', borderRadius: '6px', padding: '12px 14px', marginBottom: '7px', textAlign: 'left', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{cycle?.name || '(senza nome)'}</div>
+                          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', marginTop: '2px' }}>{cycle?.turnName || ''}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                          {cycle.is_active && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 4px #22c55e' }} />}
+                          <div style={{ color: '#D95C1A', fontSize: '13px' }}>›</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <button onClick={() => setCloneModal(null)} style={{ ...cancelBtn, flexShrink: 0 }}>Annulla</button>
+          </div>
+        </div>
+      )}
+
       {completeModal && (
         <div style={overlay}>
           <div style={sheet}>
@@ -239,7 +274,7 @@ const scroll = { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px
 const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
 const orangeSmall = { background: '#D95C1A', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
 const actionBtn = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '7px 12px', color: 'rgba(255,255,255,0.5)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
-const overlay = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
+const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
 const sheet = { background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }
 const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }
 const sheetSub = { color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginBottom: '20px' }
