@@ -42,7 +42,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   async function loadExercises() {
     const { data } = await supabase.from('exercises').select('*').order('name')
-    setAllExercises(data || [])
+    setAllExercises((data || []).filter(e => e?.name))
   }
 
   async function loadClonePreview() {
@@ -231,7 +231,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     return groups
   }
 
-  const filtered = allExercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
 
   // ── CIRCUIT LABEL for display ─────────────────────────────────────────────
   const CircuitHeader = ({ group }) => (
@@ -259,7 +259,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             <span style={{ fontSize: '18px' }}>📋</span>
             <div>
               <div style={{ color: '#D95C1A', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>CLONANDO DA</div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', marginTop: '1px' }}>{cloneInfo.name}</div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', marginTop: '1px' }}>{cloneInfo?.name}</div>
             </div>
           </div>
         )}
