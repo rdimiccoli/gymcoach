@@ -34,8 +34,10 @@ export default function CyclesList({ navigate, goHome, session }) {
       // Flatten all cycles for clone picker
       const flat = []
       Object.entries(cycleMap).forEach(([turnId, cycles]) => {
-        const turn = t.find(x => x.id === turnId)
-        cycles.forEach(c => flat.push({ ...c, turnName: turn?.name || '' }))
+        const turn = t.find(x => String(x.id) === String(turnId))
+        ;(cycles || []).forEach(c => {
+          if (c && c.id) flat.push({ ...c, turnName: turn?.name || '' })
+        })
       })
       setAllCycles(flat)
     }
@@ -123,7 +125,7 @@ export default function CyclesList({ navigate, goHome, session }) {
                   {/* Header row — info + open button */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cycle.name}</div>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cycle?.name || '(senza nome)'}</div>
                       <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
                         {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
                       </div>

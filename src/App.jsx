@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useRegisterSW } from 'virtual:pwa-register/react'
 import { supabase } from './supabaseClient'
 import Login from './pages/Login'
 import Home from './pages/Home'
@@ -71,12 +70,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  // PWA update detection
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
-    onRegistered(r) { console.log('SW registered') },
-    onRegisterError(e) { console.log('SW error', e) },
-  })
-
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
   const goHome = () => setStack([{ page: 'home', params: {} }])
@@ -109,26 +102,6 @@ export default function App() {
   return (
     <>
       <Page {...props} />
-      {/* PWA update banner */}
-      {needRefresh && (
-        <div style={{
-          position: 'fixed', bottom: '80px', left: '16px', right: '16px',
-          background: '#1a1a1a', border: '1px solid rgba(217,92,26,0.4)',
-          borderRadius: '10px', padding: '14px 16px', zIndex: 998,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.5)'
-        }}>
-          <div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>Aggiornamento disponibile!</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '2px' }}>Tocca per installare la nuova versione</div>
-          </div>
-          <button onClick={() => updateServiceWorker(true)}
-            style={{ background: '#D95C1A', border: 'none', borderRadius: '6px', padding: '10px 16px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', flexShrink: 0, cursor: 'pointer' }}>
-            AGGIORNA
-          </button>
-        </div>
-      )}
-
       {showExitModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '28px 24px', width: '100%', maxWidth: '320px', textAlign: 'center' }}>
