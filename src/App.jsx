@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from './supabaseClient'
+import { useRegisterSW } from 'virtual:pwa-register/react'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import TurnDetail from './pages/TurnDetail'
@@ -9,13 +9,12 @@ import CycleForm from './pages/CycleForm'
 import CycleShare from './pages/CycleShare'
 import Settings from './pages/Settings'
 import Turns from './pages/Turns'
-import AthleteProfile from './pages/AthleteProfile'
 import ChangePassword from './pages/ChangePassword'
+import AthleteProfile from './pages/AthleteProfile'
+import { supabase } from './supabaseClient'
 
-// Check SYNCHRONOUSLY before anything else if we have a recovery token
 const INITIAL_IS_RECOVERY = window.location.hash.includes('type=recovery')
 if (INITIAL_IS_RECOVERY) {
-  // Remove hash immediately so nothing else reacts to it
   window.history.replaceState(null, '', window.location.pathname)
 }
 
@@ -27,6 +26,15 @@ export default function App() {
   const [showExitModal, setShowExitModal] = useState(false)
   const stackRef = useRef(stack)
 
+  // PWA update — safe destructuring with fallback
+  const {
+    needRefresh: [needRefresh = false] = [],
+    updateServiceWorker = () => {},
+  } = useRegisterSW({
+    onRegistered() { console.log('SW ok') },
+    onRegisterError() {},
+  }) || {}
+
   useEffect(() => { stackRef.current = stack }, [stack])
 
   useEffect(() => {
@@ -34,7 +42,6 @@ export default function App() {
       setSession(session)
       setLoading(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecovery(true)
@@ -49,12 +56,9 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Back button handler — only installed when NOT in recovery
   useEffect(() => {
-    if (INITIAL_IS_RECOVERY) return // don't install during recovery flow
-
+    if (INITIAL_IS_RECOVERY) return
     window.history.pushState({ gymcoach: true }, '')
-
     const handlePopState = () => {
       const current = stackRef.current
       if (current.length > 1) {
@@ -65,7 +69,6 @@ export default function App() {
         setShowExitModal(true)
       }
     }
-
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
@@ -102,8 +105,35 @@ export default function App() {
   return (
     <>
       <Page {...props} />
+
+      {/* PWA update banner */}
+      {needRefresh && (
+        <div style={{
+          position: 'fixed', bottom: '80px', left: '16px', right: '16px',
+          background: '#1a1a1a', border: '1px solid rgba(217,92,26,0.5)',
+          borderRadius: '12px', padding: '14px 16px', zIndex: 999,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.6)'
+        }}>
+          <div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
+              🆕 Aggiornamento disponibile
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '2px' }}>
+              Tocca AGGIORNA per installare la nuova versione
+            </div>
+          </div>
+          <button
+            onClick={() => updateServiceWorker(true)}
+            style={{ background: '#D95C1A', border: 'none', borderRadius: '6px', padding: '10px 16px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', flexShrink: 0, cursor: 'pointer' }}>
+            AGGIORNA
+          </button>
+        </div>
+      )}
+
+      {/* Exit modal */}
       {showExitModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '28px 24px', width: '100%', maxWidth: '320px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>👋</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>USCIRE DA GYMCOACH?</div>
