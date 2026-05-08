@@ -10,6 +10,7 @@ import CycleForm from './pages/CycleForm'
 import CycleShare from './pages/CycleShare'
 import Settings from './pages/Settings'
 import Turns from './pages/Turns'
+import AthleteProfile from './pages/AthleteProfile'
 import ChangePassword from './pages/ChangePassword'
 
 // Check SYNCHRONOUSLY before anything else if we have a recovery token
@@ -100,6 +101,7 @@ export default function App() {
     'cycle-share': CycleShare,
     settings: Settings,
     turns: Turns,
+    'athlete-profile': AthleteProfile,
   }
 
   const Page = pages[current.page] || Home
