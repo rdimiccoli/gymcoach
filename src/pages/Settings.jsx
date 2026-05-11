@@ -142,7 +142,7 @@ export default function Settings({ navigate, goHome, session }) {
           <div key={client.id} style={{
             background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: '6px', padding: '12px 16px', marginBottom: '7px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
           }}>
             <div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
@@ -150,8 +150,11 @@ export default function Settings({ navigate, goHome, session }) {
               </div>
               <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '2px' }}>{client.turnName}</div>
             </div>
-            <div style={{ background: 'rgba(217,92,26,0.15)', borderRadius: '3px', padding: '4px 10px' }}>
-              <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>SETT. {client.current_week}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'rgba(217,92,26,0.15)', borderRadius: '3px', padding: '4px 10px' }}>
+                <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>SETT. {client.current_week}</div>
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px' }}>›</div>
             </div>
           </div>
         ))}
