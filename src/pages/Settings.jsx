@@ -139,11 +139,13 @@ export default function Settings({ navigate, goHome, session }) {
           <div style={{ color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '40px', fontSize: '13px' }}>Nessun atleta attivo.</div>
         )}
         {allClients.map((client, i) => (
-          <div key={client.id} style={{
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '6px', padding: '12px 16px', marginBottom: '7px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
-          }}>
+          <div key={client.id}
+            onClick={() => navigate('athlete-profile', { client })}
+            style={{
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: '6px', padding: '12px 16px', marginBottom: '7px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
+            }}>
             <div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
