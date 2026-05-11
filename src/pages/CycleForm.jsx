@@ -393,7 +393,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <button onClick={() => { setEditExerciseModal({ id: exList[day].find((_,i)=>i===ex.idx)?.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
+                          <button onClick={() => { setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
                             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>✏️</button>
                           {[1,2,3].filter(d => d !== day).map(targetDay => (
                             <button key={targetDay} onClick={() => moveToDay(day, ex.idx, targetDay)}
