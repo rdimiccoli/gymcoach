@@ -17,7 +17,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [exList, setExList] = useState({ 1: [], 2: [], 3: [] })
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
-  const [editExerciseModal, setEditExerciseModal] = useState(null) // { id, name }
+  const [editExerciseModal, setEditExerciseModal] = useState(null)
+  const [deleteExConfirm, setDeleteExConfirm] = useState(null) // { d, idx, name }
   const [editExerciseName, setEditExerciseName] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [activeGroup, setActiveGroup] = useState(null) // { label, type }
@@ -181,8 +182,15 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   async function removeExercise(d, idx) {
     const ex = exList[d][idx]
+    setDeleteExConfirm({ d, idx, name: ex.name })
+  }
+
+  async function executeRemoveExercise() {
+    const { d, idx } = deleteExConfirm
+    const ex = exList[d][idx]
     if (ex.id) await supabase.from('cycle_exercises').delete().eq('id', ex.id)
     setExList(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) }))
+    setDeleteExConfirm(null)
   }
 
   // Drag & Drop
@@ -272,6 +280,25 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           {saving ? (cloneFromId ? 'CLONO...' : 'CREAZIONE...') : (cloneFromId ? '📋 CLONA E INIZIA' : 'AVANTI → INSERISCI ESERCIZI')}
         </button>
       </div>
+      {/* Delete exercise confirm modal */}
+      {deleteExConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>ELIMINA ESERCIZIO</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '4px' }}>Sei sicura di voler eliminare</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{deleteExConfirm.name}?</div>
+            <button onClick={executeRemoveExercise}
+              style={{ width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
+              🗑 SÌ, ELIMINA
+            </button>
+            <button onClick={() => setDeleteExConfirm(null)}
+              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Edit exercise name modal */}
       {editExerciseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
@@ -366,6 +393,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                          <button onClick={() => { setEditExerciseModal({ id: exList[day].find((_,i)=>i===ex.idx)?.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
+                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>✏️</button>
                           {[1,2,3].filter(d => d !== day).map(targetDay => (
                             <button key={targetDay} onClick={() => moveToDay(day, ex.idx, targetDay)}
                               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', lineHeight: 1 }}>

@@ -21,6 +21,7 @@ export default function Turns({ navigate, goHome, session }) {
   const [editName, setEditName] = useState('')
   const [editSurname, setEditSurname] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -63,8 +64,12 @@ export default function Turns({ navigate, goHome, session }) {
   }
 
   async function deleteTurn(id) {
-    if (!window.confirm('Eliminare questo turno e tutti i suoi dati?')) return
-    await supabase.from('turns').delete().eq('id', id)
+    setDeleteTurnConfirm(id)
+  }
+
+  async function executeDeleteTurn() {
+    await supabase.from('turns').delete().eq('id', deleteTurnConfirm)
+    setDeleteTurnConfirm(null)
     await loadData()
   }
 
@@ -245,6 +250,18 @@ export default function Turns({ navigate, goHome, session }) {
         {!loading && turns.length === 0 && <div style={emptyText}>Nessun turno ancora.</div>}
         <div style={{ height: '20px' }} />
       </div>
+      {deleteTurnConfirm && (
+        <div style={overlay}>
+          <div style={sheet}>
+            <div style={sheetTitle}>ELIMINA TURNO</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '6px' }}>Sei sicura di voler eliminare questo turno?</div>
+            <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '11px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>
+            <button onClick={executeDeleteTurn}
+              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>🗑 SÌ, ELIMINA</button>
+            <button onClick={() => setDeleteTurnConfirm(null)} style={cancelBtn}>Annulla</button>
+          </div>
+        </div>
+      )}
       <BottomNav active="turns" navigate={navigate} goHome={goHome} />
     </div>
   )
