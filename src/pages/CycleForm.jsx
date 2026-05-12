@@ -3,7 +3,6 @@ import { supabase } from '../supabaseClient'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-// Group type helpers
 const isSS = g => g?.startsWith('SS-')
 const isCIR = g => g?.startsWith('CIR-')
 const getType = g => !g ? 'single' : isSS(g) ? 'superset' : isCIR(g) ? 'circuit' : 'single'
@@ -17,23 +16,23 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [exList, setExList] = useState({ 1: [], 2: [], 3: [] })
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
-  const [editExerciseModal, setEditExerciseModal] = useState(null)
-  const [deleteExConfirm, setDeleteExConfirm] = useState(null) // { d, idx, name }
-  const [editExerciseName, setEditExerciseName] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [activeGroup, setActiveGroup] = useState(null) // { label, type }
+  const [activeGroup, setActiveGroup] = useState(null)
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
-  const [cloneInfo, setCloneInfo] = useState(null) // preview of source cycle
-
-  // Circuit config modal
-  const [circuitModal, setCircuitModal] = useState(null) // { exIdx }
+  const [cloneInfo, setCloneInfo] = useState(null)
+  const [editExerciseModal, setEditExerciseModal] = useState(null)
+  const [editExerciseName, setEditExerciseName] = useState('')
+  const [deleteExConfirm, setDeleteExConfirm] = useState(null)
+  const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
 
   // Drag state
   const [draggingIdx, setDraggingIdx] = useState(null)
   const [dragOverIdx, setDragOverIdx] = useState(null)
   const rowRefs = useRef({})
+  const scrollRef = useRef(null)
+  const autoScrollRef = useRef(null)
 
   useEffect(() => {
     loadExercises()
@@ -58,12 +57,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (exData) {
       const map = { 1: [], 2: [], 3: [] }
       exData.forEach(e => {
-        if (!e?.exercises?.name) return // skip if exercise was deleted
-        map[e.day].push({
-          id: e.id, exerciseId: e.exercise_id, name: e?.exercises?.name,
-          repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
-          supersetGroup: e.superset_group || null
-        })
+        if (!e.exercises?.name) return
+        map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
       })
       setExList(map)
     }
@@ -72,25 +67,18 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   async function cloneExercises(newCycleId, sourceCycleId) {
-    const { data: srcEx } = await supabase.from('cycle_exercises').select('*, exercises(name)')
-      .eq('cycle_id', sourceCycleId).order('sort_order')
+    const { data: srcEx } = await supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', sourceCycleId).order('sort_order')
     if (!srcEx?.length) return
     const map = { 1: [], 2: [], 3: [] }
-    const inserts = srcEx
-      .filter(e => e?.exercises?.name) // skip deleted exercises
-      .map((e, i) => ({
-        cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
-        reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
-        sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
-      }))
+    const inserts = srcEx.filter(e => e.exercises?.name).map((e, i) => ({
+      cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
+      reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
+      sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
+    }))
     const { data: inserted } = await supabase.from('cycle_exercises').insert(inserts).select('*, exercises(name)')
     inserted?.forEach(e => {
-      if (!e?.exercises?.name) return // skip if exercise was deleted
-      map[e.day].push({
-        id: e.id, exerciseId: e.exercise_id, name: e?.exercises?.name,
-        repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c,
-        supersetGroup: e.superset_group || null
-      })
+      if (!e.exercises?.name) return
+      map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
     })
     setExList(map)
   }
@@ -98,9 +86,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   async function createCycle() {
     if (!cycleName.trim()) return
     setSaving(true)
-    const { data } = await supabase.from('cycles').insert({
-      turn_id: turnId, name: cycleName, start_date: startDate, is_active: true
-    }).select().single()
+    const { data } = await supabase.from('cycles').insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true }).select().single()
     setCurrentCycleId(data.id)
     if (cloneFromId) await cloneExercises(data.id, cloneFromId)
     setSaving(false)
@@ -108,9 +94,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   function generateLabel(prefix) {
-    const existing = new Set(
-      Object.values(exList).flat().map(e => e.supersetGroup).filter(Boolean)
-    )
+    const existing = new Set(Object.values(exList).flat().map(e => e.supersetGroup).filter(Boolean))
     for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
       if (!existing.has(`${prefix}-${l}`)) return `${prefix}-${l}`
     }
@@ -120,13 +104,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   async function addExercise(ex) {
     const supersetGroup = activeGroup?.label || null
     const isCircuit = activeGroup?.type === 'circuit'
-    const newEx = {
-      exerciseId: ex.id, name: ex.name,
-      repsA: isCircuit ? '30s' : '3x8',
-      repsB: isCircuit ? '15s' : '3x10',
-      repsC: isCircuit ? '3' : '3x12',
-      supersetGroup
-    }
+    const newEx = { exerciseId: ex.id, name: ex.name, repsA: isCircuit ? '30s' : '3x8', repsB: isCircuit ? '15s' : '3x10', repsC: isCircuit ? '3' : '3x12', supersetGroup }
     if (currentCycleId) {
       const { data } = await supabase.from('cycle_exercises').insert({
         cycle_id: currentCycleId, exercise_id: ex.id, day,
@@ -136,41 +114,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       newEx.id = data.id
     }
     setExList(prev => ({ ...prev, [day]: [...prev[day], newEx] }))
-    setShowSearch(false)
-    setSearch('')
+    setShowSearch(false); setSearch('')
   }
 
   async function addNewExercise(name) {
     const { data } = await supabase.from('exercises').insert({ name }).select().single()
     await addExercise(data)
-  }
-
-  async function moveToDay(fromDay, idx, toDay) {
-    const ex = exList[fromDay][idx]
-    const newSortOrder = exList[toDay].length
-    if (ex.id) {
-      await supabase.from('cycle_exercises').update({ day: toDay, sort_order: newSortOrder }).eq('id', ex.id)
-    }
-    setExList(prev => {
-      const fromList = prev[fromDay].filter((_, i) => i !== idx)
-      const toList = [...prev[toDay], { ...ex }]
-      return { ...prev, [fromDay]: fromList, [toDay]: toList }
-    })
-  }
-
-  async function saveEditExercise() {
-    if (!editExerciseName.trim() || !editExerciseModal) return
-    await supabase.from('exercises').update({ name: editExerciseName.trim() }).eq('id', editExerciseModal.id)
-    // Update name in current exList
-    setExList(prev => {
-      const updated = {}
-      for (const d of [1,2,3]) {
-        updated[d] = prev[d].map(ex => ex.exerciseId === editExerciseModal.id ? { ...ex, name: editExerciseName.trim() } : ex)
-      }
-      return updated
-    })
-    setAllExercises(prev => prev.map(e => e.id === editExerciseModal.id ? { ...e, name: editExerciseName.trim() } : e))
-    setEditExerciseModal(null)
   }
 
   async function updateReps(d, idx, field, val) {
@@ -180,7 +129,17 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (ex.id) await supabase.from('cycle_exercises').update({ reps_a: updated.repsA, reps_b: updated.repsB, reps_c: updated.repsC }).eq('id', ex.id)
   }
 
-  async function removeExercise(d, idx) {
+  async function moveToDay(fromDay, idx, toDay) {
+    const ex = exList[fromDay][idx]
+    if (ex.id) await supabase.from('cycle_exercises').update({ day: toDay, sort_order: exList[toDay].length }).eq('id', ex.id)
+    setExList(prev => {
+      const fromList = prev[fromDay].filter((_, i) => i !== idx)
+      const toList = [...prev[toDay], { ...ex }]
+      return { ...prev, [fromDay]: fromList, [toDay]: toList }
+    })
+  }
+
+  function removeExercise(d, idx) {
     const ex = exList[d][idx]
     setDeleteExConfirm({ d, idx, name: ex.name })
   }
@@ -193,7 +152,21 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     setDeleteExConfirm(null)
   }
 
-  // Drag & Drop
+  async function saveEditExercise() {
+    if (!editExerciseName.trim() || !editExerciseModal) return
+    await supabase.from('exercises').update({ name: editExerciseName.trim() }).eq('id', editExerciseModal.id)
+    setExList(prev => {
+      const updated = {}
+      for (const d of [1, 2, 3]) {
+        updated[d] = prev[d].map(ex => ex.exerciseId === editExerciseModal.id ? { ...ex, name: editExerciseName.trim() } : ex)
+      }
+      return updated
+    })
+    setAllExercises(prev => prev.map(e => e.id === editExerciseModal.id ? { ...e, name: editExerciseName.trim() } : e))
+    setEditExerciseModal(null)
+  }
+
+  // ── Drag & Drop with auto-scroll ──────────────────────────────────────────
   const getIndexFromY = useCallback((y) => {
     const list = exList[day]
     for (let i = 0; i < list.length; i++) {
@@ -204,15 +177,41 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     return list.length - 1
   }, [exList, day])
 
+  function startAutoScroll(clientY) {
+    stopAutoScroll()
+    const el = scrollRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const threshold = 80
+    let speed = 0
+    if (clientY < rect.top + threshold) speed = -6
+    else if (clientY > rect.bottom - threshold) speed = 6
+    if (speed !== 0) {
+      autoScrollRef.current = setInterval(() => {
+        el.scrollTop += speed
+        setDragOverIdx(getIndexFromY(clientY))
+      }, 16)
+    }
+  }
+
+  function stopAutoScroll() {
+    if (autoScrollRef.current) { clearInterval(autoScrollRef.current); autoScrollRef.current = null }
+  }
+
   function onDragStart(e, idx) {
     e.stopPropagation()
     setDraggingIdx(idx); setDragOverIdx(idx)
   }
+
   function onDragMove(e) {
     e.preventDefault()
-    setDragOverIdx(getIndexFromY(e.touches[0].clientY))
+    const y = e.touches[0].clientY
+    setDragOverIdx(getIndexFromY(y))
+    startAutoScroll(y)
   }
+
   async function onDragEnd() {
+    stopAutoScroll()
     if (draggingIdx === null || dragOverIdx === null || draggingIdx === dragOverIdx) {
       setDraggingIdx(null); setDragOverIdx(null); return
     }
@@ -223,6 +222,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     await Promise.all(newList.map((ex, i) => ex.id ? supabase.from('cycle_exercises').update({ sort_order: i }).eq('id', ex.id) : null))
     setDraggingIdx(null); setDragOverIdx(null)
   }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function getGroups() {
     const groups = [], seen = {}
@@ -241,23 +241,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
 
-  // ── CIRCUIT LABEL for display ─────────────────────────────────────────────
-  const CircuitHeader = ({ group }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-      <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-        🔄 CIRCUITO {group.label.replace('CIR-', '')}
-      </div>
-      <div style={{ flex: 1, height: '1px', background: 'rgba(59,130,246,0.3)' }} />
-    </div>
-  )
-
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a' }}>
       <div style={{ color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', letterSpacing: '2px' }}>CARICAMENTO...</div>
     </div>
   )
 
-  // ── STEP INFO ─────────────────────────────────────────────────────────────
   if (step === 'info') return (
     <div style={page}>
       <TopBar title="NUOVA SCHEDA" subtitle="Informazioni base" onBack={goBack} />
@@ -284,7 +273,6 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     </div>
   )
 
-  // ── STEP EXERCISES ────────────────────────────────────────────────────────
   const groups = getGroups()
 
   return (
@@ -305,12 +293,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       {!readOnly && exList[day].length > 1 && (
         <div style={{ padding: '5px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', textAlign: 'center' }}>
-            ⠿ TIENI PREMUTO E TRASCINA PER RIORDINARE
+            ⠿ TIENI PREMUTO E TRASCINA — SCORRE AUTOMATICAMENTE
           </div>
         </div>
       )}
 
-      <div style={scroll}>
+      <div ref={scrollRef} style={scroll}>
         {groups.length === 0 && (
           <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', marginBottom: '12px' }}>
             Nessun esercizio per il Giorno {day}
@@ -320,33 +308,38 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         {groups.map((group, gi) => {
           const isCircuit = group.type === 'circuit'
           const isSuperSet = group.type === 'superset'
-          const borderColor = isCircuit ? 'rgba(59,130,246,0.2)' : isSuperSet ? 'rgba(217,92,26,0.2)' : 'rgba(255,255,255,0.07)'
+          const isGroup = isCircuit || isSuperSet
+          const accent = isCircuit ? '#3b82f6' : '#D95C1A'
           const bgColor = isCircuit ? 'rgba(59,130,246,0.06)' : isSuperSet ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.04)'
-          const accentColor = isCircuit ? '#3b82f6' : '#D95C1A'
+          const borderColor = isCircuit ? 'rgba(59,130,246,0.2)' : isSuperSet ? 'rgba(217,92,26,0.2)' : 'rgba(255,255,255,0.07)'
+          const isCollapsed = collapsedGroups[group.label]
 
           return (
             <div key={gi} style={{ marginBottom: '10px' }}>
-              {isSuperSet && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>⚡ SUPERSERIE {group.label.replace('SS-','')}</div>
-                  <div style={{ flex: 1, height: '1px', background: 'rgba(217,92,26,0.3)' }} />
+              {isGroup && (
+                <div onClick={() => setCollapsedGroups(prev => ({ ...prev, [group.label]: !prev[group.label] }))}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isCollapsed ? '0' : '6px', cursor: 'pointer' }}>
+                  <div style={{ color: accent, fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                    {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {group.label.replace('SS-','').replace('CIR-','')}
+                  </div>
+                  <div style={{ flex: 1, height: '1px', background: `${accent}44` }} />
+                  <div style={{ color: accent, fontSize: '14px' }}>{isCollapsed ? '▶' : '▼'}</div>
                 </div>
               )}
-              {isCircuit && <CircuitHeader group={group} />}
 
-              {group.exercises.map((ex) => {
+              {!isCollapsed && group.exercises.map((ex) => {
                 const isDragging = draggingIdx === ex.idx
                 const isOver = dragOverIdx === ex.idx && draggingIdx !== ex.idx
                 return (
                   <div key={ex.idx} ref={el => rowRefs.current[ex.idx] = el}
                     style={{
-                      background: isDragging ? `rgba(${isCircuit ? '59,130,246' : '217,92,26'},0.15)` : bgColor,
-                      border: isOver ? `2px dashed ${accentColor}` : `1px solid ${borderColor}`,
-                      borderLeft: !isOver && group.type !== 'single' ? `2px solid ${accentColor}` : undefined,
+                      background: isDragging ? `rgba(${isCircuit?'59,130,246':'217,92,26'},0.15)` : bgColor,
+                      border: isOver ? `2px dashed ${accent}` : `1px solid ${borderColor}`,
+                      borderLeft: !isOver && isGroup ? `2px solid ${accent}` : undefined,
                       borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
                       opacity: isDragging ? 0.5 : 1, transition: 'border 0.1s',
                     }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: readOnly ? 0 : '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: readOnly ? 0 : '10px' }}>
                       {!readOnly && (
                         <div onTouchStart={e => onDragStart(e, ex.idx)} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
                           style={{ fontSize: '20px', color: 'rgba(255,255,255,0.2)', cursor: 'grab', padding: '4px 6px', userSelect: 'none', flexShrink: 0, touchAction: 'none' }}>⠿</div>
@@ -354,56 +347,44 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <button onClick={() => { setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
-                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>✏️</button>
+                          <button onPointerUp={e => { e.stopPropagation(); setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
+                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '4px 8px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', touchAction: 'manipulation' }}>✏️</button>
                           {[1,2,3].filter(d => d !== day).map(targetDay => (
-                            <button key={targetDay} onClick={() => moveToDay(day, ex.idx, targetDay)}
-                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', lineHeight: 1 }}>
+                            <button key={targetDay} onPointerUp={e => { e.stopPropagation(); moveToDay(day, ex.idx, targetDay) }}
+                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '3px 7px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation' }}>
                               G{targetDay}
                             </button>
                           ))}
-                          <button onClick={() => removeExercise(day, ex.idx)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '0 4px' }}>✕</button>
+                          <button onPointerUp={e => { e.stopPropagation(); removeExercise(day, ex.idx) }}
+                            style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '18px', padding: '4px 6px', touchAction: 'manipulation' }}>✕</button>
                         </div>
                       )}
                     </div>
-
                     {!readOnly && (
-                      isCircuit ? (
-                        // Circuit exercise: durata / riposo / giri
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                          {[['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                        {isCircuit
+                          ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'rgba(59,130,246,0.7)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                               <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)' }} />
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        // Normal / superset: sett 1-2 / 3-4 / 5-6
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                          {[['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
+                          ))
+                          : [['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                               <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={repsInp} />
                             </div>
-                          ))}
-                        </div>
-                      )
+                          ))
+                        }
+                      </div>
                     )}
                   </div>
                 )
               })}
 
-              {/* Add to existing group */}
-              {!readOnly && group.type !== 'single' && (
+              {!readOnly && isGroup && !isCollapsed && (
                 <button onClick={() => { setActiveGroup({ label: group.label, type: group.type }); setShowSearch(true) }}
-                  style={{
-                    width: '100%', borderRadius: '6px', padding: '9px', marginBottom: '4px',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px',
-                    background: isCircuit ? 'rgba(59,130,246,0.08)' : 'rgba(217,92,26,0.08)',
-                    border: `1px dashed ${isCircuit ? 'rgba(59,130,246,0.35)' : 'rgba(217,92,26,0.35)'}`,
-                    color: accentColor,
-                  }}>
+                  style={{ width: '100%', borderRadius: '6px', padding: '9px', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', background: isCircuit ? 'rgba(59,130,246,0.08)' : 'rgba(217,92,26,0.08)', border: `1px dashed ${isCircuit ? 'rgba(59,130,246,0.35)' : 'rgba(217,92,26,0.35)'}`, color: accent }}>
                   {isCircuit ? '🔄' : '⚡'} + AGGIUNGI A {group.label.replace('SS-','').replace('CIR-','')}
                 </button>
               )}
@@ -413,18 +394,11 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
         {!readOnly && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px', marginTop: '8px' }}>
-            <button onClick={() => { setActiveGroup(null); setShowSearch(true) }}
-              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px' }}>
-              + ESERCIZIO
-            </button>
+            <button onClick={() => { setActiveGroup(null); setShowSearch(true) }} style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px' }}>+ ESERCIZIO</button>
             <button onClick={() => { setActiveGroup({ label: generateLabel('SS'), type: 'superset' }); setShowSearch(true) }}
-              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(217,92,26,0.12)', border: '1px solid rgba(217,92,26,0.35)', color: '#D95C1A' }}>
-              ⚡ SUPERSERIE
-            </button>
+              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(217,92,26,0.12)', border: '1px solid rgba(217,92,26,0.35)', color: '#D95C1A' }}>⚡ SUPERSERIE</button>
             <button onClick={() => { setActiveGroup({ label: generateLabel('CIR'), type: 'circuit' }); setShowSearch(true) }}
-              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.35)', color: '#3b82f6' }}>
-              🔄 CIRCUITO
-            </button>
+              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.35)', color: '#3b82f6' }}>🔄 CIRCUITO</button>
           </div>
         )}
 
@@ -444,8 +418,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
+              <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
               <button onClick={() => { setShowSearch(false); setSearch(''); setActiveGroup(null) }}
                 style={{ color: 'rgba(255,255,255,0.4)', background: 'none', border: 'none', fontSize: '13px', whiteSpace: 'nowrap' }}>Annulla</button>
             </div>
@@ -458,56 +431,42 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             )}
             {filtered.map(ex => (
               <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <div onClick={() => addExercise(ex)} style={{
-                  flex: 1, padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff',
-                  cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)', letterSpacing: '0.5px'
-                }}>{ex.name}</div>
+                <div onClick={() => addExercise(ex)} style={{ flex: 1, padding: '14px 16px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.07)' }}>{ex.name}</div>
                 <button onClick={() => { setEditExerciseModal(ex); setEditExerciseName(ex.name) }}
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '10px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', flexShrink: 0 }}>
-                  ✏️
-                </button>
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '10px 12px', color: 'rgba(255,255,255,0.4)', fontSize: '14px', flexShrink: 0 }}>✏️</button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Delete exercise confirm modal */}
+      {/* Delete confirm modal */}
       {deleteExConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>ELIMINA ESERCIZIO</div>
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '4px' }}>Sei sicura di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{deleteExConfirm?.name}?</div>
-            <button onClick={executeRemoveExercise}
-              style={{ width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
+            <button onClick={executeRemoveExercise} style={{ width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
               🗑 SÌ, ELIMINA
             </button>
-            <button onClick={() => setDeleteExConfirm(null)}
-              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>
-              Annulla
-            </button>
+            <button onClick={() => setDeleteExConfirm(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>Annulla</button>
           </div>
         </div>
       )}
 
-      {/* Edit exercise name modal */}
+      {/* Edit exercise modal */}
       {editExerciseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>MODIFICA ESERCIZIO</div>
-            <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)}
-              placeholder="Nome esercizio" autoFocus
+            <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)} placeholder="Nome esercizio" autoFocus
               style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
             <button onClick={saveEditExercise} disabled={!editExerciseName.trim()}
               style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', opacity: !editExerciseName.trim() ? 0.3 : 1 }}>
               ✓ SALVA
             </button>
-            <button onClick={() => setEditExerciseModal(null)}
-              style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>
-              Annulla
-            </button>
+            <button onClick={() => setEditExerciseModal(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -518,7 +477,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 }
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
-const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
+const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const fieldLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
 const repsInp = { width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '11px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }

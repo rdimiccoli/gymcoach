@@ -22,6 +22,8 @@ export default function Turns({ navigate, goHome, session }) {
   const [editSurname, setEditSurname] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
+  const [renameTurnModal, setRenameTurnModal] = useState(null)
+  const [renameTurnValue, setRenameTurnValue] = useState('')
 
   useEffect(() => { loadData() }, [])
 
@@ -65,6 +67,14 @@ export default function Turns({ navigate, goHome, session }) {
 
   async function deleteTurn(id) {
     setDeleteTurnConfirm(id)
+  }
+
+  async function saveRenameTurn() {
+    if (!renameTurnValue.trim()) return
+    const newName = renameTurnValue.trim()
+    await supabase.from('turns').update({ name: newName }).eq('id', renameTurnModal.id)
+    setTurns(prev => prev.map(t => t.id === renameTurnModal.id ? { ...t, name: newName } : t))
+    setRenameTurnModal(null)
   }
 
   async function executeDeleteTurn() {
@@ -243,6 +253,7 @@ export default function Turns({ navigate, goHome, session }) {
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <div onClick={() => loadClients(turn)} style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px', cursor: 'pointer' }}>›</div>
+              <button onClick={() => { setRenameTurnModal(turn); setRenameTurnValue(turn.name) }} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '3px', padding: '4px 8px', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>✏️</button>
               <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'rgba(232,92,26,0.5)', fontSize: '16px', padding: '4px' }}>✕</button>
             </div>
           </div>
@@ -250,6 +261,19 @@ export default function Turns({ navigate, goHome, session }) {
         {!loading && turns.length === 0 && <div style={emptyText}>Nessun turno ancora.</div>}
         <div style={{ height: '20px' }} />
       </div>
+      {renameTurnModal && (
+        <div style={overlay}>
+          <div style={sheet}>
+            <div style={sheetTitle}>RINOMINA TURNO</div>
+            <input value={renameTurnValue} onChange={e => setRenameTurnValue(e.target.value)} autoFocus
+              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+            <button onClick={saveRenameTurn} disabled={!renameTurnValue.trim()}
+              style={{ ...bigBtn, marginBottom: '10px', opacity: !renameTurnValue.trim() ? 0.3 : 1 }}>✓ SALVA</button>
+            <button onClick={() => setRenameTurnModal(null)} style={cancelBtn}>Annulla</button>
+          </div>
+        </div>
+      )}
+
       {deleteTurnConfirm && (
         <div style={overlay}>
           <div style={sheet}>

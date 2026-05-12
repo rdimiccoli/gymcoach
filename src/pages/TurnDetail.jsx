@@ -19,7 +19,8 @@ function groupExercises(exercises) {
     if (!sg) {
       groups.push({ type: 'single', exercises: [ex] })
     } else {
-      if (!seen[sg]) { seen[sg] = { type: 'superset', label: sg, exercises: [] }; groups.push(seen[sg]) }
+      const type = sg?.startsWith('CIR-') ? 'circuit' : 'superset'
+      if (!seen[sg]) { seen[sg] = { type, label: sg, exercises: [] }; groups.push(seen[sg]) }
       seen[sg].exercises.push(ex)
     }
   })
