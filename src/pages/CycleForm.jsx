@@ -26,6 +26,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [editExerciseName, setEditExerciseName] = useState('')
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
+  const [dragTargetGroup, setDragTargetGroup] = useState(null) // group label to move into
 
   // Drag state
   const [draggingIdx, setDraggingIdx] = useState(null)
@@ -137,6 +138,16 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       const toList = [...prev[toDay], { ...ex }]
       return { ...prev, [fromDay]: fromList, [toDay]: toList }
     })
+  }
+
+  async function moveExToGroup(fromIdx, targetGroupLabel) {
+    const ex = exList[day][fromIdx]
+    const updated = { ...ex, supersetGroup: targetGroupLabel }
+    setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === fromIdx ? updated : e) }))
+    if (ex.id) await supabase.from('cycle_exercises').update({ superset_group: targetGroupLabel }).eq('id', ex.id)
+    setDragTargetGroup(null)
+    setDraggingIdx(null)
+    setDragOverIdx(null)
   }
 
   function removeExercise(d, idx) {
@@ -317,8 +328,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           return (
             <div key={gi} style={{ marginBottom: '10px' }}>
               {isGroup && (
-                <div onClick={() => setCollapsedGroups(prev => ({ ...prev, [group.label]: !prev[group.label] }))}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isCollapsed ? '0' : '6px', cursor: 'pointer' }}>
+                <div
+                  onClick={() => draggingIdx === null && setCollapsedGroups(prev => ({ ...prev, [group.label]: !prev[group.label] }))}
+                  onTouchEnd={() => { if (draggingIdx !== null) { moveExToGroup(draggingIdx, group.label) } }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isCollapsed ? '0' : '6px', cursor: 'pointer',
+                    background: draggingIdx !== null ? `rgba(${isCircuit?'59,130,246':'217,92,26'},0.15)` : 'transparent',
+                    borderRadius: '4px', padding: draggingIdx !== null ? '4px 6px' : '0',
+                    border: draggingIdx !== null ? `1px dashed ${accent}` : 'none',
+                  }}>
                   <div style={{ color: accent, fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                     {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {group.label.replace('SS-','').replace('CIR-','')}
                   </div>

@@ -171,21 +171,30 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                     return (
                       <div key={client.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <div>
-                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* Clickable name → athlete profile */}
+                            <div onClick={() => navigate('athlete-profile', { client })}
+                              style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               {client.name} {client.surname}
-                              {isLate && <span style={{ color: '#E8A030', fontSize: '9px', marginLeft: '8px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
+                              {isLate && <span style={{ color: '#E8A030', fontSize: '9px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
+                              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>›</span>
                             </div>
-                            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>
-                              {group.type === 'circuit'
-                                ? <span style={{ color: '#3b82f6' }}>Circuito · {group.exercises[0]?.reps_c} giri</span>
-                                : <span>Sett.<span style={{ color: '#D95C1A' }}> {client.current_week}</span> · {currentReps}</span>
-                              }
-                            </div>
+                            {/* Reps bigger + side by side */}
+                            {group.type === 'circuit'
+                              ? <div style={{ color: '#3b82f6', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
+                              : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
+                                    <span style={{ color: '#D95C1A', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
+                                  </div>
+                                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
+                                  <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{currentReps}</span>
+                                </div>
+                            }
                           </div>
                           <button onClick={() => setEditModal({ client, group })} style={{
                             background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.3)',
-                            borderRadius: '3px', padding: '6px 12px',
+                            borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
                             color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
                           }}>CARICHI</button>
                         </div>
