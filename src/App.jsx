@@ -157,9 +157,8 @@ export default function App() {
 
 function Splash() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a', gap: '20px' }}>
-      <img src="/logo_OAD.png" alt="OAD" style={{ width: '120px', mixBlendMode: 'screen' }} />
-      <div style={{ color: '#D95C1A', fontSize: '28px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>GYMCOACH</div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a' }}>
+      <img src="/icon-512.png" alt="GymCoach" style={{ width: '160px', borderRadius: '28px' }} />
     </div>
   )
 }
