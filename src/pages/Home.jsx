@@ -62,17 +62,32 @@ export default function Home({ navigate, goHome, session }) {
     }
     setCoach(c)
 
-    const { data: t } = await supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time')
+    const { data: t } = await run(
+      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      'Impossibile caricare i turni.'
+    )
     setTurns(t || [])
 
     if (t?.length) {
+      const turnIds = t.map(x => x.id)
+      // Prima erano 2 query per ogni turno: con 8 turni, 18 richieste prima di
+      // poter mostrare la home. Ora sono 2 in tutto e il raggruppamento si fa qui.
+      const [{ data: cicli }, { data: clienti }] = await Promise.all([
+        run(supabase.from('cycles').select('*').in('turn_id', turnIds)
+          .eq('is_active', true).order('created_at', { ascending: false }),
+          'Impossibile caricare le schede attive.'),
+        run(supabase.from('clients').select('id, turn_id').in('turn_id', turnIds)
+          .eq('is_active', true),
+          'Impossibile contare gli atleti.'),
+      ])
+
       const cycleMap = {}, countMap = {}
-      await Promise.all(t.map(async turn => {
-        const { data: cy } = await supabase.from('cycles').select('*').eq('turn_id', turn.id).eq('is_active', true).order('created_at', { ascending: false })
-        if (cy?.length) cycleMap[turn.id] = cy // store array of active cycles
-        const { count } = await supabase.from('clients').select('*', { count: 'exact', head: true }).eq('turn_id', turn.id).eq('is_active', true)
-        countMap[turn.id] = count || 0
-      }))
+      turnIds.forEach(id => { countMap[id] = 0 })
+      ;(cicli || []).forEach(c => {
+        if (!cycleMap[c.turn_id]) cycleMap[c.turn_id] = []
+        cycleMap[c.turn_id].push(c) // array of active cycles
+      })
+      ;(clienti || []).forEach(c => { countMap[c.turn_id] = (countMap[c.turn_id] || 0) + 1 })
       setCycles(cycleMap)
       setClientCounts(countMap)
     }

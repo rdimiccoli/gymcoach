@@ -85,6 +85,6 @@ export default function ChangePassword({ onDone }) {
 }
 
 const label = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
-const inp = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '16px 18px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }
+const inp = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '16px 18px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const btn = { width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '17px', color: '#fff', fontSize: '15px', fontWeight: '700', letterSpacing: '3px', fontFamily: 'Barlow Condensed, sans-serif', cursor: 'pointer' }
 const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: '18px', lineHeight: 1, padding: '4px' }

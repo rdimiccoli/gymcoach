@@ -19,17 +19,34 @@ export default function CyclesList({ navigate, goHome, session }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: t } = await supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time')
+    const { data: t } = await run(
+      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      'Impossibile caricare i turni.'
+    )
     setTurns(t || [])
     if (t?.length) {
-      const cycleMap = {}, alerts = []
-      await Promise.all(t.map(async turn => {
-        const { data: c } = await supabase.from('cycles').select('*').eq('turn_id', turn.id).order('created_at', { ascending: false })
-        cycleMap[turn.id] = c || []
-        const { data: clients } = await supabase.from('clients').select('*').eq('turn_id', turn.id).eq('is_active', true)
-        const active = c?.find(x => x.is_active)
-        if (active && clients?.length > 0 && clients.every(cl => cl.current_week >= 6)) alerts.push(turn.id)
-      }))
+      const turnIds = t.map(x => x.id)
+      // Come in Home: erano 2 query per turno, ora 2 in tutto.
+      const [{ data: tutteLeSchede }, { data: tuttiIClienti }] = await Promise.all([
+        run(supabase.from('cycles').select('*').in('turn_id', turnIds)
+          .order('created_at', { ascending: false }),
+          'Impossibile caricare le schede.'),
+        run(supabase.from('clients').select('id, turn_id, current_week').in('turn_id', turnIds)
+          .eq('is_active', true),
+          'Impossibile caricare gli atleti.'),
+      ])
+
+      const cycleMap = {}, clientiPerTurno = {}
+      turnIds.forEach(id => { cycleMap[id] = []; clientiPerTurno[id] = [] })
+      ;(tutteLeSchede || []).forEach(c => { if (cycleMap[c.turn_id]) cycleMap[c.turn_id].push(c) })
+      ;(tuttiIClienti || []).forEach(c => { if (clientiPerTurno[c.turn_id]) clientiPerTurno[c.turn_id].push(c) })
+
+      const alerts = turnIds.filter(id => {
+        const attiva = cycleMap[id].find(x => x.is_active)
+        const atleti = clientiPerTurno[id]
+        return attiva && atleti.length > 0 && atleti.every(cl => cl.current_week >= 6)
+      })
+
       setCyclesByTurn(cycleMap)
       setCompletedAlerts(alerts)
       // Flatten all cycles for clone picker
@@ -272,7 +289,7 @@ export default function CyclesList({ navigate, goHome, session }) {
             <div style={sheetTitle}>RINOMINA SCHEDA</div>
             <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
               placeholder="Nome scheda" autoFocus
-              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
             <button onClick={() => renameCycle(renameModal)} disabled={!renameValue.trim()}
               style={{ ...sheetBtnOrange, opacity: !renameValue.trim() ? 0.3 : 1 }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: '#D95C1A', letterSpacing: '1px' }}>✓ SALVA NOME</div>

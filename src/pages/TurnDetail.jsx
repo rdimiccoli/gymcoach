@@ -10,8 +10,6 @@ const REPS_FOR_WEEK = (ex, week) => {
   return ex.reps_c
 }
 
-const isCIR = g => g?.startsWith('CIR-')
-const isSS = g => g?.startsWith('SS-')
 
 function groupExercises(exercises) {
   const groups = [], seen = {}

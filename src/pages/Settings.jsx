@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -23,33 +24,42 @@ export default function Settings({ navigate, goHome, session }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: c } = await supabase.from('coaches').select('*').eq('id', session.user.id).single()
+    const [{ data: c }, { data: t }] = await Promise.all([
+      run(supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
+        'Impossibile caricare il profilo coach.'),
+      run(supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+        'Impossibile caricare i turni.'),
+    ])
     if (c) { setCoach(c); setCoachName(c.name) }
-    const { data: t } = await supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time')
     setTurns(t || [])
-    let totalClients = 0
+
     const allC = []
     if (t?.length) {
-      for (const turn of t) {
-        const { data: clients } = await supabase.from('clients').select('*').eq('turn_id', turn.id).eq('is_active', true).order('surname')
-        if (clients?.length) {
-          clients.forEach(cl => allC.push({ ...cl, turnName: turn.name }))
-          totalClients += clients.length
-        }
-      }
+      // Qui c'era un for sequenziale: una query per turno, una dopo l'altra.
+      // Ora è una sola per tutti i turni.
+      const nomiTurni = Object.fromEntries(t.map(turn => [turn.id, turn.name]))
+      const { data: clients } = await run(
+        supabase.from('clients').select('*').in('turn_id', t.map(x => x.id)).eq('is_active', true),
+        'Impossibile caricare gli atleti.'
+      )
+      ;(clients || []).forEach(cl => allC.push({ ...cl, turnName: nomiTurni[cl.turn_id] || '' }))
     }
     // Sort alphabetically by surname
-    allC.sort((a, b) => a.surname.localeCompare(b.surname))
+    allC.sort((a, b) => (a.surname || '').localeCompare(b.surname || ''))
     setAllClients(allC)
-    setStats({ turns: t?.length || 0, clients: totalClients })
+    setStats({ turns: t?.length || 0, clients: allC.length })
   }
 
   async function saveCoachName() {
     if (!coachName.trim()) return
     setSaving(true)
-    await supabase.from('coaches').update({ name: coachName }).eq('id', session.user.id)
-    setCoach(c => ({ ...c, name: coachName }))
+    const { error } = await run(
+      supabase.from('coaches').update({ name: coachName.trim() }).eq('id', session.user.id),
+      'Nome non salvato.'
+    )
     setSaving(false)
+    if (error) return
+    setCoach(c => ({ ...c, name: coachName.trim() }))
     setView('main')
   }
 
@@ -222,6 +232,6 @@ export default function Settings({ navigate, goHome, session }) {
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const fieldLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
-const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
+const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
 const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: '18px', lineHeight: 1, padding: '4px' }

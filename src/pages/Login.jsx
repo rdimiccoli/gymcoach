@@ -173,7 +173,7 @@ const inp = {
   borderRadius: '4px',
   padding: '16px 18px',
   color: '#fff',
-  fontSize: '15px',
+  fontSize: '16px',
   outline: 'none',
   letterSpacing: '0.3px',
 }
@@ -185,7 +185,7 @@ const btn = {
   borderRadius: '4px',
   padding: '17px',
   color: '#fff',
-  fontSize: '15px',
+  fontSize: '16px',
   fontWeight: '700',
   letterSpacing: '3px',
   fontFamily: 'Barlow Condensed, sans-serif',

@@ -350,12 +350,27 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (draggingIdx === null || dragOverIdx === null || draggingIdx === dragOverIdx) {
       setDraggingIdx(null); setDragOverIdx(null); return
     }
-    const newList = [...exList[day]]
+    const precedente = exList[day]
+    const newList = [...precedente]
     const [moved] = newList.splice(draggingIdx, 1)
     newList.splice(dragOverIdx, 0, moved)
     setExList(prev => ({ ...prev, [day]: newList }))
-    await Promise.all(newList.map((ex, i) => ex.id ? supabase.from('cycle_exercises').update({ sort_order: i }).eq('id', ex.id) : null))
     setDraggingIdx(null); setDragOverIdx(null)
+
+    // Prima partiva un UPDATE per ogni esercizio della lista, anche per quelli
+    // rimasti al loro posto, e nessuno controllava l'esito.
+    const daAggiornare = newList
+      .map((ex, i) => ({ ex, i }))
+      .filter(({ ex, i }) => ex.id && precedente[i]?.id !== ex.id)
+    if (!daAggiornare.length) return
+    const esiti = await Promise.all(daAggiornare.map(({ ex, i }) =>
+      supabase.from('cycle_exercises').update({ sort_order: i }).eq('id', ex.id)
+    ))
+    const falliti = esiti.filter(r => r.error)
+    if (falliti.length) {
+      console.error('riordino esercizi', falliti.map(r => r.error))
+      notifyError('Nuovo ordine non salvato del tutto. Ricarica la scheda per verificare.')
+    }
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -602,7 +617,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>MODIFICA ESERCIZIO</div>
             <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)} placeholder="Nome esercizio" autoFocus
-              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }} />
+              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }} />
             {usoEsercizio !== null && usoEsercizio > 1 && (
               <div style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px' }}>
                 <div style={{ color: '#eab308', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '3px' }}>
@@ -632,6 +647,6 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const fieldLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
-const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
-const repsInp = { width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '11px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
+const inp = { width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
+const repsInp = { width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
 const bigBtn = { width: '100%', background: '#D95C1A', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
