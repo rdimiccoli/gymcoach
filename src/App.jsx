@@ -22,6 +22,41 @@ const puoUscire = () =>
   !window.navigator.standalone &&
   window.history.length > 2
 
+// Ripristino della posizione dopo un ricaricamento.
+//
+// Non è routing con URL veri: quello richiederebbe di far ricaricare a ogni
+// pagina i propri dati partendo dai soli id presenti nell'indirizzo, cioè una
+// ristrutturazione di quattro pagine. Qui salviamo lo stack di navigazione, che
+// risolve il sintomo che si sente davvero — ricarico e mi ritrovo in home — con
+// una frazione del rischio. Restano fuori solo segnalibri e link diretti, che su
+// una PWA riservata alle coach non servono a nessuno.
+//
+// sessionStorage e non localStorage: la posizione deve sopravvivere a un
+// ricaricamento, non a una riapertura dell'app il giorno dopo.
+const CHIAVE_NAVIGAZIONE = 'gymcoach.navigazione'
+const HOME = [{ page: 'home', params: {} }]
+
+function leggiNavigazione() {
+  try {
+    const grezzo = sessionStorage.getItem(CHIAVE_NAVIGAZIONE)
+    if (!grezzo) return null
+    const dati = JSON.parse(grezzo)
+    // Se il formato salvato non è quello atteso (versione vecchia, dato
+    // corrotto) si riparte da capo invece di far esplodere l'app all'avvio.
+    if (!Array.isArray(dati) || !dati.length) return null
+    if (!dati.every(v => v && typeof v.page === 'string' && typeof v.params === 'object')) return null
+    return dati
+  } catch { return null }
+}
+
+function scriviNavigazione(stack) {
+  try { sessionStorage.setItem(CHIAVE_NAVIGAZIONE, JSON.stringify(stack)) } catch { /* modalità privata */ }
+}
+
+function dimenticaNavigazione() {
+  try { sessionStorage.removeItem(CHIAVE_NAVIGAZIONE) } catch { /* niente da fare */ }
+}
+
 const INITIAL_IS_RECOVERY = window.location.hash.includes('type=recovery')
 if (INITIAL_IS_RECOVERY) {
   window.history.replaceState(null, '', window.location.pathname)
@@ -31,7 +66,7 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isRecovery, setIsRecovery] = useState(INITIAL_IS_RECOVERY)
-  const [stack, setStack] = useState([{ page: 'home', params: {} }])
+  const [stack, setStack] = useState(() => leggiNavigazione() || HOME)
   const [showExitModal, setShowExitModal] = useState(false)
   const [sbloccato, setSbloccato] = useState(false)
   const stackRef = useRef(stack)
@@ -46,7 +81,10 @@ export default function App() {
     onRegisterError() {},
   }) || {}
 
-  useEffect(() => { stackRef.current = stack }, [stack])
+  useEffect(() => {
+    stackRef.current = stack
+    scriviNavigazione(stack)
+  }, [stack])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,7 +98,10 @@ export default function App() {
       }
       setSession(session)
       if (!session) {
-        setStack([{ page: 'home', params: {} }])
+        // La posizione salvata va dimenticata all'uscita, altrimenti chi entra
+        // dopo si ritroverebbe dentro la schermata dell'account precedente.
+        dimenticaNavigazione()
+        setStack(HOME)
         setIsRecovery(false)
         setSbloccato(false) // al prossimo accesso il lucchetto torna attivo
       }
@@ -105,7 +146,7 @@ export default function App() {
 
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
-  const goHome = () => setStack([{ page: 'home', params: {} }])
+  const goHome = () => setStack(HOME)
 
   if (loading) return <Splash />
 
