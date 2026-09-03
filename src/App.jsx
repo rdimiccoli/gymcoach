@@ -12,7 +12,7 @@ import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Notifier from './components/Notifier'
 import BloccoBiometrico from './components/BloccoBiometrico'
-import { bloccoAttivo, MINUTI_RIBLOCCO } from './lib/biometria'
+import { bloccoAttivo, disattivaBlocco, MINUTI_RIBLOCCO } from './lib/biometria'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -124,7 +124,16 @@ export default function App() {
         <BloccoBiometrico
           nomeCoach={session.user.email}
           onSbloccato={() => setSbloccato(true)}
-          onEsci={() => supabase.auth.signOut()}
+          onEsci={() => {
+            // Uscire toglie anche il lucchetto da questo dispositivo, altrimenti
+            // chi ha un sensore che non lo riconosce più resta in un ciclo chiuso:
+            // esce, rientra con la password e ritrova il blocco.
+            // Non indebolisce niente — per rientrare serve comunque la password,
+            // che è una prova d'identità più forte dell'impronta — e il lucchetto
+            // si riattiva dalle impostazioni in un tocco.
+            disattivaBlocco()
+            supabase.auth.signOut()
+          }}
         />
         <Notifier />
       </>

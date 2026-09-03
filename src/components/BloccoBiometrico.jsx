@@ -96,13 +96,23 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
         </button>
       )}
 
+      {/* Via d'uscita sempre disponibile. Non indebolisce il lucchetto: porta al
+          login, dove serve comunque la password. Senza, chi ha un sensore che
+          non lo riconosce più resterebbe chiuso fuori dall'app. */}
       <button onClick={onEsci} style={{
-        background: 'transparent', border: 'none', marginTop: '22px',
-        color: 'rgba(255,255,255,0.25)', fontSize: '12px', cursor: 'pointer',
-        textDecoration: 'underline',
+        width: '100%', maxWidth: '300px', marginTop: '22px',
+        background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
+        borderRadius: '6px', padding: '13px',
+        color: 'rgba(255,255,255,0.5)',
+        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+        fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
       }}>
-        Esci dall'account
+        NON FUNZIONA? ENTRA CON LA PASSWORD
       </button>
+      <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', marginTop: '10px', maxWidth: '280px', lineHeight: 1.4 }}>
+        Lo sblocco biometrico verrà disattivato su questo dispositivo: potrai
+        riattivarlo dalle impostazioni.
+      </div>
     </div>
   )
 }
