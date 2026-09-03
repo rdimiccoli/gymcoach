@@ -29,7 +29,9 @@ function groupExercises(exercises) {
 }
 
 export default function TurnDetail({ navigate, goBack, goHome, params }) {
-  const { turn, cycle } = params
+  // `phase` arrivava da Home ma non veniva mai letto: le tre card FASE 1/2/3
+  // portavano tutte alla stessa identica schermata.
+  const { turn, cycle, phase } = params
   const [day, setDay] = useState(1)
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
@@ -134,7 +136,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
 
   return (
     <div style={page}>
-      <TopBar title={turn.name} subtitle={cycle.name} onBack={goBack} />
+      <TopBar title={turn.name} subtitle={phase ? `${cycle.name} · ${phase.label}` : cycle.name} onBack={goBack} />
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
@@ -184,7 +186,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.06)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map(client => {
-                    const isLate = client.current_week < 3
+                    // "In ritardo" = indietro rispetto alla fase che il coach ha
+                    // scelto in home. Prima era fisso a `< 3`, quindi marcava con
+                    // ⚠ tutti gli atleti in settimana 1 o 2, cioè quelli
+                    // semplicemente all'inizio del ciclo.
+                    const isLate = phase ? client.current_week < phase.weekRange[0] : false
                     return (
                       <div key={client.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -224,7 +230,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                           {group.exercises.map(ex => {
                             const { currentKg, prevKg, prevReps } = getLoadInfo(client, ex)
-                            const diff = (currentKg > 0 && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
+                            // Un carico di 0 kg (corpo libero, macchina assistita) è
+                            // un dato vero: prima veniva scartato come se mancasse.
+                            const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
                               <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '5px 9px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -232,9 +240,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                                     {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
                                   </span>
                                   <span style={{ color: '#fff', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
-                                    {currentKg > 0 ? `${currentKg}kg` : '—'}
+                                    {currentKg !== undefined ? `${currentKg}kg` : '—'}
                                   </span>
-                                  {currentKg > 0 && (
+                                  {currentKg !== undefined && (
                                     <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       × {REPS_FOR_WEEK(ex, client.current_week)}
                                     </span>

@@ -31,6 +31,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
+  const [usoEsercizio, setUsoEsercizio] = useState(null) // in quante schede è usato
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
   const [dragTargetGroup, setDragTargetGroup] = useState(null) // group label to move into
 
@@ -265,9 +266,30 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     setDeleteExConfirm(null)
   }
 
+  // `exercises` è un catalogo condiviso: rinominare una riga cambia il nome in
+  // tutte le schede di tutti i turni, comprese quelle già completate, e riscrive
+  // lo storico dell'atleta (che è raggruppato per nome). Prima succedeva in
+  // silenzio; ora almeno diciamo quante schede ne saranno toccate.
+  useEffect(() => {
+    if (!editExerciseModal?.id) { setUsoEsercizio(null); return }
+    let annullato = false
+    ;(async () => {
+      const { count } = await supabase
+        .from('cycle_exercises')
+        .select('id', { count: 'exact', head: true })
+        .eq('exercise_id', editExerciseModal.id)
+      if (!annullato) setUsoEsercizio(count ?? 0)
+    })()
+    return () => { annullato = true }
+  }, [editExerciseModal])
+
   async function saveEditExercise() {
     if (!editExerciseName.trim() || !editExerciseModal) return
-    await supabase.from('exercises').update({ name: editExerciseName.trim() }).eq('id', editExerciseModal.id)
+    const { error } = await run(
+      supabase.from('exercises').update({ name: editExerciseName.trim() }).eq('id', editExerciseModal.id),
+      'Nome dell\'esercizio non salvato.'
+    )
+    if (error) return
     setExList(prev => {
       const updated = {}
       for (const d of [1, 2, 3]) {
@@ -580,7 +602,19 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>MODIFICA ESERCIZIO</div>
             <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)} placeholder="Nome esercizio" autoFocus
-              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+              style={{ width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '15px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }} />
+            {usoEsercizio !== null && usoEsercizio > 1 && (
+              <div style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px' }}>
+                <div style={{ color: '#eab308', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '3px' }}>
+                  ⚠ USATO IN {usoEsercizio} SCHEDE
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', lineHeight: 1.4 }}>
+                  Il catalogo esercizi è condiviso: il nuovo nome comparirà in tutte
+                  queste schede — anche in quelle già completate e in quelle delle
+                  altre coach — e nello storico carichi degli atleti.
+                </div>
+              </div>
+            )}
             <button onClick={saveEditExercise} disabled={!editExerciseName.trim()}
               style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', opacity: !editExerciseName.trim() ? 0.3 : 1 }}>
               ✓ SALVA

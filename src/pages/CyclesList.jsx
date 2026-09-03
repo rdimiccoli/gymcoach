@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run, notifyOk } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -55,35 +56,70 @@ export default function CyclesList({ navigate, goHome, session }) {
   }
 
   async function completeCycle(cycle) {
-    await supabase.from('cycles').update({ is_active: false }).eq('id', cycle.id)
+    const { error } = await run(
+      supabase.from('cycles').update({ is_active: false }).eq('id', cycle.id),
+      `Impossibile completare la scheda "${cycle.name}".`
+    )
     setCompleteModal(null)
+    if (error) return
     await loadData()
   }
 
   async function renameCycle(cycle) {
     if (!renameValue.trim()) return
-    await supabase.from('cycles').update({ name: renameValue.trim() }).eq('id', cycle.id)
+    const { error } = await run(
+      supabase.from('cycles').update({ name: renameValue.trim() }).eq('id', cycle.id),
+      'Nome della scheda non salvato.'
+    )
     setRenameModal(null)
+    if (error) return
     await loadData()
   }
 
   async function deleteCycle(cycle, turnId) {
+    setDeleteModal(null)
+
     // Delete related data
-    const { data: exList } = await supabase.from('cycle_exercises').select('id').eq('cycle_id', cycle.id)
+    const { data: exList } = await run(
+      supabase.from('cycle_exercises').select('id').eq('cycle_id', cycle.id),
+      'Impossibile leggere gli esercizi della scheda.'
+    )
     if (exList?.length) {
       const exIds = exList.map(e => e.id)
-      await supabase.from('client_loads').delete().in('cycle_exercise_id', exIds)
-      await supabase.from('cycle_exercises').delete().eq('cycle_id', cycle.id)
+      const { error: errCarichi } = await run(
+        supabase.from('client_loads').delete().in('cycle_exercise_id', exIds),
+        'Impossibile eliminare i carichi della scheda.'
+      )
+      if (errCarichi) { await loadData(); return }
+      const { error: errEsercizi } = await run(
+        supabase.from('cycle_exercises').delete().eq('cycle_id', cycle.id),
+        'Impossibile eliminare gli esercizi della scheda.'
+      )
+      if (errEsercizi) { await loadData(); return }
     }
-    await supabase.from('cycles').delete().eq('id', cycle.id)
+    const { error } = await run(
+      supabase.from('cycles').delete().eq('id', cycle.id),
+      `Impossibile eliminare la scheda "${cycle.name}".`
+    )
+    if (error) { await loadData(); return }
 
-    // Reactivate most recent remaining cycle for this turn
-    const { data: remaining } = await supabase.from('cycles').select('*')
-      .eq('turn_id', turnId).order('created_at', { ascending: false })
-    if (remaining?.length > 0) {
-      await supabase.from('cycles').update({ is_active: true }).eq('id', remaining[0].id)
+    // Riattivazione automatica solo se serve davvero: prima veniva riattivata
+    // sempre la scheda più recente rimasta, anche una che il coach aveva chiuso
+    // apposta con COMPLETA, e anche quando quella eliminata non era l'attiva.
+    if (cycle.is_active) {
+      const { data: rimaste } = await run(
+        supabase.from('cycles').select('id, is_active').eq('turn_id', turnId).order('created_at', { ascending: false }),
+        'Impossibile leggere le schede rimaste.'
+      )
+      const restaGiaUnaAttiva = (rimaste || []).some(c => c.is_active)
+      if (!restaGiaUnaAttiva && rimaste?.length) {
+        await run(
+          supabase.from('cycles').update({ is_active: true }).eq('id', rimaste[0].id),
+          'Scheda eliminata, ma non è stato possibile riattivare la precedente.'
+        )
+      }
     }
-    setDeleteModal(null)
+    notifyOk('Scheda eliminata')
     await loadData()
   }
 
@@ -253,7 +289,7 @@ export default function CyclesList({ navigate, goHome, session }) {
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '6px' }}>Sei sicura di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>{deleteModal.cycle.name}?</div>
             <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '11px', marginBottom: '20px' }}>
-              ⚠ Verranno eliminati tutti gli esercizi e i carichi associati.{'\n'}La scheda precedente verrà riattivata automaticamente.
+              ⚠ Verranno eliminati tutti gli esercizi e i carichi associati.{deleteModal.cycle.is_active ? ' Se non resta nessun\'altra scheda attiva, la più recente verrà riattivata.' : ''}
             </div>
             <button onClick={() => deleteCycle(deleteModal.cycle, deleteModal.turnId)}
               style={{ ...sheetBtnGrey, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: '10px' }}>

@@ -97,7 +97,8 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     // Get the most recent load within those weeks
     for (let w = weeks[1]; w >= weeks[0]; w--) {
       const kg = loads[`${clientId}_${exId}_${w}`]
-      if (kg > 0) return kg
+      // 0 kg è un carico registrato (corpo libero), non un carico mancante.
+      if (kg !== undefined && kg !== null) return kg
     }
     return null
   }
@@ -129,7 +130,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
             const reps = getRepsForRange(ex, selectedWeekRange)
             const kg = getLoadForRange(selectedClient, ex.id, selectedWeekRange)
             text += `  • ${ex?.exercises?.name}  ${reps}`
-            if (kg) text += `  ➜ *${kg}kg*`
+            if (kg != null) text += `  ➜ *${kg}kg*`
             text += `\n`
           })
         } else {
@@ -137,7 +138,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
           const reps = getRepsForRange(ex, selectedWeekRange)
           const kg = getLoadForRange(selectedClient, ex.id, selectedWeekRange)
           text += `• ${ex?.exercises?.name}  ${reps}`
-          if (kg) text += `  ➜ *${kg}kg*`
+          if (kg != null) text += `  ➜ *${kg}kg*`
           text += `\n`
         }
       })
@@ -269,12 +270,12 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                               <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: '#fff' }}>{ex?.exercises?.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
-                                {kg && (
+                                {kg != null && (
                                   <span style={{ background: 'rgba(217,92,26,0.2)', border: '1px solid rgba(217,92,26,0.4)', borderRadius: '3px', padding: '2px 8px', color: '#D95C1A', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                     {kg}kg
                                   </span>
                                 )}
-                                {!kg && !isCircuit && (
+                                {kg == null && !isCircuit && (
                                   <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>— kg</span>
                                 )}
                               </div>
