@@ -105,6 +105,41 @@ export default function Home({ navigate, goHome, session }) {
 
   if (loading) return <Loader />
 
+  // `coaches.home_type` veniva scritta a ogni creazione di coach e non letta
+  // mai da nessuno: la vista alternativa promessa da patch.sql non esisteva.
+  // 'turns' = si parte dai turni, saltando la scelta della fase.
+  const vistaTurni = coach?.home_type === 'turns'
+
+  if (vistaTurni) {
+    return (
+      <div style={page}>
+        <div style={scroll}>
+          <div style={{ paddingBottom: '18px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '18px' }}>
+            <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '8px', display: 'block' }} />
+            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+              {dayName.toUpperCase()} · {dateStr}
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
+              COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
+            </div>
+          </div>
+          <div style={sectionLabel}>I TUOI TURNI DI OGGI</div>
+          {turns.length === 0 && <Empty />}
+          {turns.map((turn, i) => (
+            <div key={turn.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
+              {(cycles[turn.id] || [null]).map((cycle, ci) => (
+                <TurnCard key={ci} turn={turn} cycle={cycle} count={ci === 0 ? clientCounts[turn.id] : null}
+                  onPress={() => navigate('turn', { turn, cycle })} />
+              ))}
+            </div>
+          ))}
+          <div style={{ height: '12px' }} />
+        </div>
+        <BottomNav active="home" navigate={navigate} goHome={goHome} />
+      </div>
+    )
+  }
+
   // TURNS LIST
   if (selectedPhase) {
     return (

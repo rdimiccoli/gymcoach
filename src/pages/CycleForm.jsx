@@ -278,6 +278,54 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     return () => { annullato = true }
   }, [editExerciseModal])
 
+  /**
+   * Rinomina solo dentro questa scheda: invece di cambiare il nome nella riga
+   * condivisa del catalogo, riusa (o crea) un esercizio con il nuovo nome e ci
+   * ripunta le righe di QUESTA scheda soltanto. Le altre schede, comprese
+   * quelle completate e quelle delle altre coach, restano intatte.
+   * Non richiede alcuna modifica allo schema.
+   */
+  async function rinominaSoloQui() {
+    const nuovo = editExerciseName.trim()
+    if (!nuovo || !editExerciseModal || !currentCycleId) return
+    const vecchioId = editExerciseModal.id
+
+    const { data: esistente } = await run(
+      supabase.from('exercises').select('*').ilike('name', nuovo).limit(1).maybeSingle(),
+      'Impossibile consultare il catalogo esercizi.'
+    )
+    let destinazione = esistente
+    if (!destinazione) {
+      const { data } = await run(
+        supabase.from('exercises').insert({ name: nuovo }).select().single(),
+        `Impossibile creare l'esercizio "${nuovo}".`
+      )
+      if (!data) return
+      destinazione = data
+      setAllExercises(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+    }
+
+    if (destinazione.id !== vecchioId) {
+      const { error } = await run(
+        supabase.from('cycle_exercises').update({ exercise_id: destinazione.id })
+          .eq('cycle_id', currentCycleId).eq('exercise_id', vecchioId),
+        'Rinomina non riuscita.'
+      )
+      if (error) return
+    }
+
+    setExList(prev => {
+      const aggiornato = {}
+      for (const d of [1, 2, 3]) {
+        aggiornato[d] = prev[d].map(ex => ex.exerciseId === vecchioId
+          ? { ...ex, exerciseId: destinazione.id, name: destinazione.name }
+          : ex)
+      }
+      return aggiornato
+    })
+    setEditExerciseModal(null)
+  }
+
   async function saveEditExercise() {
     if (!editExerciseName.trim() || !editExerciseModal) return
     const { error } = await run(
@@ -385,6 +433,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
+
+  // "Solo in questa scheda" ha senso soltanto se l'esercizio è davvero usato qui:
+  // dal catalogo di ricerca si può rinominare solo globalmente.
+  const usatoInQuestaScheda = Boolean(
+    currentCycleId && editExerciseModal &&
+    Object.values(exList).flat().some(e => e.exerciseId === editExerciseModal.id)
+  )
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a' }}>
@@ -619,15 +674,34 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                   ⚠ USATO IN {usoEsercizio} SCHEDE
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', lineHeight: 1.4 }}>
-                  Il catalogo esercizi è condiviso: il nuovo nome comparirà in tutte
-                  queste schede — anche in quelle già completate e in quelle delle
-                  altre coach — e nello storico carichi degli atleti.
+                  Il catalogo esercizi è condiviso fra tutte le coach.
+                  {usatoInQuestaScheda
+                    ? ' Rinominare in tutte le schede cambia il nome anche in quelle già completate e nello storico degli atleti.'
+                    : ' Il nuovo nome comparirà ovunque, anche nelle schede già completate.'}
                 </div>
               </div>
             )}
+            {/* Due strade, perché sono due intenzioni diverse: correggere un
+                refuso nel catalogo (ovunque) o chiamare diversamente un
+                esercizio in questa scheda (solo qui). Prima esisteva solo la
+                prima, applicata in silenzio. */}
+            {usatoInQuestaScheda && (
+              <button onClick={rinominaSoloQui} disabled={!editExerciseName.trim()}
+                style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1px', marginBottom: '8px', opacity: !editExerciseName.trim() ? 0.3 : 1 }}>
+                ✓ SOLO IN QUESTA SCHEDA
+              </button>
+            )}
             <button onClick={saveEditExercise} disabled={!editExerciseName.trim()}
-              style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', opacity: !editExerciseName.trim() ? 0.3 : 1 }}>
-              ✓ SALVA
+              style={{
+                width: '100%',
+                background: usatoInQuestaScheda ? 'transparent' : '#D95C1A',
+                border: usatoInQuestaScheda ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                borderRadius: '4px', padding: '14px',
+                color: usatoInQuestaScheda ? 'rgba(255,255,255,0.6)' : '#fff',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1px', marginBottom: '10px',
+                opacity: !editExerciseName.trim() ? 0.3 : 1,
+              }}>
+              {usatoInQuestaScheda ? 'RINOMINA IN TUTTE LE SCHEDE' : '✓ SALVA'}
             </button>
             <button onClick={() => setEditExerciseModal(null)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '8px', fontSize: '13px' }}>Annulla</button>
           </div>
