@@ -511,6 +511,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                   <div style={{ color: accent, fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                     {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {group.label.replace('SS-','').replace('CIR-','')}
                   </div>
+                  {/* Un gruppo con un esercizio solo è quasi sempre il residuo di
+                      una cancellazione: l'etichetta resta attaccata al superstite
+                      e nessuno se ne accorge finché non si guarda il database. */}
+                  {group.exercises.length === 1 && (
+                    <div style={{ color: '#eab308', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '3px', padding: '2px 6px' }}>
+                      ⚠ DA SOLO
+                    </div>
+                  )}
                   <div style={{ flex: 1, height: '1px', background: `${accent}44` }} />
                   <div style={{ color: accent, fontSize: '14px' }}>{isCollapsed ? '▶' : '▼'}</div>
                 </div>

@@ -24,6 +24,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const [notes, setNotes] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
+  const [confermaAvanza, setConfermaAvanza] = useState(false)
   const [loading, setLoading] = useState(true)
   const timerCarichi = useRef({})
   const carichiPendenti = useRef({})
@@ -159,6 +160,44 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     clearTimeout(timerCarichi.current[chiave])
     const { errore } = await salvaCarichi(session.user.id, [riga])
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
+  }
+
+  // A che settimana dovrebbe essere la scheda, secondo la data di inizio.
+  const settimanaAttesa = (() => {
+    if (!cycle?.start_date) return null
+    const inizio = new Date(`${cycle.start_date}T00:00:00`)
+    if (Number.isNaN(inizio.getTime())) return null
+    const giorni = Math.floor((Date.now() - inizio.getTime()) / 86_400_000)
+    if (giorni < 0) return null
+    return Math.min(6, Math.floor(giorni / 7) + 1)
+  })()
+
+  const indietro = settimanaAttesa ? clients.filter(c => c.current_week < settimanaAttesa) : []
+
+  /**
+   * Avanza tutte di una settimana. Con decine di atlete farlo una per una
+   * significava decine di tocchi ogni lunedì.
+   * Raggruppate per settimana attuale: al massimo cinque richieste, che siano
+   * cinque atlete o cinquanta.
+   */
+  async function avanzaTutte() {
+    setConfermaAvanza(false)
+    const perSettimana = {}
+    clients.filter(c => c.current_week < 6).forEach(c => {
+      ;(perSettimana[c.current_week] ||= []).push(c.id)
+    })
+    const settimane = Object.keys(perSettimana)
+    if (!settimane.length) return
+
+    for (const w of settimane) {
+      const { error } = await run(
+        supabase.from('clients').update({ current_week: Number(w) + 1 }).in('id', perSettimana[w]),
+        'Avanzamento non riuscito per tutte le atlete.'
+      )
+      if (error) { await loadData(); return }
+    }
+    setClients(prev => prev.map(c => c.current_week < 6 ? { ...c, current_week: c.current_week + 1 } : c))
+    notifyOk('Settimana avanzata per tutte')
   }
 
   async function advanceWeek(client) {
@@ -380,7 +419,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         {/* Advance week */}
         {!loading && clients.length > 0 && exercises.length > 0 && (
           <div style={{ marginTop: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', padding: '14px' }}>
-            <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '10px' }}>AVANZA SETTIMANA</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
+              <div>
+                <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
+                {/* `cycles.start_date` c'era da sempre e non serviva a niente
+                    oltre che a comparire nella lista. Da lì si sa a che punto
+                    dovrebbe essere la scheda, invece di contare a mano. */}
+                {settimanaAttesa && (
+                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '3px' }}>
+                    Da calendario siamo alla <strong style={{ color: '#D95C1A' }}>settimana {settimanaAttesa}</strong>
+                    {indietro.length > 0 && <> · <span style={{ color: '#E8A030' }}>{indietro.length} indietro</span></>}
+                  </div>
+                )}
+              </div>
+              {clients.some(c => c.current_week < 6) && (
+                <button onClick={() => setConfermaAvanza(true)} style={{
+                  flexShrink: 0, background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.4)',
+                  borderRadius: '4px', padding: '8px 12px', color: '#D95C1A',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+                }}>+1 A TUTTE</button>
+              )}
+            </div>
             {clients.map(client => (
               <div key={client.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                 <div>
@@ -401,6 +460,19 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         )}
         <div style={{ height: '20px' }} />
       </div>
+
+      {confermaAvanza && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>AVANZA TUTTE DI UNA SETTIMANA</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '20px' }}>
+              {clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.
+            </div>
+            <button onClick={avanzaTutte} style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>✓ AVANZA TUTTE</button>
+            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', width: '100%', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>Annulla</button>
+          </div>
+        </div>
+      )}
 
       {editModal && (
         <LoadModal
