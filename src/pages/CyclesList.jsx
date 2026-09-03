@@ -96,24 +96,9 @@ export default function CyclesList({ navigate, goHome, session }) {
   async function deleteCycle(cycle, turnId) {
     setDeleteModal(null)
 
-    // Delete related data
-    const { data: exList } = await run(
-      supabase.from('cycle_exercises').select('id').eq('cycle_id', cycle.id),
-      'Impossibile leggere gli esercizi della scheda.'
-    )
-    if (exList?.length) {
-      const exIds = exList.map(e => e.id)
-      const { error: errCarichi } = await run(
-        supabase.from('client_loads').delete().in('cycle_exercise_id', exIds),
-        'Impossibile eliminare i carichi della scheda.'
-      )
-      if (errCarichi) { await loadData(); return }
-      const { error: errEsercizi } = await run(
-        supabase.from('cycle_exercises').delete().eq('cycle_id', cycle.id),
-        'Impossibile eliminare gli esercizi della scheda.'
-      )
-      if (errEsercizi) { await loadData(); return }
-    }
+    // cycle_exercises ha ON DELETE CASCADE su cycles, e client_loads su
+    // cycle_exercises: basta cancellare la scheda e il database porta via
+    // esercizi e carichi in una transazione sola.
     const { error } = await run(
       supabase.from('cycles').delete().eq('id', cycle.id),
       `Impossibile eliminare la scheda "${cycle.name}".`

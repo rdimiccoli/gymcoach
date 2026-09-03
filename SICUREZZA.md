@@ -1,294 +1,165 @@
-# Sicurezza — cosa devi verificare su Supabase
+# Stato del database — verificato il 4 settembre 2026
 
-GymCoach non ha un backend. L'app parla con Supabase **direttamente dal browser**,
-usando la chiave `anon`, che è pubblica: chiunque apra il sito può leggerla dal
-codice JavaScript. Non è un difetto di per sé — è il modello previsto da Supabase —
-ma significa una cosa sola:
-
-> **Tutta la sicurezza dei dati sta nelle policy RLS del database.**
-> Nel codice dell'app non c'è, e non può esserci, alcun controllo di autorizzazione.
-
-Il codice non filtra mai per coach quando legge clienti, schede o carichi:
-
-```js
-.from('clients').eq('turn_id', turn.id)          // nessun filtro sul coach
-.from('cycles').eq('turn_id', turn.id)           // nessun filtro sul coach
-.from('client_loads').in('client_id', clIds)     // nessun filtro sul coach
-```
-
-Se le RLS mancano o sono permissive, **una coach può leggere e modificare le
-atlete e i carichi delle colleghe** conoscendo un id. Non ho accesso al tuo
-progetto Supabase, quindi questa parte devi verificarla tu.
+Audit eseguito sul progetto `zutadrqmowzbecwdtlyp` (org *rdimiccoli's Org*)
+interrogando i cataloghi di Postgres. Questo documento riporta **quello che c'è**,
+non quello che si sospettava.
 
 ---
 
-## ⚠️ Prima di eseguire qualsiasi cosa
+## ✅ Cosa è già a posto
 
-1. **Fai un backup**: Supabase → Database → Backups.
-2. Gli `create policy` falliscono se esiste già una policy con lo stesso nome.
-   Esegui prima il **passo 1** (verifica) e adatta di conseguenza.
-3. **Attivare RLS su una tabella senza policy blocca tutti, te compresa.**
-   Attiva RLS e crea le policy nella stessa esecuzione, mai separatamente.
-4. I nomi di colonna qui sotto sono dedotti dal codice dell'app. Controllali
-   con il passo 1 prima di procedere.
+### Le RLS ci sono e sono corrette
 
----
+Tutte e 8 le tabelle hanno `rowsecurity = true`, e ogni policy risale
+correttamente al coach passando per `turns.coach_id = auth.uid()`:
 
-## Passo 1 — Fotografia della situazione attuale
-
-Supabase → **SQL Editor** → incolla ed esegui:
-
-```sql
--- Quali tabelle hanno RLS attivo?
-select tablename,
-       rowsecurity as rls_attivo
-from pg_tables
-where schemaname = 'public'
-order by tablename;
-
--- Quali policy esistono, e cosa permettono davvero?
-select tablename, policyname, cmd, roles,
-       qual        as condizione_lettura,
-       with_check  as condizione_scrittura
-from pg_policies
-where schemaname = 'public'
-order by tablename, policyname;
-
--- Nomi reali delle colonne (per verificare l'SQL dei passi successivi)
-select table_name, column_name, data_type
-from information_schema.columns
-where table_schema = 'public'
-order by table_name, ordinal_position;
-```
-
-**Come leggere il risultato:**
-
-| Cosa vedi | Significato |
+| Tabella | Condizione |
 |---|---|
-| `rls_attivo = false` su una tabella | 🔴 Chiunque abbia la chiave anon legge e scrive tutto |
-| `rls_attivo = true` ma nessuna policy | 🔒 Tabella inaccessibile a tutti (l'app non funziona) |
-| policy con `condizione_lettura = true` | 🔴 Permette tutto, non filtra niente |
-| `roles = {public}` o `{anon}` | 🔴 Vale anche per chi non ha fatto login |
-| `condizione_lettura` che risale a `auth.uid()` | ✅ Corretto |
+| `coaches` | `auth.uid() = id` |
+| `turns` | `coach_id = auth.uid()` |
+| `clients` | `turn_id IN (turns del coach)` |
+| `cycles` | `turn_id IN (turns del coach)` |
+| `cycle_exercises` | `cycle_id IN (cycles → turns del coach)` |
+| `client_loads` | `client_id IN (clients → turns del coach)` |
+| `client_notes` | `client_id IN (clients → turns del coach)` |
+| `exercises` | `auth.role() = 'authenticated'` (catalogo condiviso, voluto) |
+
+**Una coach non può vedere né modificare le atlete di un'altra.** Era il rischio
+principale ipotizzato in analisi: non sussiste.
+
+> **Nota su `with_check = null`.** Tutte le policy sono `FOR ALL` con solo
+> `USING`. Non è una falla: in Postgres, quando `WITH CHECK` è omesso, viene
+> usata l'espressione `USING` anche per le scritture. Inserimenti e modifiche
+> sono quindi protetti dalla stessa condizione.
+
+### Il vincolo unico sui carichi esiste
+
+```
+client_loads → UNIQUE (client_id, cycle_exercise_id, week)
+```
+
+È esattamente ciò che pretende l'`upsert` con
+`onConflict: 'client_id,cycle_exercise_id,week'`. **I carichi sono sempre stati
+salvati correttamente.** Il sospetto peggiore emerso in analisi era infondato.
+
+### Le cancellazioni a cascata ci sono tutte
+
+```
+turns    → coaches            ON DELETE CASCADE
+clients  → turns              ON DELETE CASCADE
+cycles   → turns              ON DELETE CASCADE
+cycle_exercises → cycles      ON DELETE CASCADE
+client_loads → clients        ON DELETE CASCADE
+client_loads → cycle_exercises ON DELETE CASCADE
+client_notes → clients        ON DELETE CASCADE
+client_notes → cycle_exercises ON DELETE CASCADE
+```
+
+Eliminare un turno porta via da solo clienti, schede, esercizi e carichi, in una
+transazione unica. Il codice dell'app è stato semplificato di conseguenza: le
+cancellazioni manuali dei figli erano ridondanti.
+
+L'unica foreign key **senza** cascata è `cycle_exercises → exercises`, ed è
+giusto così: cancellare un esercizio dal catalogo non deve svuotare le schede
+che lo usano.
 
 ---
 
-## Passo 2 — Le policy corrette
+## 🔴 Il problema confermato: il recupero password non ha mai funzionato
 
-Ogni tabella deve risalire al coach passando per `turns.coach_id`.
-Adatta i nomi se il passo 1 mostra qualcosa di diverso, poi esegui **tutto insieme**:
+La policy su `coaches` è `USING (auth.uid() = id)`. Per un utente **non
+autenticato** `auth.uid()` vale `NULL`, quindi la condizione non è mai vera.
 
-```sql
--- ── COACHES ────────────────────────────────────────────────────────────────
--- Ognuno vede solo se stesso. Questo chiude anche la fuga di email dei coach.
-alter table coaches enable row level security;
+Il vecchio codice di `Login.jsx` interrogava `coaches` **prima** di inviare la
+mail di reset, da utente non autenticato. Quella query restituiva sempre zero
+righe. Quindi il messaggio *"Nessun account trovato con questa email"* non era
+un caso limite: **era la risposta per chiunque, sempre.**
 
-create policy "coach: legge se stesso" on coaches
-  for select to authenticated using (id = auth.uid());
-
-create policy "coach: crea il proprio profilo" on coaches
-  for insert to authenticated with check (id = auth.uid());
-
-create policy "coach: aggiorna se stesso" on coaches
-  for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
-
--- ── TURNS ──────────────────────────────────────────────────────────────────
-alter table turns enable row level security;
-
-create policy "turni: solo i propri" on turns
-  for all to authenticated
-  using (coach_id = auth.uid())
-  with check (coach_id = auth.uid());
-
--- ── CLIENTS ────────────────────────────────────────────────────────────────
-alter table clients enable row level security;
-
-create policy "clienti: solo dei propri turni" on clients
-  for all to authenticated
-  using (exists (
-    select 1 from turns t where t.id = clients.turn_id and t.coach_id = auth.uid()
-  ))
-  with check (exists (
-    select 1 from turns t where t.id = clients.turn_id and t.coach_id = auth.uid()
-  ));
-
--- ── CYCLES ─────────────────────────────────────────────────────────────────
-alter table cycles enable row level security;
-
-create policy "schede: solo dei propri turni" on cycles
-  for all to authenticated
-  using (exists (
-    select 1 from turns t where t.id = cycles.turn_id and t.coach_id = auth.uid()
-  ))
-  with check (exists (
-    select 1 from turns t where t.id = cycles.turn_id and t.coach_id = auth.uid()
-  ));
-
--- ── CYCLE_EXERCISES ────────────────────────────────────────────────────────
-alter table cycle_exercises enable row level security;
-
-create policy "esercizi scheda: solo dei propri turni" on cycle_exercises
-  for all to authenticated
-  using (exists (
-    select 1 from cycles c
-    join turns t on t.id = c.turn_id
-    where c.id = cycle_exercises.cycle_id and t.coach_id = auth.uid()
-  ))
-  with check (exists (
-    select 1 from cycles c
-    join turns t on t.id = c.turn_id
-    where c.id = cycle_exercises.cycle_id and t.coach_id = auth.uid()
-  ));
-
--- ── CLIENT_LOADS ───────────────────────────────────────────────────────────
-alter table client_loads enable row level security;
-
-create policy "carichi: solo dei propri clienti" on client_loads
-  for all to authenticated
-  using (exists (
-    select 1 from clients cl
-    join turns t on t.id = cl.turn_id
-    where cl.id = client_loads.client_id and t.coach_id = auth.uid()
-  ))
-  with check (exists (
-    select 1 from clients cl
-    join turns t on t.id = cl.turn_id
-    where cl.id = client_loads.client_id and t.coach_id = auth.uid()
-  ));
-
--- ── EXERCISES ──────────────────────────────────────────────────────────────
--- Catalogo volutamente condiviso fra tutte le coach, ma NON leggibile da chi
--- non ha fatto login.
-alter table exercises enable row level security;
-
-create policy "catalogo: lettura per chi ha fatto login" on exercises
-  for select to authenticated using (true);
-
-create policy "catalogo: inserimento per chi ha fatto login" on exercises
-  for insert to authenticated with check (true);
-
-create policy "catalogo: modifica per chi ha fatto login" on exercises
-  for update to authenticated using (true) with check (true);
-```
-
-Dopo l'esecuzione **riapri l'app e prova un giro completo**: home, turni,
-apertura scheda, salvataggio carichi, condivisione. Se qualcosa resta vuoto,
-è una policy troppo stretta — il Notifier ora te lo dice invece di tacere.
+Corretto nel Blocco 2: la verifica preventiva è stata rimossa e si chiama
+direttamente `resetPasswordForEmail`, che non rivela se l'indirizzo esiste.
 
 ---
 
-## Passo 3 — Indici per le policy
+## ⚠️ Cosa resta da fare
 
-Le `exists (...)` qui sopra girano a ogni riga letta. Senza questi indici
-diventano lente appena crescono i dati:
+### 1. Chiudere le registrazioni pubbliche ← **il più importante**
 
-```sql
-create index if not exists idx_turns_coach            on turns (coach_id);
-create index if not exists idx_clients_turn           on clients (turn_id);
-create index if not exists idx_cycles_turn            on cycles (turn_id);
-create index if not exists idx_cycle_exercises_cycle  on cycle_exercises (cycle_id);
-create index if not exists idx_client_loads_client    on client_loads (client_id);
-create index if not exists idx_client_loads_cyclex    on client_loads (cycle_exercise_id);
-```
-
----
-
-## Passo 4 — Vincolo unico sui carichi
-
-Il salvataggio dei carichi usa
-`upsert(..., { onConflict: 'client_id,cycle_exercise_id,week' })`.
-Postgres pretende che esista un vincolo unico **esattamente** su quelle tre
-colonne, altrimenti l'upsert fallisce con errore 42P10.
-
-```sql
--- Verifica se c'è già
-select conname, pg_get_constraintdef(oid)
-from pg_constraint
-where conrelid = 'client_loads'::regclass and contype = 'u';
-
--- Se manca:
-alter table client_loads
-  add constraint client_loads_unico unique (client_id, cycle_exercise_id, week);
-```
-
-> Se il vincolo mancava, fino ad oggi **nessun carico veniva salvato** e l'app
-> non lo diceva. Da adesso lo dice, ma il vincolo va comunque creato.
-
----
-
-## Passo 5 — Cancellazioni a cascata
-
-L'app ora pulisce le tabelle figlie a mano prima di eliminare un turno, quindi
-funziona in ogni caso. Ma è più robusto e più veloce farlo fare al database:
-
-```sql
--- Verifica cosa succede oggi alle foreign key
-select tc.table_name, tc.constraint_name, rc.delete_rule
-from information_schema.table_constraints tc
-join information_schema.referential_constraints rc
-  on rc.constraint_name = tc.constraint_name
-where tc.table_schema = 'public' and tc.constraint_type = 'FOREIGN KEY'
-order by tc.table_name;
-```
-
-Se `delete_rule` è `NO ACTION` o `RESTRICT`, puoi passare a `CASCADE`
-(sostituisci i nomi dei vincoli con quelli veri restituiti dalla query):
-
-```sql
-alter table clients          drop constraint clients_turn_id_fkey,
-  add constraint clients_turn_id_fkey foreign key (turn_id) references turns(id) on delete cascade;
-
-alter table cycles           drop constraint cycles_turn_id_fkey,
-  add constraint cycles_turn_id_fkey foreign key (turn_id) references turns(id) on delete cascade;
-
-alter table cycle_exercises  drop constraint cycle_exercises_cycle_id_fkey,
-  add constraint cycle_exercises_cycle_id_fkey foreign key (cycle_id) references cycles(id) on delete cascade;
-
-alter table client_loads     drop constraint client_loads_client_id_fkey,
-  add constraint client_loads_client_id_fkey foreign key (client_id) references clients(id) on delete cascade;
-
-alter table client_loads     drop constraint client_loads_cycle_exercise_id_fkey,
-  add constraint client_loads_cycle_exercise_id_fkey foreign key (cycle_exercise_id) references cycle_exercises(id) on delete cascade;
-```
-
----
-
-## Passo 6 — Chiudi le registrazioni pubbliche
-
-**Questo è il controllo più importante di tutti, e non richiede SQL.**
-
-L'app crea automaticamente una riga in `coaches` per qualsiasi utente
-autenticato che non ne abbia una (`src/pages/Home.jsx`). Non è un buco in sé —
-l'id è forzato a `auth.uid()` — ma **lo diventa se chiunque può registrarsi**:
-basterebbe una chiamata all'API di Supabase per crearsi un account e ritrovarsi
-dentro l'app dei coach.
+Non è SQL, è un interruttore, e non è verificabile dai cataloghi: devi guardarlo
+tu. L'app crea automaticamente una riga in `coaches` per qualsiasi utente
+autenticato che non ne abbia una. Con le RLS attuali un estraneo **non** vedrebbe
+le atlete di nessuno, ma avrebbe comunque un account dentro l'app e accesso in
+scrittura al catalogo esercizi condiviso.
 
 Supabase → **Authentication → Sign In / Providers → Email**:
 
 - **Allow new users to sign up** → **OFF**
 - **Confirm email** → **ON**
 
-Con la registrazione chiusa, i nuovi coach li crei tu da
-**Authentication → Users → Add user**.
+I nuovi coach si creano da **Authentication → Users → Add user**.
+
+### 2. Indici sulle foreign key
+
+Postgres crea gli indici da solo per chiavi primarie e vincoli unici, **ma non
+per le foreign key**. Le policy RLS eseguono una sottoquery a ogni riga letta, e
+le cascate devono cercare le righe figlie: senza questi indici entrambe
+rallentano man mano che i dati crescono.
+
+Tutte `if not exists`, quindi eseguirle è innocuo anche se qualcuna già esiste:
+
+```sql
+create index if not exists idx_turns_coach           on turns (coach_id);
+create index if not exists idx_clients_turn          on clients (turn_id);
+create index if not exists idx_cycles_turn           on cycles (turn_id);
+create index if not exists idx_cycle_exercises_cycle on cycle_exercises (cycle_id);
+create index if not exists idx_cycle_exercises_ex    on cycle_exercises (exercise_id);
+create index if not exists idx_client_loads_cyclex   on client_loads (cycle_exercise_id);
+create index if not exists idx_client_notes_client   on client_notes (client_id);
+create index if not exists idx_client_notes_cyclex   on client_notes (cycle_exercise_id);
+```
+
+> `client_loads (client_id)` non serve: è già la prima colonna dell'indice creato
+> dal vincolo unico.
+
+### 3. Facoltativo — restringere le policy a `authenticated`
+
+Tutte le policy sono `TO public`, cioè valgono anche per il ruolo `anon`. **Non
+è un buco**, perché le condizioni si basano su `auth.uid()` che per un anonimo è
+`NULL`: le righe restituite sono comunque zero. È però meno esplicito, e obbliga
+Postgres a valutare la sottoquery anche per richieste che potrebbero essere
+respinte subito.
+
+Cambiarle significa ricrearle una per una su un database in produzione, con il
+rischio di chiudere fuori tutti se qualcosa va storto. **Il guadagno è marginale:
+farlo solo con calma e con un backup fresco**, non ora.
 
 ---
 
-## Passo 7 — Controlla i suggerimenti automatici
+## 📋 Due cose notate di passaggio
 
-Supabase → **Advisors → Security**. Segnala da solo tabelle senza RLS,
-policy permissive e funzioni con `search_path` mutabile. Vale la pena
-guardarlo dopo ogni modifica allo schema.
+**`client_notes` esiste ma non viene usata.** Tabella completa, con vincolo unico
+su `(client_id, cycle_exercise_id)` e cascate a posto — ma nel codice React non
+c'è un solo riferimento. O è una funzione progettata e mai costruita (una nota
+per esercizio e atleta), oppure un residuo. Da decidere: implementarla o
+eliminarla.
+
+**`exercises` ha `UNIQUE (name)`, ma è sensibile alle maiuscole.** Conferma che
+l'inserimento di un esercizio omonimo falliva davvero — era la causa del crash
+corretto nel Blocco 1. Attenzione però: il vincolo lascia passare `Panca piana` e
+`panca piana` come due righe distinte. Il codice ora cerca con `ilike` prima di
+inserire, quindi riusa quello esistente a prescindere dalle maiuscole: è più
+severo del database.
 
 ---
 
 ## Riepilogo
 
-| # | Cosa | Dove | Fatto |
+| # | Cosa | Dove | Stato |
 |---|---|---|---|
-| 1 | Fotografia RLS attuale | SQL Editor | ☐ |
-| 2 | Policy per tabella | SQL Editor | ☐ |
-| 3 | Indici per le policy | SQL Editor | ☐ |
-| 4 | Vincolo unico su `client_loads` | SQL Editor | ☐ |
-| 5 | Cascate sulle foreign key | SQL Editor | ☐ |
-| 6 | **Registrazione pubblica OFF** | Authentication | ☐ |
-| 7 | Advisors → Security pulito | Advisors | ☐ |
+| 1 | RLS su tutte le tabelle | — | ✅ già a posto |
+| 2 | Vincolo unico su `client_loads` | — | ✅ già a posto |
+| 3 | Cascate sulle foreign key | — | ✅ già a posto |
+| 4 | Recupero password | codice | ✅ corretto (Blocco 2) |
+| 5 | **Registrazione pubblica OFF** | Authentication | ☐ **da fare** |
+| 6 | Indici sulle foreign key | SQL Editor | ☐ da fare |
+| 7 | Policy `TO authenticated` | SQL Editor | ☐ facoltativo, senza fretta |
+| 8 | Decidere cosa fare di `client_notes` | — | ☐ da decidere |

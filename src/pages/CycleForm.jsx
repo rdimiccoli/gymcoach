@@ -249,13 +249,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     const { d, idx } = deleteExConfirm
     const ex = exList[d][idx]
     if (ex.id) {
-      // I carichi già registrati puntano a questa riga: vanno tolti prima,
-      // altrimenti la foreign key rifiuta la cancellazione.
-      const { error: errCarichi } = await run(
-        supabase.from('client_loads').delete().eq('cycle_exercise_id', ex.id),
-        `Impossibile eliminare i carichi di "${ex.name}".`
-      )
-      if (errCarichi) { setDeleteExConfirm(null); return }
+      // client_loads ha ON DELETE CASCADE su cycle_exercises: i carichi
+      // registrati per questo esercizio se ne vanno da soli.
       const { error } = await run(
         supabase.from('cycle_exercises').delete().eq('id', ex.id),
         `Impossibile eliminare "${ex.name}".`

@@ -99,45 +99,17 @@ export default function Turns({ navigate, goHome, session }) {
   async function executeDeleteTurn() {
     const turnId = deleteTurnConfirm
     setSaving(true)
-
-    // La modale promette di eliminare clienti, schede e carichi, ma qui c'era
-    // solo la delete del turno: se il database non ha i CASCADE la foreign key
-    // la rifiuta, l'errore veniva ignorato e il turno ricompariva da solo.
-    // Puliamo i figli nell'ordine giusto, dal basso verso l'alto.
-    const [{ data: cicli }, { data: clienti }] = await Promise.all([
-      run(supabase.from('cycles').select('id').eq('turn_id', turnId), 'Impossibile leggere le schede del turno.'),
-      run(supabase.from('clients').select('id').eq('turn_id', turnId), 'Impossibile leggere i clienti del turno.'),
-    ])
-
-    const cicloIds = (cicli || []).map(c => c.id)
-    const clienteIds = (clienti || []).map(c => c.id)
-
-    let esercizioIds = []
-    if (cicloIds.length) {
-      const { data: es } = await run(
-        supabase.from('cycle_exercises').select('id').in('cycle_id', cicloIds),
-        'Impossibile leggere gli esercizi delle schede.'
-      )
-      esercizioIds = (es || []).map(e => e.id)
-    }
-
-    const passaggi = [
-      esercizioIds.length && [supabase.from('client_loads').delete().in('cycle_exercise_id', esercizioIds), 'Impossibile eliminare i carichi delle schede.'],
-      clienteIds.length && [supabase.from('client_loads').delete().in('client_id', clienteIds), 'Impossibile eliminare i carichi dei clienti.'],
-      cicloIds.length && [supabase.from('cycle_exercises').delete().in('cycle_id', cicloIds), 'Impossibile eliminare gli esercizi.'],
-      cicloIds.length && [supabase.from('cycles').delete().eq('turn_id', turnId), 'Impossibile eliminare le schede.'],
-      clienteIds.length && [supabase.from('clients').delete().eq('turn_id', turnId), 'Impossibile eliminare i clienti.'],
-      [supabase.from('turns').delete().eq('id', turnId), 'Impossibile eliminare il turno.'],
-    ].filter(Boolean)
-
-    for (const [query, messaggio] of passaggi) {
-      const { error } = await run(query, messaggio)
-      if (error) { setSaving(false); setDeleteTurnConfirm(null); await loadData(); return }
-    }
-
+    // Le foreign key sono ON DELETE CASCADE fino in fondo (clients e cycles →
+    // turns, cycle_exercises → cycles, client_loads e client_notes → clients e
+    // cycle_exercises): questa singola riga porta via tutto, in una transazione
+    // sola. Mancava solo il controllo dell'errore.
+    const { error } = await run(
+      supabase.from('turns').delete().eq('id', turnId),
+      'Impossibile eliminare il turno.'
+    )
     setSaving(false)
     setDeleteTurnConfirm(null)
-    notifyOk('Turno eliminato')
+    if (!error) notifyOk('Turno eliminato')
     await loadData()
   }
 
@@ -178,12 +150,8 @@ export default function Turns({ navigate, goHome, session }) {
   async function executeDeleteClient() {
     const client = deleteConfirm
     setDeleteConfirm(null)
-    // Delete loads first (foreign key)
-    const { error: errCarichi } = await run(
-      supabase.from('client_loads').delete().eq('client_id', client.id),
-      `Impossibile eliminare i carichi di ${client.surname} ${client.name}.`
-    )
-    if (errCarichi) return
+    // client_loads e client_notes hanno ON DELETE CASCADE su clients: la
+    // cancellazione manuale che c'era prima era ridondante.
     const { error } = await run(
       supabase.from('clients').delete().eq('id', client.id),
       `Impossibile eliminare ${client.surname} ${client.name}.`
