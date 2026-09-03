@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { run } from '../lib/notify'
+import { run, notifyOk, notifyError } from '../lib/notify'
+import { biometriaDisponibile, bloccoAttivo, attivaBlocco, disattivaBlocco, MINUTI_RIBLOCCO } from '../lib/biometria'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -21,7 +22,28 @@ export default function Settings({ navigate, goHome, session }) {
   const [pwdError, setPwdError] = useState('')
   const [pwdSuccess, setPwdSuccess] = useState(false)
 
+  // Sblocco biometrico (per dispositivo, non per account)
+  const [bioDisponibile, setBioDisponibile] = useState(false)
+  const [bioAttivo, setBioAttivo] = useState(() => bloccoAttivo(session.user.id))
+  const [bioInCorso, setBioInCorso] = useState(false)
+
   useEffect(() => { loadData() }, [])
+  useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
+
+  async function toggleBiometria() {
+    if (bioAttivo) {
+      disattivaBlocco()
+      setBioAttivo(false)
+      notifyOk('Sblocco biometrico disattivato su questo dispositivo')
+      return
+    }
+    setBioInCorso(true)
+    const esito = await attivaBlocco(session.user.id, session.user.email, coach?.name)
+    setBioInCorso(false)
+    if (!esito.ok) { notifyError(esito.errore); return }
+    setBioAttivo(true)
+    notifyOk('Sblocco biometrico attivato su questo dispositivo')
+  }
 
   async function loadData() {
     const [{ data: c }, { data: t }] = await Promise.all([
@@ -210,6 +232,43 @@ export default function Settings({ navigate, goHome, session }) {
             </button>
           </div>
         </div>
+
+        {/* Sblocco biometrico */}
+        {bioDisponibile && (
+          <div style={{
+            background: bioAttivo ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${bioAttivo ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: '1px' }}>
+                  👆 SBLOCCO BIOMETRICO
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', marginTop: '3px', lineHeight: 1.4 }}>
+                  {bioAttivo
+                    ? `Attivo su questo dispositivo. L'app si riblocca dopo ${MINUTI_RIBLOCCO} minuti in secondo piano.`
+                    : 'Chiedi impronta, volto o PIN all\'apertura. Senza, chi prende in mano il dispositivo entra direttamente.'}
+                </div>
+              </div>
+              <button onClick={toggleBiometria} disabled={bioInCorso} style={{
+                flexShrink: 0,
+                background: bioAttivo ? 'rgba(239,68,68,0.12)' : '#D95C1A',
+                border: bioAttivo ? '1px solid rgba(239,68,68,0.35)' : 'none',
+                borderRadius: '4px', padding: '9px 14px',
+                color: bioAttivo ? 'rgba(239,68,68,0.9)' : '#fff',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px',
+                fontWeight: '700', letterSpacing: '1px',
+                opacity: bioInCorso ? 0.5 : 1, cursor: 'pointer',
+              }}>
+                {bioInCorso ? '...' : bioAttivo ? 'DISATTIVA' : 'ATTIVA'}
+              </button>
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', marginTop: '8px', lineHeight: 1.35 }}>
+              L'impostazione vale solo su questo dispositivo: va attivata su ogni telefono o computer che usi.
+            </div>
+          </div>
+        )}
 
         {/* Change password */}
         <button onClick={() => setView('changePassword')}

@@ -11,6 +11,8 @@ import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Notifier from './components/Notifier'
+import BloccoBiometrico from './components/BloccoBiometrico'
+import { bloccoAttivo, MINUTI_RIBLOCCO } from './lib/biometria'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -31,7 +33,9 @@ export default function App() {
   const [isRecovery, setIsRecovery] = useState(INITIAL_IS_RECOVERY)
   const [stack, setStack] = useState([{ page: 'home', params: {} }])
   const [showExitModal, setShowExitModal] = useState(false)
+  const [sbloccato, setSbloccato] = useState(false)
   const stackRef = useRef(stack)
+  const nascostaDa = useRef(null)
 
   // PWA update — safe destructuring with fallback
   const {
@@ -58,6 +62,7 @@ export default function App() {
       if (!session) {
         setStack([{ page: 'home', params: {} }])
         setIsRecovery(false)
+        setSbloccato(false) // al prossimo accesso il lucchetto torna attivo
       }
     })
     return () => subscription.unsubscribe()
@@ -80,6 +85,24 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
+  // Riblocco automatico: se l'app resta in secondo piano più di qualche minuto,
+  // alla riapertura richiede di nuovo l'impronta. Senza questo il lucchetto
+  // varrebbe solo al primo avvio e poi mai più.
+  useEffect(() => {
+    const onVisibilita = () => {
+      if (document.visibilityState === 'hidden') {
+        nascostaDa.current = Date.now()
+        return
+      }
+      if (nascostaDa.current && Date.now() - nascostaDa.current > MINUTI_RIBLOCCO * 60_000) {
+        setSbloccato(false)
+      }
+      nascostaDa.current = null
+    }
+    document.addEventListener('visibilitychange', onVisibilita)
+    return () => document.removeEventListener('visibilitychange', onVisibilita)
+  }, [])
+
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
   const goHome = () => setStack([{ page: 'home', params: {} }])
@@ -91,6 +114,22 @@ export default function App() {
   }
 
   if (!session) return <><Login /><Notifier /></>
+
+  // Lucchetto biometrico. Sta dopo il controllo del recupero password: chi
+  // arriva dal link via email non deve trovarsi sbarrato da un sensore che
+  // magari ha registrato su un altro dispositivo.
+  if (!sbloccato && bloccoAttivo(session.user.id)) {
+    return (
+      <>
+        <BloccoBiometrico
+          nomeCoach={session.user.email}
+          onSbloccato={() => setSbloccato(true)}
+          onEsci={() => supabase.auth.signOut()}
+        />
+        <Notifier />
+      </>
+    )
+  }
 
   const current = stack[stack.length - 1]
   const props = { navigate, goBack, goHome, params: current.params, session }

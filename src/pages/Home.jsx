@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
 import BottomNav from '../components/BottomNav'
 
 const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']
@@ -37,6 +38,14 @@ export default function Home({ navigate, goHome, session }) {
   const today = new Date()
   const dayName = WEEKDAYS[today.getDay()]
   const dateStr = `${today.getDate().toString().padStart(2,'0')}·${(today.getMonth()+1).toString().padStart(2,'0')}·${today.getFullYear()}`
+
+  // Invito una tantum ad attivare lo sblocco biometrico: senza, l'interruttore
+  // nelle impostazioni non lo troverebbe nessuno.
+  const [invitoBio, setInvitoBio] = useState(false)
+  useEffect(() => {
+    if (invitoRifiutato() || bloccoAttivo(session.user.id)) return
+    biometriaDisponibile().then(setInvitoBio)
+  }, [])
 
   useEffect(() => { loadData() }, [])
 
@@ -154,6 +163,35 @@ export default function Home({ navigate, goHome, session }) {
             COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
           </div>
         </div>
+
+        {invitoBio && (
+          <div style={{
+            background: 'rgba(217,92,26,0.07)', border: '1px solid rgba(217,92,26,0.28)',
+            borderRadius: '6px', padding: '13px 15px', marginBottom: '16px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>👆</span>
+              <div style={{ color: '#D95C1A', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>
+                PROTEGGI L'APP CON L'IMPRONTA
+              </div>
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', lineHeight: 1.45, marginBottom: '12px' }}>
+              Adesso chiunque prenda in mano questo dispositivo sbloccato vede e modifica
+              i dati di tutte le atlete. Con lo sblocco biometrico bastano un tocco e il
+              tuo volto o la tua impronta.
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => navigate('settings')} style={{
+                flex: 1, background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '10px',
+                color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+              }}>ATTIVA</button>
+              <button onClick={() => { rifiutaInvito(); setInvitoBio(false) }} style={{
+                flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '10px',
+                color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+              }}>NON ORA</button>
+            </div>
+          </div>
+        )}
 
         <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
           SELEZIONA FASE DELLA SCHEDA
