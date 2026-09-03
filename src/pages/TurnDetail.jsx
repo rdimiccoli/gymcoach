@@ -35,6 +35,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   const [clients, setClients] = useState([])
   // loads[clientId_exId_week] = kg
   const [loads, setLoads] = useState({})
+  // notes[clientId_exId] = testo. Il vincolo unico nel database è su
+  // (client_id, cycle_exercise_id) senza la settimana: la nota vale per
+  // l'atleta su quell'esercizio per tutta la scheda, non per una settimana.
+  const [notes, setNotes] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -58,16 +62,23 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
       const exIds = exData.map(e => e.id)
       const clIds = cl.map(c => c.id)
       // Load ALL weeks for each client/exercise
-      const { data: loadData } = await run(
-        supabase.from('client_loads').select('*')
+      const [{ data: loadData }, { data: noteData }] = await Promise.all([
+        run(supabase.from('client_loads').select('*')
           .in('client_id', clIds).in('cycle_exercise_id', exIds),
-        'Impossibile caricare lo storico dei carichi.'
-      )
+          'Impossibile caricare lo storico dei carichi.'),
+        run(supabase.from('client_notes').select('client_id, cycle_exercise_id, note')
+          .in('client_id', clIds).in('cycle_exercise_id', exIds),
+          'Impossibile caricare le note.'),
+      ])
       const loadMap = {}
       loadData?.forEach(l => {
         loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
       })
       setLoads(loadMap)
+
+      const noteMap = {}
+      noteData?.forEach(n => { noteMap[`${n.client_id}_${n.cycle_exercise_id}`] = n.note })
+      setNotes(noteMap)
     }
     setLoading(false)
   }
@@ -89,6 +100,44 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
     setLoads(prev => {
       const next = { ...prev }
       loadUpdates.forEach(({ cycleExId, kg }) => { next[`${clientId}_${cycleExId}_${clientWeek}`] = kg })
+      return next
+    })
+
+    // Note: una svuotata va CANCELLATA, non salvata come stringa vuota,
+    // altrimenti la tabella si riempie di righe che sembrano note e non lo sono.
+    const daSalvare = loadUpdates
+      .filter(a => a.nota?.trim())
+      .map(a => ({ client_id: clientId, cycle_exercise_id: a.cycleExId, note: a.nota.trim() }))
+    const daTogliere = loadUpdates
+      .filter(a => !a.nota?.trim() && notes[`${clientId}_${a.cycleExId}`] !== undefined)
+      .map(a => a.cycleExId)
+
+    let erroreNote = null
+    if (daSalvare.length) {
+      const r = await run(
+        supabase.from('client_notes').upsert(daSalvare, { onConflict: 'client_id,cycle_exercise_id' }),
+        'Carichi salvati, ma le note NON sono state salvate.'
+      )
+      erroreNote = r.error
+    }
+    if (!erroreNote && daTogliere.length) {
+      const r = await run(
+        supabase.from('client_notes').delete().eq('client_id', clientId).in('cycle_exercise_id', daTogliere),
+        'Carichi salvati, ma le note NON sono state cancellate.'
+      )
+      erroreNote = r.error
+    }
+    // I carichi sono già al sicuro. Se sono le note a non passare la modale
+    // resta aperta, così il testo digitato non va perso.
+    if (erroreNote) return
+
+    setNotes(prev => {
+      const next = { ...prev }
+      loadUpdates.forEach(({ cycleExId, nota }) => {
+        const chiave = `${clientId}_${cycleExId}`
+        if (nota?.trim()) next[chiave] = nota.trim()
+        else delete next[chiave]
+      })
       return next
     })
     notifyOk('Carichi salvati')
@@ -261,6 +310,32 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                             )
                           })}
                         </div>
+
+                        {/* Note, visibili senza dover aprire la modale: se una
+                            coach ha annotato "sente la spalla" serve che si veda
+                            mentre guarda la scheda, non solo se va a cercarla. */}
+                        {group.exercises
+                          .filter(ex => notes[`${client.id}_${ex.id}`])
+                          .map(ex => (
+                            <div key={`nota-${ex.id}`} style={{
+                              display: 'flex', gap: '6px', marginTop: '6px',
+                              background: 'rgba(234,179,8,0.07)',
+                              border: '1px solid rgba(234,179,8,0.2)',
+                              borderRadius: '4px', padding: '6px 9px',
+                            }}>
+                              <span style={{ fontSize: '11px', flexShrink: 0 }}>📝</span>
+                              <div style={{ minWidth: 0 }}>
+                                {group.exercises.length > 1 && (
+                                  <span style={{ color: 'rgba(234,179,8,0.75)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', marginRight: '5px' }}>
+                                    {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
+                                  </span>
+                                )}
+                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', lineHeight: 1.35 }}>
+                                  {notes[`${client.id}_${ex.id}`]}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     )
                   })}
@@ -300,6 +375,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
           client={editModal.client}
           group={editModal.group}
           loads={loads}
+          notes={notes}
           onSave={(updates) => saveLoads(editModal.client.id, editModal.client.current_week, updates)}
           onClose={() => setEditModal(null)}
         />
@@ -310,7 +386,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   )
 }
 
-function LoadModal({ client, group, loads, onSave, onClose }) {
+function LoadModal({ client, group, loads, notes, onSave, onClose }) {
   const week = client.current_week
 
   const [kgMap, setKgMap] = useState(() => {
@@ -318,6 +394,12 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
     group.exercises.forEach(ex => {
       m[ex.id] = parseFloat(loads[`${client.id}_${ex.id}_${week}`]) || 0
     })
+    return m
+  })
+
+  const [noteMap, setNoteMap] = useState(() => {
+    const m = {}
+    group.exercises.forEach(ex => { m[ex.id] = notes?.[`${client.id}_${ex.id}`] ?? '' })
     return m
   })
 
@@ -347,7 +429,11 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
   }
 
   const handleSave = () => {
-    onSave(group.exercises.map(ex => ({ cycleExId: ex.id, kg: parseFloat(kgMap[ex.id]) || 0 })))
+    onSave(group.exercises.map(ex => ({
+      cycleExId: ex.id,
+      kg: parseFloat(kgMap[ex.id]) || 0,
+      nota: noteMap[ex.id] ?? '',
+    })))
   }
 
   return (
@@ -410,6 +496,24 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
                 }}>{label}</button>
               ))}
             </div>
+
+            {/* Nota per questo atleta su questo esercizio. Vale per tutta la
+                scheda, non per la singola settimana: il vincolo nel database è
+                su (client_id, cycle_exercise_id). */}
+            <textarea
+              value={noteMap[ex.id] ?? ''}
+              onChange={e => setNoteMap(prev => ({ ...prev, [ex.id]: e.target.value }))}
+              placeholder="Nota (es. sente la spalla destra, ridurre il ROM)"
+              rows={2}
+              style={{
+                width: '100%', marginTop: '10px', boxSizing: 'border-box',
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${noteMap[ex.id]?.trim() ? 'rgba(234,179,8,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '4px', padding: '10px 12px',
+                color: '#fff', fontSize: '16px', lineHeight: 1.4,
+                outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+              }}
+            />
           </div>
         )
       })}
