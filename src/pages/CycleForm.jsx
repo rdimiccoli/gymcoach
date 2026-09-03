@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
+import { raggruppaEsercizi } from '../lib/schede'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -9,9 +10,6 @@ import BottomNav from '../components/BottomNav'
 const GIORNI = [1, 2, 3]
 const giornoValido = d => GIORNI.includes(Number(d))
 
-const isSS = g => g?.startsWith('SS-')
-const isCIR = g => g?.startsWith('CIR-')
-const getType = g => !g ? 'single' : isSS(g) ? 'superset' : isCIR(g) ? 'circuit' : 'single'
 
 export default function CycleForm({ navigate, goBack, goHome, params }) {
   const { turnId, cycleId, cloneFromId, readOnly } = params
@@ -33,7 +31,6 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
   const [usoEsercizio, setUsoEsercizio] = useState(null) // in quante schede è usato
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
-  const [dragTargetGroup, setDragTargetGroup] = useState(null) // group label to move into
 
   // Drag state
   const [draggingIdx, setDraggingIdx] = useState(null)
@@ -227,7 +224,6 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   async function moveExToGroup(fromIdx, targetGroupLabel) {
     const ex = exList[day][fromIdx]
-    setDragTargetGroup(null)
     setDraggingIdx(null)
     setDragOverIdx(null)
     if (ex.id) {
@@ -417,20 +413,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  function getGroups() {
-    const groups = [], seen = {}
-    exList[day].forEach((ex, idx) => {
-      const sg = ex.supersetGroup
-      const type = getType(sg)
-      if (type === 'single') {
-        groups.push({ type: 'single', exercises: [{ ...ex, idx }] })
-      } else {
-        if (!seen[sg]) { seen[sg] = { type, label: sg, exercises: [] }; groups.push(seen[sg]) }
-        seen[sg].exercises.push({ ...ex, idx })
-      }
-    })
-    return groups
-  }
+  const getGroups = () => raggruppaEsercizi(exList[day], { indice: true })
 
   const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
 

@@ -1,25 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { raggruppaEsercizi } from '../lib/schede'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-const isCIR = g => g?.startsWith('CIR-')
 
-function groupExercises(exercises) {
-  const groups = [], seen = {}
-  exercises.forEach(ex => {
-    const sg = ex.superset_group
-    if (!sg) {
-      groups.push({ type: 'single', exercises: [ex] })
-    } else {
-      const type = isCIR(sg) ? 'circuit' : 'superset'
-      if (!seen[sg]) { seen[sg] = { type, label: sg, exercises: [] }; groups.push(seen[sg]) }
-      seen[sg].exercises.push(ex)
-    }
-  })
-  return groups
-}
 
 const WEEK_RANGES = [
   { label: 'SETT. 1–2', repsField: 'reps_a', weeks: [1, 2] },
@@ -114,7 +100,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     text += `━━━━━━━━━━━━━━━━━━━\n\n`
 
     for (let d = 1; d <= 3; d++) {
-      const groups = groupExercises(days[d])
+      const groups = raggruppaEsercizi(days[d])
       if (!groups.length) continue
       text += `📌 *GIORNO ${d}*\n`
       groups.forEach(group => {
@@ -173,7 +159,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
   // Preview for selected day
   const [previewDay, setPreviewDay] = useState(1)
-  const previewGroups = groupExercises(days[previewDay])
+  const previewGroups = raggruppaEsercizi(days[previewDay])
 
   return (
     <div style={page}>

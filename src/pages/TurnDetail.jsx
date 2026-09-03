@@ -1,30 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
+import { repsPerSettimana, raggruppaEsercizi } from '../lib/schede'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-const REPS_FOR_WEEK = (ex, week) => {
-  if (week <= 2) return ex.reps_a
-  if (week <= 4) return ex.reps_b
-  return ex.reps_c
-}
 
 
-function groupExercises(exercises) {
-  const groups = [], seen = {}
-  exercises.forEach(ex => {
-    const sg = ex.superset_group
-    if (!sg) {
-      groups.push({ type: 'single', exercises: [ex] })
-    } else {
-      const type = sg?.startsWith('CIR-') ? 'circuit' : 'superset'
-      if (!seen[sg]) { seen[sg] = { type, label: sg, exercises: [] }; groups.push(seen[sg]) }
-      seen[sg].exercises.push(ex)
-    }
-  })
-  return groups
-}
 
 export default function TurnDetail({ navigate, goBack, goHome, params }) {
   // `phase` arrivava da Home ma non veniva mai letto: le tre card FASE 1/2/3
@@ -165,11 +147,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
       if (loads[`${client.id}_${ex.id}_${w}`] !== undefined) { prevWeek = w; break }
     }
     const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
-    const prevReps = prevWeek !== null ? REPS_FOR_WEEK(ex, prevWeek) : undefined
+    const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek) : undefined
     return { currentKg, prevKg, prevReps }
   }
 
-  const groups = groupExercises(exercises)
+  const groups = raggruppaEsercizi(exercises)
 
   if (!cycle) return (
     <div style={page}>
@@ -261,7 +243,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                                       mostrarne una sola qui sarebbe falso, stanno nei badge sotto. */}
                                   {group.exercises.length === 1 && <>
                                     <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
-                                    <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{REPS_FOR_WEEK(group.exercises[0], client.current_week)}</span>
+                                    <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], client.current_week)}</span>
                                   </>}
                                 </div>
                             }
@@ -291,7 +273,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                                   </span>
                                   {currentKg !== undefined && (
                                     <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                      × {REPS_FOR_WEEK(ex, client.current_week)}
+                                      × {repsPerSettimana(ex, client.current_week)}
                                     </span>
                                   )}
                                   {diff !== null && (
@@ -407,7 +389,7 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
   function getPrevLoad(ex) {
     for (let w = week - 1; w >= 1; w--) {
       const kg = loads[`${client.id}_${ex.id}_${w}`]
-      if (kg !== undefined) return { kg, reps: REPS_FOR_WEEK(ex, w) }
+      if (kg !== undefined) return { kg, reps: repsPerSettimana(ex, w) }
     }
     return null
   }
@@ -444,7 +426,7 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
       <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
           ? <span style={{ color: '#3b82f6' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
-          : <span>Settimana {week} · {REPS_FOR_WEEK(group.exercises[0], week)}</span>
+          : <span>Settimana {week} · {repsPerSettimana(group.exercises[0], week)}</span>
         }
       </div>
       {group.type === 'superset' && (

@@ -35,13 +35,15 @@ function cancella(chiave) {
 }
 
 // ── base64url <-> ArrayBuffer ───────────────────────────────────────────────
-function aBase64url(buffer) {
+// Esportate per poterle testare: un errore di padding qui si manifesterebbe
+// solo mesi dopo, sul telefono di una coach, come uno sblocco che non funziona.
+export function aBase64url(buffer) {
   const bytes = new Uint8Array(buffer)
   let binario = ''
   for (const b of bytes) binario += String.fromCharCode(b)
   return btoa(binario).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
-function daBase64url(testo) {
+export function daBase64url(testo) {
   const base64 = testo.replace(/-/g, '+').replace(/_/g, '/')
   const binario = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))
   const bytes = new Uint8Array(binario.length)

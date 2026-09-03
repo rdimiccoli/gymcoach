@@ -9,7 +9,6 @@ export default function Settings({ navigate, goHome, session }) {
   const [coach, setCoach] = useState(null)
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [allClients, setAllClients] = useState([])
-  const [turns, setTurns] = useState([])
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -64,7 +63,6 @@ export default function Settings({ navigate, goHome, session }) {
         'Impossibile caricare i turni.'),
     ])
     if (c) { setCoach(c); setCoachName(c.name) }
-    setTurns(t || [])
 
     const allC = []
     if (t?.length) {
