@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
+import ImportaCsv from '../components/ImportaCsv'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -29,6 +30,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
+  const [mostraImport, setMostraImport] = useState(false)
   const [usoEsercizio, setUsoEsercizio] = useState(null) // in quante schede è usato
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
 
@@ -599,6 +601,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           </div>
         )}
 
+        {!readOnly && currentCycleId && (
+          <button onClick={() => setMostraImport(true)}
+            style={{ ...bigBtn, marginTop: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.55)', fontSize: '12px', letterSpacing: '1px' }}>
+            ⬆ IMPORTA DA CSV
+          </button>
+        )}
+
         {!readOnly && exList[day].length > 0 && (
           <button onClick={goBack} style={{ ...bigBtn, marginTop: '10px' }}>✓ SALVA E TORNA</button>
         )}
@@ -635,6 +644,15 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             ))}
           </div>
         </div>
+      )}
+
+      {mostraImport && (
+        <ImportaCsv
+          cycleId={currentCycleId}
+          esistentiPerGiorno={{ 1: exList[1].length, 2: exList[2].length, 3: exList[3].length }}
+          onFatto={() => { setMostraImport(false); loadExistingCycle() }}
+          onClose={() => setMostraImport(false)}
+        />
       )}
 
       {/* Delete confirm modal */}

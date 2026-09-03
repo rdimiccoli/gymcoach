@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { run, notifyOk } from '../lib/notify'
+import { run, notifyOk, notifyError } from '../lib/notify'
+import { csvDaEsercizi } from '../lib/csv'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -70,6 +71,30 @@ export default function CyclesList({ navigate, goHome, session }) {
     setCloneModal(null)
     // Non disattiviamo più le schede precedenti — più schede attive per turno sono permesse
     navigate('cycle-form', { turnId, cloneFromId })
+  }
+
+  /**
+   * Scarica la scheda nello stesso formato che il database esporta, quindi
+   * reimportabile e leggibile in qualsiasi foglio di calcolo.
+   * Al momento è anche l'unico backup: i dati vivono solo su Supabase.
+   */
+  async function esportaCsv(cycle) {
+    const { data } = await run(
+      supabase.from('cycle_exercises').select('*, exercises(name)')
+        .eq('cycle_id', cycle.id).order('day').order('sort_order'),
+      'Impossibile leggere gli esercizi della scheda.'
+    )
+    if (!data?.length) { notifyError('La scheda non ha esercizi da esportare.'); return }
+
+    const nomeFile = `${(cycle.name || 'scheda').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}.csv`
+    // Il BOM serve a Excel per riconoscere l'UTF-8: senza, gli accenti si rompono.
+    const blob = new Blob(['﻿' + csvDaEsercizi(data)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = nomeFile
+    document.body.appendChild(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    notifyOk(`${data.length} esercizi esportati`)
   }
 
   async function completeCycle(cycle) {
@@ -191,6 +216,7 @@ export default function CyclesList({ navigate, goHome, session }) {
                       style={actionBtn}>📤 CONDIVIDI</button>
                     <button onClick={() => { setRenameModal(cycle); setRenameValue(cycle.name) }}
                       style={actionBtn}>✏️ RINOMINA</button>
+                    <button onClick={() => esportaCsv(cycle)} style={actionBtn}>⬇ CSV</button>
                     {cycle.is_active && (
                       <button onClick={() => setCompleteModal(cycle)}
                         style={{ ...actionBtn, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', color: '#eab308' }}>✓ COMPLETA</button>
