@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run } from '../lib/notify'
 import BottomNav from '../components/BottomNav'
 
 const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']
@@ -40,12 +41,23 @@ export default function Home({ navigate, goHome, session }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    let { data: c } = await supabase.from('coaches').select('*').eq('id', session.user.id).single()
+    // .single() dava errore quando la riga non esisteva ancora (primo accesso):
+    // .maybeSingle() restituisce semplicemente null, che è il caso previsto.
+    let { data: c } = await run(
+      supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
+      'Impossibile caricare il profilo coach.'
+    )
     if (!c) {
+      // La riga viene creata al primo accesso con id = auth.uid(), quindi
+      // nessuno può crearne una per conto di altri. Questo però tiene solo se
+      // su Supabase la registrazione pubblica è DISATTIVATA — vedi SICUREZZA.md.
       const name = session.user.email.split('@')[0]
-      const { data: nc } = await supabase.from('coaches')
-        .insert({ id: session.user.id, email: session.user.email, name, home_type: 'phases' })
-        .select().single()
+      const { data: nc } = await run(
+        supabase.from('coaches')
+          .insert({ id: session.user.id, email: session.user.email, name, home_type: 'phases' })
+          .select().single(),
+        'Profilo coach non creato. Contatta l\'amministratore.'
+      )
       c = nc
     }
     setCoach(c)

@@ -22,27 +22,25 @@ export default function Login() {
   }
 
   const handleReset = async () => {
-    if (!resetEmail.trim()) return
+    const email = resetEmail.trim().toLowerCase()
+    if (!email) return
     setResetLoading(true)
     setError('')
 
-    // Check if email exists in coaches table before sending reset
-    const { data: coach } = await supabase
-      .from('coaches')
-      .select('id')
-      .eq('email', resetEmail.trim().toLowerCase())
-      .maybeSingle()
-
-    if (!coach) {
-      setError('Nessun account trovato con questa email.')
-      setResetLoading(false)
-      return
-    }
-
-    await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+    // Qui prima si interrogava la tabella `coaches` da utente NON autenticato.
+    // Delle due l'una: o le RLS bloccavano la lettura e il reset non funzionava
+    // mai per nessuno, oppure non la bloccavano e chiunque avesse la chiave anon
+    // (che è pubblica, sta nel bundle JS) poteva leggere nome ed email di tutti
+    // i coach. In più era user-enumeration.
+    // Supabase non rivela se l'indirizzo esiste: è il comportamento corretto.
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
     })
     setResetLoading(false)
+    if (error) {
+      setError('Invio non riuscito. Controlla la connessione e riprova.')
+      return
+    }
     setResetSent(true)
   }
 
@@ -138,8 +136,8 @@ export default function Login() {
           </div>
         ) : resetSent ? (
           <div style={{ marginTop: '18px', background: 'rgba(217,92,26,0.08)', border: '1px solid rgba(217,92,26,0.25)', borderRadius: '4px', padding: '14px', textAlign: 'center' }}>
-            <div style={{ color: '#D95C1A', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ EMAIL INVIATA</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Controlla la tua casella e segui il link per reimpostare la password.</div>
+            <div style={{ color: '#D95C1A', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ RICHIESTA INVIATA</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Se l'indirizzo è registrato riceverai il link per reimpostare la password. Controlla anche lo spam.</div>
             <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
           </div>
         ) : (
