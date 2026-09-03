@@ -11,8 +11,10 @@ import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Notifier from './components/Notifier'
+import IndicatoreCoda from './components/IndicatoreCoda'
 import BloccoBiometrico from './components/BloccoBiometrico'
 import { bloccoAttivo, disattivaBlocco, MINUTI_RIBLOCCO } from './lib/biometria'
+import { avviaSincronizzazioneAutomatica } from './lib/coda'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -144,6 +146,10 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisibilita)
   }, [])
 
+  // I carichi rimasti in coda partono da soli: al ritorno della rete, alla
+  // riapertura dell'app e comunque ogni minuto.
+  useEffect(() => avviaSincronizzazioneAutomatica(session?.user?.id), [session?.user?.id])
+
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
   const goHome = () => setStack(HOME)
@@ -201,6 +207,7 @@ export default function App() {
     <>
       <Page {...props} />
       <Notifier />
+      <IndicatoreCoda userId={session.user.id} />
 
       {/* PWA update banner */}
       {needRefresh && (

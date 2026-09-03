@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { run, notifyOk } from '../lib/notify'
+import { run, notifyOk, notifyError } from '../lib/notify'
+import { salvaCarichi } from '../lib/coda'
 import { repsPerSettimana, raggruppaEsercizi } from '../lib/schede'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -8,7 +9,7 @@ import BottomNav from '../components/BottomNav'
 
 
 
-export default function TurnDetail({ navigate, goBack, goHome, params }) {
+export default function TurnDetail({ navigate, goBack, goHome, params, session }) {
   // `phase` arrivava da Home ma non veniva mai letto: le tre card FASE 1/2/3
   // portavano tutte alla stessa identica schermata.
   const { turn, cycle, phase } = params
@@ -71,13 +72,15 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
     const righe = loadUpdates.map(({ cycleExId, kg }) => ({
       client_id: clientId, cycle_exercise_id: cycleExId, kg, week: clientWeek
     }))
-    const { error } = await run(
-      supabase.from('client_loads').upsert(righe, { onConflict: 'client_id,cycle_exercise_id,week' }),
-      'Carichi NON salvati. Controlla la connessione e riprova.'
-    )
-    // Se fallisce la modale resta aperta con i valori digitati: il coach vede
-    // l'avviso e può ritentare senza riscrivere tutto.
-    if (error) return
+    // Passa dalla coda: se manca il segnale il carico non si perde, resta sul
+    // telefono e parte da solo. Fallisce solo se è il server a rifiutare.
+    const { differito, errore } = await salvaCarichi(session.user.id, righe)
+    if (errore) {
+      notifyError('Carichi rifiutati dal server. Riprova.')
+      // La modale resta aperta con i valori digitati: si può ritentare senza
+      // riscrivere tutto.
+      return
+    }
 
     setLoads(prev => {
       const next = { ...prev }
@@ -122,7 +125,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
       })
       return next
     })
-    notifyOk('Carichi salvati')
+    notifyOk(differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
     setEditModal(null)
   }
 
