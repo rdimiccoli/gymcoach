@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, TIPO } from './schede'
+import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, secondiDaTesto, numeroDaTesto, TIPO } from './schede'
 
 const ex = (id, gruppo = null, reps = {}) => ({
   id,
@@ -98,5 +98,47 @@ describe('raggruppaEsercizi', () => {
     expect(raggruppaEsercizi(null)).toEqual([])
     expect(raggruppaEsercizi(undefined)).toEqual([])
     expect(raggruppaEsercizi([ex(1), null, ex(2)])).toHaveLength(2)
+  })
+})
+
+describe('secondiDaTesto', () => {
+  it('legge le durate come le scrive il coach', () => {
+    // Valori presi dai dati reali del circuito CIR-A
+    expect(secondiDaTesto('50s')).toBe(50)
+    expect(secondiDaTesto('10s')).toBe(10)
+    expect(secondiDaTesto('30s')).toBe(30)
+    expect(secondiDaTesto('15s')).toBe(15)
+  })
+
+  it('accetta un numero nudo come secondi, e i minuti come minuti', () => {
+    expect(secondiDaTesto('45')).toBe(45)
+    expect(secondiDaTesto("2'")).toBe(120)
+    expect(secondiDaTesto('1 min')).toBe(60)
+    expect(secondiDaTesto(' 20 S ')).toBe(20)
+  })
+
+  it('rifiuta quello che non è una durata, invece di inventarsi un numero', () => {
+    // Se il timer partisse su queste, direbbe tempi sbagliati a voce alta
+    expect(secondiDaTesto('3x10')).toBeNull()
+    expect(secondiDaTesto('MAX')).toBeNull()
+    expect(secondiDaTesto('2xMAX + 15" + MAX + DROP')).toBeNull()
+    expect(secondiDaTesto('3x8 +8')).toBeNull()
+    expect(secondiDaTesto('')).toBeNull()
+    expect(secondiDaTesto(null)).toBeNull()
+    expect(secondiDaTesto('0s')).toBeNull()
+  })
+})
+
+describe('numeroDaTesto', () => {
+  it('legge il numero di giri', () => {
+    expect(numeroDaTesto('3')).toBe(3)
+    expect(numeroDaTesto('4 giri')).toBe(4)
+    expect(numeroDaTesto('x5')).toBe(5)
+  })
+
+  it('rifiuta valori senza numeri o nulli', () => {
+    expect(numeroDaTesto('MAX')).toBeNull()
+    expect(numeroDaTesto(null)).toBeNull()
+    expect(numeroDaTesto('0')).toBeNull()
   })
 })

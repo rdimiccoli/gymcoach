@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
-import { repsPerSettimana, raggruppaEsercizi } from '../lib/schede'
+import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto } from '../lib/schede'
+import TimerCircuito from '../components/TimerCircuito'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -25,6 +26,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [confermaAvanza, setConfermaAvanza] = useState(false)
+  const [timer, setTimer] = useState(null)
   const [loading, setLoading] = useState(true)
   const timerCarichi = useRef({})
   const carichiPendenti = useRef({})
@@ -277,7 +279,19 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                     <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
                   )}
                   {group.type === 'circuit' && (
-                    <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                      <span style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</span>
+                      {/* Durata, riposo e giri sono già nel database: finora
+                          venivano solo stampati e cronometrati a mano. */}
+                      {secondiDaTesto(group.exercises[0]?.reps_a) && (
+                        <button onClick={e => { e.stopPropagation(); setTimer(group) }} style={{
+                          background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.45)',
+                          borderRadius: '3px', padding: '3px 9px', color: '#3b82f6',
+                          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
+                          touchAction: 'manipulation', cursor: 'pointer',
+                        }}>▶ TIMER</button>
+                      )}
+                    </div>
                   )}
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {group.exercises.map(e => e?.exercises?.name).join(' + ')}
@@ -460,6 +474,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         )}
         <div style={{ height: '20px' }} />
       </div>
+
+      {timer && <TimerCircuito group={timer} onClose={() => setTimer(null)} />}
 
       {confermaAvanza && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>

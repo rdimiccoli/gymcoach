@@ -24,6 +24,31 @@ export function tipoGruppo(etichetta) {
   return isCircuito(etichetta) ? TIPO.CIRCUITO : TIPO.SUPERSERIE
 }
 
+/**
+ * Legge una durata scritta a mano dal coach: "50s", "30", "1'", "2 min".
+ * Ritorna secondi, oppure null se non è interpretabile — nel qual caso il
+ * timer non si offre nemmeno, invece di inventarsi un numero.
+ */
+export function secondiDaTesto(testo) {
+  if (testo == null) return null
+  const s = String(testo).trim().toLowerCase().replace(',', '.')
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*(s|sec|secondi|''|'|m|min|minuti)?$/)
+  if (!m) return null
+  const n = parseFloat(m[1])
+  if (!Number.isFinite(n) || n <= 0) return null
+  const minuti = ["'", 'm', 'min', 'minuti'].includes(m[2])
+  return Math.round(minuti ? n * 60 : n)
+}
+
+/** Numero di giri di un circuito: "3", "3 giri", "x3". */
+export function numeroDaTesto(testo) {
+  if (testo == null) return null
+  const m = String(testo).trim().match(/\d+/)
+  if (!m) return null
+  const n = parseInt(m[0], 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 /** Le ripetizioni cambiano ogni due settimane: a = 1-2, b = 3-4, c = 5-6. */
 export function repsPerSettimana(esercizio, settimana) {
   if (!esercizio) return undefined
