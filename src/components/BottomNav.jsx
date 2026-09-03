@@ -1,9 +1,10 @@
 export default function BottomNav({ active, navigate, goHome }) {
   const items = [
-    { id: 'home',     icon: '⬡', label: 'HOME',         action: goHome },
-    { id: 'cycles',   icon: '◈', label: 'SCHEDE',        action: () => navigate('cycles') },
-    { id: 'turns',    icon: '◷', label: 'TURNI',         action: () => navigate('turns') },
-    { id: 'settings', icon: '◎', label: 'IMPOST.',       action: () => navigate('settings') },
+    { id: 'home',     icon: '⬡', label: 'HOME',    action: goHome },
+    { id: 'cycles',   icon: '◈', label: 'SCHEDE',  action: () => navigate('cycles') },
+    { id: 'turns',    icon: '◷', label: 'TURNI',   action: () => navigate('turns') },
+    { id: 'athletes', icon: '◍', label: 'ATLETI',  action: () => navigate('athletes') },
+    { id: 'settings', icon: '◎', label: 'IMPOST.', action: () => navigate('settings') },
   ]
   return (
     <div style={{

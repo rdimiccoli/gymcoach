@@ -8,7 +8,6 @@ import BottomNav from '../components/BottomNav'
 export default function Settings({ navigate, goHome, session }) {
   const [coach, setCoach] = useState(null)
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
-  const [allClients, setAllClients] = useState([])
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -77,7 +76,6 @@ export default function Settings({ navigate, goHome, session }) {
     }
     // Sort alphabetically by surname
     allC.sort((a, b) => (a.surname || '').localeCompare(b.surname || ''))
-    setAllClients(allC)
     setStats({ turns: t?.length || 0, clients: allC.length })
   }
 
@@ -171,42 +169,6 @@ export default function Settings({ navigate, goHome, session }) {
     </div>
   )
 
-  // ── ATHLETES LIST ─────────────────────────────────────────────────────────
-  if (view === 'athletes') return (
-    <div style={page}>
-      <TopBar title="ATLETI ATTIVI" subtitle={`${stats.clients} atleti`} onBack={() => setView('main')} />
-      <div style={scroll}>
-        {allClients.length === 0 && (
-          <div style={{ color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '40px', fontSize: '13px' }}>Nessun atleta attivo.</div>
-        )}
-        {allClients.map((client, i) => (
-          <div key={client.id}
-            onClick={() => navigate('athlete-profile', { client })}
-            style={{
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: '6px', padding: '12px 16px', marginBottom: '7px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
-            }}>
-            <div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                {client.surname} {client.name}
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '2px' }}>{client.turnName}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ background: 'rgba(217,92,26,0.15)', borderRadius: '3px', padding: '4px 10px' }}>
-                <div style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>SETT. {client.current_week}</div>
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px' }}>›</div>
-            </div>
-          </div>
-        ))}
-        <div style={{ height: '20px' }} />
-      </div>
-      <BottomNav active="settings" navigate={navigate} goHome={goHome} />
-    </div>
-  )
-
   // ── MAIN SETTINGS ─────────────────────────────────────────────────────────
   return (
     <div style={page}>
@@ -233,7 +195,7 @@ export default function Settings({ navigate, goHome, session }) {
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{stats.turns}</div>
               <div style={{ color: '#D95C1A', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI TURNI →</div>
             </button>
-            <button onClick={() => setView('athletes')}
+            <button onClick={() => navigate('athletes')}
               style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'left', cursor: 'pointer' }}>
               <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>ATLETI ATTIVI</div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{stats.clients}</div>

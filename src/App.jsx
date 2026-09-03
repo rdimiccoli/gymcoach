@@ -10,6 +10,7 @@ import Settings from './pages/Settings'
 import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
+import Athletes from './pages/Athletes'
 import Notifier from './components/Notifier'
 import IndicatoreCoda from './components/IndicatoreCoda'
 import BloccoBiometrico from './components/BloccoBiometrico'
@@ -198,6 +199,7 @@ export default function App() {
     'cycle-share': CycleShare,
     settings: Settings,
     turns: Turns,
+    athletes: Athletes,
     'athlete-profile': AthleteProfile,
   }
 
