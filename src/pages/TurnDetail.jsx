@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
@@ -25,8 +25,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [loading, setLoading] = useState(true)
+  const timerCarichi = useRef({})
+  const carichiPendenti = useRef({})
 
   useEffect(() => { if (cycle) loadData(); else setLoading(false) }, [day, cycle])
+
+  // Uscendo dalla schermata le modifiche ancora in attesa partono comunque.
+  useEffect(() => () => { Object.keys(carichiPendenti.current).forEach(scriviCarico) }, [])
 
   async function loadData() {
     setLoading(true)
@@ -127,6 +132,33 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     })
     notifyOk(differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
     setEditModal(null)
+  }
+
+  // Modifica di un carico dalla lista, senza aprire nulla. Lo stato locale si
+  // aggiorna subito — il tocco deve rispondere all'istante — e la scrittura
+  // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
+  function modificaCarico(client, ex, delta) {
+    const settimana = client.current_week
+    const chiave = `${client.id}_${ex.id}_${settimana}`
+    const attuale = parseFloat(loads[chiave])
+    const base = Number.isFinite(attuale) ? attuale : 0
+    const nuovo = Math.max(0, parseFloat((base + delta).toFixed(2)))
+
+    setLoads(prev => ({ ...prev, [chiave]: nuovo }))
+    carichiPendenti.current[chiave] = {
+      client_id: client.id, cycle_exercise_id: ex.id, kg: nuovo, week: settimana,
+    }
+    clearTimeout(timerCarichi.current[chiave])
+    timerCarichi.current[chiave] = setTimeout(() => scriviCarico(chiave), 900)
+  }
+
+  async function scriviCarico(chiave) {
+    const riga = carichiPendenti.current[chiave]
+    if (!riga) return
+    delete carichiPendenti.current[chiave]
+    clearTimeout(timerCarichi.current[chiave])
+    const { errore } = await salvaCarichi(session.user.id, [riga])
+    if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
   async function advanceWeek(client) {
@@ -255,42 +287,57 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                             background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.3)',
                             borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
                             color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
-                          }}>CARICHI</button>
+                          }}>DETTAGLI</button>
                         </div>
 
-                        {/* Load badges */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                        {/* Carichi in linea. Prima ogni singolo peso costava sei
+                            tocchi e due cambi di schermata: espandi → trova
+                            l'atleta → CARICHI → modifica → salva → chiudi. Con
+                            decine di atlete, girando la sala col telefono in
+                            mano, era il collo di bottiglia della sessione.
+                            Il numero resta toccabile per aprire i dettagli
+                            (mezzi chili e nota). */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {group.exercises.map(ex => {
-                            const { currentKg, prevKg, prevReps } = getLoadInfo(client, ex)
+                            const { currentKg, prevKg } = getLoadInfo(client, ex)
                             // Un carico di 0 kg (corpo libero, macchina assistita) è
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '5px 9px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px' }}>
-                                    {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
-                                  </span>
-                                  <span style={{ color: '#fff', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
-                                    {currentKg !== undefined ? `${currentKg}kg` : '—'}
-                                  </span>
-                                  {currentKg !== undefined && (
-                                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  {group.exercises.length > 1 && (
+                                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {ex?.exercises?.name?.toUpperCase() ?? ''}
+                                    </div>
+                                  )}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       × {repsPerSettimana(ex, client.current_week)}
                                     </span>
-                                  )}
-                                  {diff !== null && (
-                                    <span style={{ fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? '#22c55e' : diff < 0 ? '#ef4444' : 'rgba(255,255,255,0.2)' }}>
-                                      {diff > 0 ? `↑+${diff}` : diff < 0 ? `↓${diff}` : '='}
-                                    </span>
-                                  )}
-                                </div>
-                                {/* Previous load */}
-                                {prevKg !== undefined && (
-                                  <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '2px' }}>
-                                    prec. {prevKg}kg × {prevReps}
+                                    {prevKg !== undefined && (
+                                      <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                        prec. {prevKg}
+                                      </span>
+                                    )}
+                                    {diff !== null && diff !== 0 && (
+                                      <span style={{ fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? '#22c55e' : '#ef4444' }}>
+                                        {diff > 0 ? `↑+${diff}` : `↓${diff}`}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                </div>
+
+                                <button onClick={() => modificaCarico(client, ex, -1)} style={tastoCarico}>−</button>
+                                <div onClick={() => setEditModal({ client, group })}
+                                  style={{ minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
+                                  <span style={{ color: currentKg !== undefined ? '#fff' : 'rgba(255,255,255,0.22)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
+                                    {currentKg !== undefined ? currentKg : '—'}
+                                  </span>
+                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
+                                </div>
+                                <button onClick={() => modificaCarico(client, ex, 1)}
+                                  style={{ ...tastoCarico, background: 'rgba(217,92,26,0.18)', borderColor: 'rgba(217,92,26,0.45)', color: '#D95C1A' }}>+</button>
                               </div>
                             )
                           })}
@@ -515,3 +562,5 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
+// 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
+const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '5px', color: 'rgba(255,255,255,0.75)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
