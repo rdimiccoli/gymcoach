@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run, notifyOk } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -28,14 +29,20 @@ export default function Turns({ navigate, goHome, session }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: t } = await supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time')
+    const { data: t } = await run(
+      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      'Impossibile caricare i turni.'
+    )
     setTurns(t || [])
     setLoading(false)
   }
 
   async function loadClients(turn) {
     setSelectedTurn(turn)
-    const { data } = await supabase.from('clients').select('*').eq('turn_id', turn.id).order('surname')
+    const { data } = await run(
+      supabase.from('clients').select('*').eq('turn_id', turn.id).order('surname'),
+      'Impossibile caricare i clienti del turno.'
+    )
     setClients(data || [])
     setView('turn')
   }
@@ -43,26 +50,34 @@ export default function Turns({ navigate, goHome, session }) {
   async function saveTurn() {
     if (!turnTime.trim()) return
     setSaving(true)
-    await supabase.from('turns').insert({
-      coach_id: session.user.id,
-      name: `${turnTime} — ${turnType}`,
-      time: turnTime, type: turnType
-    })
+    const { error } = await run(
+      supabase.from('turns').insert({
+        coach_id: session.user.id,
+        name: `${turnTime} — ${turnType}`,
+        time: turnTime, type: turnType
+      }),
+      'Turno non creato. Controlla la connessione e riprova.'
+    )
+    setSaving(false)
+    if (error) return
     await loadData()
     setTurnTime(''); setTurnType('Misto')
-    setSaving(false)
     setView('main')
   }
 
   async function saveClient() {
     if (!clientName.trim() || !clientSurname.trim()) return
     setSaving(true)
-    await supabase.from('clients').insert({
-      turn_id: selectedTurn.id, name: clientName, surname: clientSurname, current_week: 1
-    })
+    const { error } = await run(
+      supabase.from('clients').insert({
+        turn_id: selectedTurn.id, name: clientName.trim(), surname: clientSurname.trim(), current_week: 1
+      }),
+      'Cliente non aggiunto. Controlla la connessione e riprova.'
+    )
+    setSaving(false)
+    if (error) return
     await loadClients(selectedTurn)
     setClientName(''); setClientSurname('')
-    setSaving(false)
   }
 
   async function deleteTurn(id) {
@@ -72,19 +87,66 @@ export default function Turns({ navigate, goHome, session }) {
   async function saveRenameTurn() {
     if (!renameTurnValue.trim()) return
     const newName = renameTurnValue.trim()
-    await supabase.from('turns').update({ name: newName }).eq('id', renameTurnModal.id)
+    const { error } = await run(
+      supabase.from('turns').update({ name: newName }).eq('id', renameTurnModal.id),
+      'Nome del turno non salvato.'
+    )
+    if (error) return
     setTurns(prev => prev.map(t => t.id === renameTurnModal.id ? { ...t, name: newName } : t))
     setRenameTurnModal(null)
   }
 
   async function executeDeleteTurn() {
-    await supabase.from('turns').delete().eq('id', deleteTurnConfirm)
+    const turnId = deleteTurnConfirm
+    setSaving(true)
+
+    // La modale promette di eliminare clienti, schede e carichi, ma qui c'era
+    // solo la delete del turno: se il database non ha i CASCADE la foreign key
+    // la rifiuta, l'errore veniva ignorato e il turno ricompariva da solo.
+    // Puliamo i figli nell'ordine giusto, dal basso verso l'alto.
+    const [{ data: cicli }, { data: clienti }] = await Promise.all([
+      run(supabase.from('cycles').select('id').eq('turn_id', turnId), 'Impossibile leggere le schede del turno.'),
+      run(supabase.from('clients').select('id').eq('turn_id', turnId), 'Impossibile leggere i clienti del turno.'),
+    ])
+
+    const cicloIds = (cicli || []).map(c => c.id)
+    const clienteIds = (clienti || []).map(c => c.id)
+
+    let esercizioIds = []
+    if (cicloIds.length) {
+      const { data: es } = await run(
+        supabase.from('cycle_exercises').select('id').in('cycle_id', cicloIds),
+        'Impossibile leggere gli esercizi delle schede.'
+      )
+      esercizioIds = (es || []).map(e => e.id)
+    }
+
+    const passaggi = [
+      esercizioIds.length && [supabase.from('client_loads').delete().in('cycle_exercise_id', esercizioIds), 'Impossibile eliminare i carichi delle schede.'],
+      clienteIds.length && [supabase.from('client_loads').delete().in('client_id', clienteIds), 'Impossibile eliminare i carichi dei clienti.'],
+      cicloIds.length && [supabase.from('cycle_exercises').delete().in('cycle_id', cicloIds), 'Impossibile eliminare gli esercizi.'],
+      cicloIds.length && [supabase.from('cycles').delete().eq('turn_id', turnId), 'Impossibile eliminare le schede.'],
+      clienteIds.length && [supabase.from('clients').delete().eq('turn_id', turnId), 'Impossibile eliminare i clienti.'],
+      [supabase.from('turns').delete().eq('id', turnId), 'Impossibile eliminare il turno.'],
+    ].filter(Boolean)
+
+    for (const [query, messaggio] of passaggi) {
+      const { error } = await run(query, messaggio)
+      if (error) { setSaving(false); setDeleteTurnConfirm(null); await loadData(); return }
+    }
+
+    setSaving(false)
     setDeleteTurnConfirm(null)
+    notifyOk('Turno eliminato')
     await loadData()
   }
 
   async function toggleClient(client) {
-    await supabase.from('clients').update({ is_active: !client.is_active }).eq('id', client.id)
+    const { error } = await run(
+      supabase.from('clients').update({ is_active: !client.is_active }).eq('id', client.id),
+      `Impossibile ${client.is_active ? 'archiviare' : 'riattivare'} ${client.surname} ${client.name}.`
+    )
+    if (error) return
     await loadClients(selectedTurn)
   }
 
@@ -98,9 +160,13 @@ export default function Turns({ navigate, goHome, session }) {
   async function saveEditClient() {
     if (!editName.trim() || !editSurname.trim()) return
     setSaving(true)
-    await supabase.from('clients').update({ name: editName.trim(), surname: editSurname.trim() }).eq('id', editClient.id)
-    setClients(prev => prev.map(c => c.id === editClient.id ? { ...c, name: editName.trim(), surname: editSurname.trim() } : c))
+    const { error } = await run(
+      supabase.from('clients').update({ name: editName.trim(), surname: editSurname.trim() }).eq('id', editClient.id),
+      'Modifiche al cliente non salvate.'
+    )
     setSaving(false)
+    if (error) return
+    setClients(prev => prev.map(c => c.id === editClient.id ? { ...c, name: editName.trim(), surname: editSurname.trim() } : c))
     setEditClient(null)
   }
 
@@ -113,8 +179,16 @@ export default function Turns({ navigate, goHome, session }) {
     const client = deleteConfirm
     setDeleteConfirm(null)
     // Delete loads first (foreign key)
-    await supabase.from('client_loads').delete().eq('client_id', client.id)
-    await supabase.from('clients').delete().eq('id', client.id)
+    const { error: errCarichi } = await run(
+      supabase.from('client_loads').delete().eq('client_id', client.id),
+      `Impossibile eliminare i carichi di ${client.surname} ${client.name}.`
+    )
+    if (errCarichi) return
+    const { error } = await run(
+      supabase.from('clients').delete().eq('id', client.id),
+      `Impossibile eliminare ${client.surname} ${client.name}.`
+    )
+    if (error) return
     setClients(prev => prev.filter(c => c.id !== client.id))
   }
 

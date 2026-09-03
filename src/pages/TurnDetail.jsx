@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run, notifyOk } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -42,23 +43,26 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
 
   async function loadData() {
     setLoading(true)
-    const { data: exData } = await supabase
-      .from('cycle_exercises').select('*, exercises(name)')
-      .eq('cycle_id', cycle.id).eq('day', day).order('sort_order')
+    const [{ data: exData }, { data: cl }] = await Promise.all([
+      run(supabase.from('cycle_exercises').select('*, exercises(name)')
+        .eq('cycle_id', cycle.id).eq('day', day).order('sort_order'),
+        'Impossibile caricare gli esercizi del giorno.'),
+      run(supabase.from('clients').select('*')
+        .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
+        'Impossibile caricare gli atleti del turno.'),
+    ])
     setExercises(exData || [])
-
-    const { data: cl } = await supabase
-      .from('clients').select('*')
-      .eq('turn_id', turn.id).eq('is_active', true).order('surname')
     setClients(cl || [])
 
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
       const clIds = cl.map(c => c.id)
       // Load ALL weeks for each client/exercise
-      const { data: loadData } = await supabase
-        .from('client_loads').select('*')
-        .in('client_id', clIds).in('cycle_exercise_id', exIds)
+      const { data: loadData } = await run(
+        supabase.from('client_loads').select('*')
+          .in('client_id', clIds).in('cycle_exercise_id', exIds),
+        'Impossibile caricare lo storico dei carichi.'
+      )
       const loadMap = {}
       loadData?.forEach(l => {
         loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
@@ -69,22 +73,36 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   }
 
   async function saveLoads(clientId, clientWeek, loadUpdates) {
-    const newLoads = { ...loads }
-    for (const { cycleExId, kg } of loadUpdates) {
-      newLoads[`${clientId}_${cycleExId}_${clientWeek}`] = kg
-      await supabase.from('client_loads').upsert(
-        { client_id: clientId, cycle_exercise_id: cycleExId, kg, week: clientWeek },
-        { onConflict: 'client_id,cycle_exercise_id,week' }
-      )
-    }
-    setLoads(newLoads)
+    // Un solo upsert per tutto il gruppo: prima era una richiesta per esercizio,
+    // in fila, e nessuna delle due controllava l'esito.
+    const righe = loadUpdates.map(({ cycleExId, kg }) => ({
+      client_id: clientId, cycle_exercise_id: cycleExId, kg, week: clientWeek
+    }))
+    const { error } = await run(
+      supabase.from('client_loads').upsert(righe, { onConflict: 'client_id,cycle_exercise_id,week' }),
+      'Carichi NON salvati. Controlla la connessione e riprova.'
+    )
+    // Se fallisce la modale resta aperta con i valori digitati: il coach vede
+    // l'avviso e può ritentare senza riscrivere tutto.
+    if (error) return
+
+    setLoads(prev => {
+      const next = { ...prev }
+      loadUpdates.forEach(({ cycleExId, kg }) => { next[`${clientId}_${cycleExId}_${clientWeek}`] = kg })
+      return next
+    })
+    notifyOk('Carichi salvati')
     setEditModal(null)
   }
 
   async function advanceWeek(client) {
     if (client.current_week >= 6) return
     const newWeek = client.current_week + 1
-    await supabase.from('clients').update({ current_week: newWeek }).eq('id', client.id)
+    const { error } = await run(
+      supabase.from('clients').update({ current_week: newWeek }).eq('id', client.id),
+      `Impossibile avanzare la settimana di ${client.name} ${client.surname}.`
+    )
+    if (error) return
     setClients(prev => prev.map(c => c.id === client.id ? { ...c, current_week: newWeek } : c))
   }
 
@@ -166,7 +184,6 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.06)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map(client => {
-                    const currentReps = REPS_FOR_WEEK(group.exercises[0], client.current_week)
                     const isLate = client.current_week < 3
                     return (
                       <div key={client.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
@@ -187,8 +204,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                                     <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
                                     <span style={{ color: '#D95C1A', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
                                   </div>
-                                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
-                                  <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{currentReps}</span>
+                                  {/* In una superserie ogni esercizio ha le sue ripetizioni:
+                                      mostrarne una sola qui sarebbe falso, stanno nei badge sotto. */}
+                                  {group.exercises.length === 1 && <>
+                                    <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
+                                    <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{REPS_FOR_WEEK(group.exercises[0], client.current_week)}</span>
+                                  </>}
                                 </div>
                             }
                           </div>
@@ -215,7 +236,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                                   </span>
                                   {currentKg > 0 && (
                                     <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                      × {currentReps}
+                                      × {REPS_FOR_WEEK(ex, client.current_week)}
                                     </span>
                                   )}
                                   {diff !== null && (
@@ -304,7 +325,13 @@ function LoadModal({ client, group, loads, onSave, onClose }) {
   }
 
   const change = (exId, delta) => {
-    setKgMap(prev => ({ ...prev, [exId]: Math.max(0, parseFloat((prev[exId] + delta).toFixed(2))) }))
+    setKgMap(prev => {
+      // prev[exId] può essere la stringa '' o '.' quando il coach svuota il campo
+      // per riscriverlo: sommarci un numero dava concatenazione e poi crash.
+      const attuale = parseFloat(prev[exId])
+      const base = Number.isFinite(attuale) ? attuale : 0
+      return { ...prev, [exId]: Math.max(0, parseFloat((base + delta).toFixed(2))) }
+    })
   }
 
   const handleManualInput = (exId, val) => {

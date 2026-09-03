@@ -11,6 +11,7 @@ import Settings from './pages/Settings'
 import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
+import Notifier from './components/Notifier'
 import { supabase } from './supabaseClient'
 
 const INITIAL_IS_RECOVERY = window.location.hash.includes('type=recovery')
@@ -80,10 +81,10 @@ export default function App() {
   if (loading) return <Splash />
 
   if (isRecovery && session) {
-    return <ChangePassword onDone={() => setIsRecovery(false)} />
+    return <><ChangePassword onDone={() => setIsRecovery(false)} /><Notifier /></>
   }
 
-  if (!session) return <Login />
+  if (!session) return <><Login /><Notifier /></>
 
   const current = stack[stack.length - 1]
   const props = { navigate, goBack, goHome, params: current.params, session }
@@ -105,6 +106,7 @@ export default function App() {
   return (
     <>
       <Page {...props} />
+      <Notifier />
 
       {/* PWA update banner */}
       {needRefresh && (

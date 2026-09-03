@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
+import { run, notifyError } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+
+// I giorni validi sono 1-3. Una riga con day nullo o fuori range faceva
+// crashare l'app (map[e.day] undefined) invece di essere semplicemente ignorata.
+const GIORNI = [1, 2, 3]
+const giornoValido = d => GIORNI.includes(Number(d))
 
 const isSS = g => g?.startsWith('SS-')
 const isCIR = g => g?.startsWith('CIR-')
@@ -34,6 +40,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const rowRefs = useRef({})
   const scrollRef = useRef(null)
   const autoScrollRef = useRef(null)
+  const repsTimers = useRef({})
+  const repsPending = useRef({})
 
   useEffect(() => {
     loadExercises()
@@ -41,24 +49,40 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (cloneFromId) loadClonePreview()
   }, [])
 
+  // Se il coach esce dalla pagina subito dopo aver digitato, la scrittura
+  // in attesa parte comunque invece di perdersi.
+  useEffect(() => () => { Object.keys(repsPending.current).forEach(scriviReps) }, [])
+
   async function loadExercises() {
-    const { data } = await supabase.from('exercises').select('*').order('name')
+    const { data } = await run(
+      supabase.from('exercises').select('*').order('name'),
+      'Impossibile caricare il catalogo esercizi.'
+    )
     setAllExercises((data || []).filter(e => e?.name))
   }
 
   async function loadClonePreview() {
-    const { data } = await supabase.from('cycles').select('name').eq('id', cloneFromId).single()
+    const { data } = await run(
+      supabase.from('cycles').select('name').eq('id', cloneFromId).single(),
+      'Impossibile leggere la scheda da clonare.'
+    )
     setCloneInfo(data)
   }
 
   async function loadExistingCycle() {
-    const { data: cycle } = await supabase.from('cycles').select('*').eq('id', cycleId).single()
+    const { data: cycle } = await run(
+      supabase.from('cycles').select('*').eq('id', cycleId).single(),
+      'Impossibile caricare la scheda.'
+    )
     if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || new Date().toISOString().split('T')[0]) }
-    const { data: exData } = await supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order')
+    const { data: exData } = await run(
+      supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
+      'Impossibile caricare gli esercizi della scheda.'
+    )
     if (exData) {
       const map = { 1: [], 2: [], 3: [] }
       exData.forEach(e => {
-        if (!e.exercises?.name) return
+        if (!e.exercises?.name || !giornoValido(e.day)) return
         map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
       })
       setExList(map)
@@ -68,17 +92,24 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   async function cloneExercises(newCycleId, sourceCycleId) {
-    const { data: srcEx } = await supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', sourceCycleId).order('sort_order')
+    const { data: srcEx } = await run(
+      supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', sourceCycleId).order('sort_order'),
+      'Impossibile leggere la scheda da clonare.'
+    )
     if (!srcEx?.length) return
     const map = { 1: [], 2: [], 3: [] }
-    const inserts = srcEx.filter(e => e.exercises?.name).map((e, i) => ({
+    const inserts = srcEx.filter(e => e.exercises?.name && giornoValido(e.day)).map((e, i) => ({
       cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
       reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
       sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
     }))
-    const { data: inserted } = await supabase.from('cycle_exercises').insert(inserts).select('*, exercises(name)')
+    if (!inserts.length) return
+    const { data: inserted } = await run(
+      supabase.from('cycle_exercises').insert(inserts).select('*, exercises(name)'),
+      'Clonazione non riuscita: gli esercizi non sono stati copiati.'
+    )
     inserted?.forEach(e => {
-      if (!e.exercises?.name) return
+      if (!e.exercises?.name || !giornoValido(e.day)) return
       map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
     })
     setExList(map)
@@ -87,7 +118,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   async function createCycle() {
     if (!cycleName.trim()) return
     setSaving(true)
-    const { data } = await supabase.from('cycles').insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true }).select().single()
+    const { data } = await run(
+      supabase.from('cycles').insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true }).select().single(),
+      'Scheda non creata. Controlla la connessione e riprova.'
+    )
+    // Senza questo controllo data era null e `data.id` faceva schermata bianca.
+    if (!data) { setSaving(false); return }
     setCurrentCycleId(data.id)
     if (cloneFromId) await cloneExercises(data.id, cloneFromId)
     setSaving(false)
@@ -103,15 +139,22 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   async function addExercise(ex) {
+    if (!ex?.id) return
     const supersetGroup = activeGroup?.label || null
     const isCircuit = activeGroup?.type === 'circuit'
     const newEx = { exerciseId: ex.id, name: ex.name, repsA: isCircuit ? '30s' : '3x8', repsB: isCircuit ? '15s' : '3x10', repsC: isCircuit ? '3' : '3x12', supersetGroup }
     if (currentCycleId) {
-      const { data } = await supabase.from('cycle_exercises').insert({
-        cycle_id: currentCycleId, exercise_id: ex.id, day,
-        reps_a: newEx.repsA, reps_b: newEx.repsB, reps_c: newEx.repsC,
-        sort_order: exList[day].length, superset_group: supersetGroup
-      }).select().single()
+      const { data } = await run(
+        supabase.from('cycle_exercises').insert({
+          cycle_id: currentCycleId, exercise_id: ex.id, day,
+          reps_a: newEx.repsA, reps_b: newEx.repsB, reps_c: newEx.repsC,
+          sort_order: exList[day].length, superset_group: supersetGroup
+        }).select().single(),
+        `Impossibile aggiungere "${ex.name}" alla scheda.`
+      )
+      // Prima qui si leggeva data.id senza controlli: se l'insert falliva
+      // l'app crashava invece di segnalare l'errore.
+      if (!data) return
       newEx.id = data.id
     }
     setExList(prev => ({ ...prev, [day]: [...prev[day], newEx] }))
@@ -119,20 +162,61 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   async function addNewExercise(name) {
-    const { data } = await supabase.from('exercises').insert({ name }).select().single()
+    const pulito = name.trim()
+    if (!pulito) return
+
+    // Se l'esercizio esiste già (anche scritto con maiuscole diverse) riusiamo
+    // quello: evita i doppioni nel catalogo e l'insert che falliva sul vincolo
+    // di unicità facendo crashare l'app.
+    const { data: esistente } = await run(
+      supabase.from('exercises').select('*').ilike('name', pulito).limit(1).maybeSingle(),
+      'Impossibile consultare il catalogo esercizi.'
+    )
+    if (esistente) { await addExercise(esistente); return }
+
+    const { data } = await run(
+      supabase.from('exercises').insert({ name: pulito }).select().single(),
+      `Impossibile creare l'esercizio "${pulito}".`
+    )
+    if (!data) return
+    setAllExercises(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     await addExercise(data)
   }
 
-  async function updateReps(d, idx, field, val) {
+  // Scrittura delle ripetizioni: prima partiva un UPDATE a ogni tasto premuto
+  // ("3x10" = 5 richieste) e una risposta in ritardo poteva sovrascrivere il
+  // valore finale. Ora si accumula e si scrive una volta sola.
+  function scriviReps(exId) {
+    const dati = repsPending.current[exId]
+    if (!dati) return
+    delete repsPending.current[exId]
+    clearTimeout(repsTimers.current[exId])
+    run(
+      supabase.from('cycle_exercises')
+        .update({ reps_a: dati.repsA, reps_b: dati.repsB, reps_c: dati.repsC }).eq('id', exId),
+      `Ripetizioni di "${dati.nome}" non salvate.`
+    )
+  }
+
+  function updateReps(d, idx, field, val) {
     const ex = exList[d][idx]
     const updated = { ...ex, [field]: val }
     setExList(prev => ({ ...prev, [d]: prev[d].map((e, i) => i === idx ? updated : e) }))
-    if (ex.id) await supabase.from('cycle_exercises').update({ reps_a: updated.repsA, reps_b: updated.repsB, reps_c: updated.repsC }).eq('id', ex.id)
+    if (!ex.id) return
+    repsPending.current[ex.id] = { repsA: updated.repsA, repsB: updated.repsB, repsC: updated.repsC, nome: ex.name }
+    clearTimeout(repsTimers.current[ex.id])
+    repsTimers.current[ex.id] = setTimeout(() => scriviReps(ex.id), 600)
   }
 
   async function moveToDay(fromDay, idx, toDay) {
     const ex = exList[fromDay][idx]
-    if (ex.id) await supabase.from('cycle_exercises').update({ day: toDay, sort_order: exList[toDay].length }).eq('id', ex.id)
+    if (ex.id) {
+      const { error } = await run(
+        supabase.from('cycle_exercises').update({ day: toDay, sort_order: exList[toDay].length }).eq('id', ex.id),
+        `Impossibile spostare "${ex.name}" al Giorno ${toDay}.`
+      )
+      if (error) return
+    }
     setExList(prev => {
       const fromList = prev[fromDay].filter((_, i) => i !== idx)
       const toList = [...prev[toDay], { ...ex }]
@@ -142,12 +226,17 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   async function moveExToGroup(fromIdx, targetGroupLabel) {
     const ex = exList[day][fromIdx]
-    const updated = { ...ex, supersetGroup: targetGroupLabel }
-    setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === fromIdx ? updated : e) }))
-    if (ex.id) await supabase.from('cycle_exercises').update({ superset_group: targetGroupLabel }).eq('id', ex.id)
     setDragTargetGroup(null)
     setDraggingIdx(null)
     setDragOverIdx(null)
+    if (ex.id) {
+      const { error } = await run(
+        supabase.from('cycle_exercises').update({ superset_group: targetGroupLabel }).eq('id', ex.id),
+        `Impossibile spostare "${ex.name}" nel gruppo.`
+      )
+      if (error) return
+    }
+    setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === fromIdx ? { ...e, supersetGroup: targetGroupLabel } : e) }))
   }
 
   function removeExercise(d, idx) {
@@ -158,7 +247,20 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   async function executeRemoveExercise() {
     const { d, idx } = deleteExConfirm
     const ex = exList[d][idx]
-    if (ex.id) await supabase.from('cycle_exercises').delete().eq('id', ex.id)
+    if (ex.id) {
+      // I carichi già registrati puntano a questa riga: vanno tolti prima,
+      // altrimenti la foreign key rifiuta la cancellazione.
+      const { error: errCarichi } = await run(
+        supabase.from('client_loads').delete().eq('cycle_exercise_id', ex.id),
+        `Impossibile eliminare i carichi di "${ex.name}".`
+      )
+      if (errCarichi) { setDeleteExConfirm(null); return }
+      const { error } = await run(
+        supabase.from('cycle_exercises').delete().eq('id', ex.id),
+        `Impossibile eliminare "${ex.name}".`
+      )
+      if (error) { setDeleteExConfirm(null); return }
+    }
     setExList(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) }))
     setDeleteExConfirm(null)
   }
@@ -383,13 +485,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                           ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'rgba(59,130,246,0.7)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)' }} />
+                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)' }} />
                             </div>
                           ))
                           : [['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} style={repsInp} />
+                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={repsInp} />
                             </div>
                           ))
                         }

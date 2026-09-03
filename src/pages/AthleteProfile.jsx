@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -15,27 +16,38 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
 
   async function loadHistory() {
     // Get all loads for this client
-    const { data: loads } = await supabase
-      .from('client_loads')
-      .select('kg, week, cycle_exercise_id')
-      .eq('client_id', client.id)
-      .gt('kg', 0)
+    const { data: loads } = await run(
+      supabase
+        .from('client_loads')
+        .select('kg, week, cycle_exercise_id')
+        .eq('client_id', client.id)
+        .not('kg', 'is', null),
+      'Impossibile caricare lo storico dei carichi.'
+    )
 
     if (!loads?.length) { setLoading(false); return }
 
     // Get all cycle_exercises involved
     const exIds = [...new Set(loads.map(l => l.cycle_exercise_id))]
-    const { data: cycleExercises } = await supabase
-      .from('cycle_exercises')
-      .select('id, cycle_id, exercises(name)')
-      .in('id', exIds)
+    const { data: cycleExercises } = await run(
+      supabase
+        .from('cycle_exercises')
+        .select('id, cycle_id, exercises(name)')
+        .in('id', exIds),
+      'Impossibile caricare gli esercizi collegati.'
+    )
+    if (!cycleExercises?.length) { setLoading(false); return }
 
     // Get all cycles involved
     const cycleIds = [...new Set(cycleExercises.map(e => e.cycle_id))]
-    const { data: cycles } = await supabase
-      .from('cycles')
-      .select('id, name, start_date')
-      .in('id', cycleIds)
+    const { data: cycles } = await run(
+      supabase
+        .from('cycles')
+        .select('id, name, start_date')
+        .in('id', cycleIds),
+      'Impossibile caricare le schede collegate.'
+    )
+    if (!cycles?.length) { setLoading(false); return }
 
     // Build lookup maps
     const exMap = {}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import { run } from '../lib/notify'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -42,27 +43,41 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const { data: c } = await supabase.from('cycles').select('*').eq('id', cycleId).single()
+    const { data: c } = await run(
+      supabase.from('cycles').select('*').eq('id', cycleId).single(),
+      'Impossibile caricare la scheda.'
+    )
     setCycle(c)
+    // Senza questa uscita, più sotto si leggeva c.turn_id su null → schermata bianca.
+    if (!c) { setLoading(false); return }
 
-    const { data: ex } = await supabase.from('cycle_exercises')
-      .select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order')
+    const { data: ex } = await run(
+      supabase.from('cycle_exercises')
+        .select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
+      'Impossibile caricare gli esercizi della scheda.'
+    )
     if (ex) {
       const map = { 1: [], 2: [], 3: [] }
-      ex.forEach(e => map[e.day].push(e))
+      ex.forEach(e => { if (map[e.day]) map[e.day].push(e) })
       setDays(map)
 
       // Load clients of this turn
-      const { data: cl } = await supabase.from('clients').select('*')
-        .eq('turn_id', c.turn_id).eq('is_active', true).order('surname')
+      const { data: cl } = await run(
+        supabase.from('clients').select('*')
+          .eq('turn_id', c.turn_id).eq('is_active', true).order('surname'),
+        'Impossibile caricare gli atleti del turno.'
+      )
       setClients(cl || [])
 
       // Load all loads for all clients for this cycle
       if (cl?.length && ex?.length) {
         const exIds = ex.map(e => e.id)
         const clIds = cl.map(c => c.id)
-        const { data: loadData } = await supabase.from('client_loads').select('*')
-          .in('client_id', clIds).in('cycle_exercise_id', exIds)
+        const { data: loadData } = await run(
+          supabase.from('client_loads').select('*')
+            .in('client_id', clIds).in('cycle_exercise_id', exIds),
+          'Impossibile caricare i carichi.'
+        )
         const loadMap = {}
         loadData?.forEach(l => {
           loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
