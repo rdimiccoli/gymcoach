@@ -87,3 +87,21 @@ export function raggruppaEsercizi(esercizi, { indice = false } = {}) {
   })
   return gruppi
 }
+
+/**
+ * A che settimana dovrebbe essere una scheda, secondo la sua data di inizio.
+ *
+ * È l'informazione che prima si chiedeva al coach di scegliere a mano con le
+ * card FASE 1/2/3: il calendario la sa già, e non sbaglia.
+ * Ritorna null se la data manca o è nel futuro.
+ */
+export function settimanaDaCalendario(scheda) {
+  if (!scheda?.start_date) return null
+  // La T00:00:00 non è decorativa: senza, "2026-09-04" viene letta come
+  // mezzanotte UTC e in Italia diventa il giorno prima.
+  const inizio = new Date(`${scheda.start_date}T00:00:00`)
+  if (Number.isNaN(inizio.getTime())) return null
+  const giorni = Math.floor((Date.now() - inizio.getTime()) / 86_400_000)
+  if (giorni < 0) return null
+  return Math.min(6, Math.floor(giorni / 7) + 1)
+}

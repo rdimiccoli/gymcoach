@@ -4,7 +4,7 @@ import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma } from '../lib/aptico'
-import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto } from '../lib/schede'
+import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -170,15 +170,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
-  // A che settimana dovrebbe essere la scheda, secondo la data di inizio.
-  const settimanaAttesa = (() => {
-    if (!cycle?.start_date) return null
-    const inizio = new Date(`${cycle.start_date}T00:00:00`)
-    if (Number.isNaN(inizio.getTime())) return null
-    const giorni = Math.floor((Date.now() - inizio.getTime()) / 86_400_000)
-    if (giorni < 0) return null
-    return Math.min(6, Math.floor(giorni / 7) + 1)
-  })()
+  const settimanaAttesa = settimanaDaCalendario(cycle)
 
   const indietro = settimanaAttesa ? clients.filter(c => c.current_week < settimanaAttesa) : []
 

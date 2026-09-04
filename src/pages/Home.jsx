@@ -1,48 +1,39 @@
-import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
-import { ScheletroSchede, ScheletroElenco } from '../components/Scheletro'
+import { ScheletroSchede } from '../components/Scheletro'
+import CardTurno from '../components/CardTurno'
 import BottomNav from '../components/BottomNav'
 
-const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']
+const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
 
-const PHASES = [
-  {
-    num: 1, label: 'SETTIMANA 1 — 2', sub: 'Fase iniziale della scheda',
-    weekRange: [1,2],
-    img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=70',
-    accent: 'var(--accento)',
-  },
-  {
-    num: 2, label: 'SETTIMANA 3 — 4', sub: 'Fase intermedia della scheda',
-    weekRange: [3,4],
-    img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=70',
-    accent: '#1A6ED9',
-  },
-  {
-    num: 3, label: 'SETTIMANA 5 — 6', sub: 'Fase finale della scheda',
-    weekRange: [5,6],
-    img: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=70',
-    accent: '#1AAD5C',
-  },
-]
-
+/**
+ * Schermata iniziale: i turni, e basta.
+ *
+ * Prima si apriva su tre card FASE 1 / 2 / 3 da scegliere prima di vedere i
+ * turni. Quella scelta serviva a una cosa sola — sapere a che punto della
+ * scheda si è — che ora l'app ricava da sola dalla data di inizio, e in modo
+ * più preciso. Restava un tocco in più a ogni apertura, un concetto in più da
+ * spiegare, un'impostazione in più e tre foto da Unsplash che offline non
+ * arrivavano.
+ *
+ * Quello che le fasi dicevano, ora lo dice la card del turno: «settimana 4 di
+ * 6, due indietro».
+ */
 export default function Home({ navigate, goHome, session }) {
   const [coach, setCoach] = useState(null)
-  const [turns, setTurns] = useState([])
-  const [cycles, setCycles] = useState({})
-  const [clientCounts, setClientCounts] = useState({})
+  const [turni, setTurni] = useState([])
+  const [schede, setSchede] = useState({})       // turnId → [scheda attive]
+  const [atlete, setAtlete] = useState({})       // turnId → [{ current_week }]
   const [loading, setLoading] = useState(true)
-  const [selectedPhase, setSelectedPhase] = useState(null)
 
-  const today = new Date()
-  const dayName = WEEKDAYS[today.getDay()]
-  const dateStr = `${today.getDate().toString().padStart(2,'0')}·${(today.getMonth()+1).toString().padStart(2,'0')}·${today.getFullYear()}`
+  const oggi = new Date()
+  const giorno = GIORNI[oggi.getDay()]
+  const data = `${String(oggi.getDate()).padStart(2, '0')}·${String(oggi.getMonth() + 1).padStart(2, '0')}·${oggi.getFullYear()}`
 
-  // Invito una tantum ad attivare lo sblocco biometrico: senza, l'interruttore
-  // nelle impostazioni non lo troverebbe nessuno.
+  // Invito una tantum allo sblocco biometrico: senza, l'interruttore nelle
+  // impostazioni non lo troverebbe nessuno.
   const [invitoBio, setInvitoBio] = useState(false)
   useEffect(() => {
     if (invitoRifiutato() || bloccoAttivo(session.user.id)) return
@@ -53,23 +44,23 @@ export default function Home({ navigate, goHome, session }) {
 
   async function loadData() {
     // .single() dava errore quando la riga non esisteva ancora (primo accesso):
-    // .maybeSingle() restituisce semplicemente null, che è il caso previsto.
+    // .maybeSingle() restituisce null, che è il caso previsto.
     let { data: c } = await run(
       supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
       'Impossibile caricare il profilo coach.'
     )
     if (!c) {
       // La riga viene creata al primo accesso con id = auth.uid(), quindi
-      // nessuno può crearne una per conto di altri. Questo però tiene solo se
-      // su Supabase la registrazione pubblica è DISATTIVATA — vedi SICUREZZA.md.
-      const name = session.user.email.split('@')[0]
-      const { data: nc } = await run(
+      // nessuno può crearne una per conto di altri. Tiene però solo se su
+      // Supabase la registrazione pubblica è disattivata — vedi SICUREZZA.md.
+      const nome = session.user.email.split('@')[0]
+      const { data: nuovo } = await run(
         supabase.from('coaches')
-          .insert({ id: session.user.id, email: session.user.email, name, home_type: 'phases' })
+          .insert({ id: session.user.id, email: session.user.email, name: nome })
           .select().single(),
         'Profilo coach non creato. Contatta l\'amministratore.'
       )
-      c = nc
+      c = nuovo
     }
     setCoach(c)
 
@@ -77,257 +68,139 @@ export default function Home({ navigate, goHome, session }) {
       supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
       'Impossibile caricare i turni.'
     )
-    setTurns(t || [])
+    setTurni(t || [])
 
     if (t?.length) {
-      const turnIds = t.map(x => x.id)
-      // Prima erano 2 query per ogni turno: con 8 turni, 18 richieste prima di
-      // poter mostrare la home. Ora sono 2 in tutto e il raggruppamento si fa qui.
+      const ids = t.map(x => x.id)
+      // Due query in tutto, non due per turno.
       const [{ data: cicli }, { data: clienti }] = await Promise.all([
-        run(supabase.from('cycles').select('*').in('turn_id', turnIds)
+        run(supabase.from('cycles').select('*').in('turn_id', ids)
           .eq('is_active', true).order('created_at', { ascending: false }),
           'Impossibile caricare le schede attive.'),
-        run(supabase.from('clients').select('id, turn_id').in('turn_id', turnIds)
+        run(supabase.from('clients').select('id, turn_id, current_week').in('turn_id', ids)
           .eq('is_active', true),
-          'Impossibile contare gli atleti.'),
+          'Impossibile caricare gli atleti.'),
       ])
 
-      const cycleMap = {}, countMap = {}
-      turnIds.forEach(id => { countMap[id] = 0 })
-      ;(cicli || []).forEach(c => {
-        if (!cycleMap[c.turn_id]) cycleMap[c.turn_id] = []
-        cycleMap[c.turn_id].push(c) // array of active cycles
-      })
-      ;(clienti || []).forEach(c => { countMap[c.turn_id] = (countMap[c.turn_id] || 0) + 1 })
-      setCycles(cycleMap)
-      setClientCounts(countMap)
+      const perTurnoSchede = {}, perTurnoAtlete = {}
+      ids.forEach(id => { perTurnoSchede[id] = []; perTurnoAtlete[id] = [] })
+      ;(cicli || []).forEach(x => perTurnoSchede[x.turn_id]?.push(x))
+      ;(clienti || []).forEach(x => perTurnoAtlete[x.turn_id]?.push(x))
+      setSchede(perTurnoSchede)
+      setAtlete(perTurnoAtlete)
     }
     setLoading(false)
   }
 
-  if (loading) return (
-    <div style={page}>
-      <div style={scroll}>
-        <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }}>
-          <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
-          <div className="osso" style={{ width: '58%', height: '30px', borderRadius: '3px' }} />
-        </div>
-        <ScheletroSchede righe={3} />
-      </div>
-      <BottomNav active="home" navigate={navigate} goHome={goHome} />
-    </div>
-  )
-
-  // `coaches.home_type` veniva scritta a ogni creazione di coach e non letta
-  // mai da nessuno: la vista alternativa promessa da patch.sql non esisteva.
-  // 'turns' = si parte dai turni, saltando la scelta della fase.
-  const vistaTurni = coach?.home_type === 'turns'
-
-  if (vistaTurni) {
-    return (
-      <div style={page}>
-        <div style={scroll}>
-          <div style={{ paddingBottom: '18px', borderBottom: '1px solid var(--sup)', marginBottom: '18px' }}>
-            <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '8px', display: 'block' }} />
-            <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
-              {dayName.toUpperCase()} · {dateStr}
-            </div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
-              COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span>
-            </div>
-          </div>
-          <div style={sectionLabel}>I TUOI TURNI DI OGGI</div>
-          {turns.length === 0 && <Empty />}
-          {turns.map((turn, i) => (
-            <div key={turn.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
-              {(cycles[turn.id] || [null]).map((cycle, ci) => (
-                <TurnCard key={ci} turn={turn} cycle={cycle} count={ci === 0 ? clientCounts[turn.id] : null}
-                  onPress={() => navigate('turn', { turn, cycle })} />
-              ))}
-            </div>
-          ))}
-          <div style={{ height: '12px' }} />
-        </div>
-        <BottomNav active="home" navigate={navigate} goHome={goHome} />
-      </div>
-    )
-  }
-
-  // TURNS LIST
-  if (selectedPhase) {
-    return (
-      <div style={page}>
-        {/* Hero header */}
-        <div style={{ position: 'relative', height: '160px', flexShrink: 0, overflow: 'hidden' }}>
-          <div style={{
-            position: 'absolute', inset: 0,
-            backgroundImage: `url(${selectedPhase.img})`,
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            filter: 'brightness(0.35)',
-          }} />
-          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 0%, var(--fondo) 100%)` }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button onClick={() => setSelectedPhase(null)} style={{
-              background: 'var(--bordo)', border: '1px solid var(--bordo-forte)',
-              borderRadius: '3px', width: '34px', height: '34px',
-              color: '#fff', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>‹</button>
-            <div>
-              <div style={{ color: selectedPhase.accent, fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>FASE {selectedPhase.num}</div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '22px', fontWeight: '800', color: '#fff', letterSpacing: '1px' }}>{selectedPhase.label}</div>
-            </div>
-          </div>
-        </div>
-
-        <div style={scroll}>
-          <div style={sectionLabel}>SELEZIONA TURNO</div>
-          {turns.length === 0 && <Empty />}
-          {turns.map((turn, i) => (
-            <div key={turn.id} className={`fadeUp-${Math.min(i+1,3)}`}>
-              {(cycles[turn.id] || [null]).map((cycle, ci) => (
-                <TurnCard key={ci} turn={turn} cycle={cycle} count={ci === 0 ? clientCounts[turn.id] : null} accent={selectedPhase.accent}
-                  onPress={() => navigate('turn', { turn, cycle, phase: selectedPhase })} />
-              ))}
-            </div>
-          ))}
-        </div>
-        <BottomNav active="home" navigate={navigate} goHome={goHome} />
-      </div>
-    )
-  }
-
-  // HOME — 3 phase cards with gym images
   return (
-    <div style={page}>
-      <div style={scroll}>
+    <div style={pagina}>
+      <div style={scorrimento}>
 
-        {/* Header */}
-        <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }}>
-          <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '8px', display: 'block' }} />
+        <div style={testata}>
+          <img src="/logo_OAD.png" alt="OAD" style={{ height: '30px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
           <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
-            {dayName.toUpperCase()} · {dateStr}
+            {giorno.toUpperCase()} · {data}
           </div>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
-            COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1, color: '#fff' }}>
+            {loading
+              ? <span className="osso" style={{ display: 'inline-block', width: '58%', height: '30px', borderRadius: '3px' }} />
+              : <>COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span></>}
           </div>
         </div>
 
-        {invitoBio && (
-          <div style={{
-            background: 'var(--acc-velo)', border: '1px solid var(--acc-bordo-tenue)',
-            borderRadius: '6px', padding: '13px 15px', marginBottom: '16px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '18px' }}>👆</span>
-              <div style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>
-                PROTEGGI L'APP CON L'IMPRONTA
-              </div>
+        {invitoBio && !loading && <InvitoImpronta onAttiva={() => navigate('settings')} onNo={() => { rifiutaInvito(); setInvitoBio(false) }} />}
+
+        <div style={etichetta}>I TUOI TURNI</div>
+
+        {loading && <ScheletroSchede righe={3} />}
+
+        {!loading && turni.length === 0 && (
+          <div style={vuoto}>
+            <div style={{ fontSize: '30px', marginBottom: '10px' }}>◷</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '19px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '0.5px', marginBottom: '6px' }}>
+              Non hai ancora nessun turno
             </div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
-              Adesso chiunque prenda in mano questo dispositivo sbloccato vede e modifica
-              i dati di tutte le atlete. Con lo sblocco biometrico bastano un tocco e il
-              tuo volto o la tua impronta.
+            <div style={{ color: 'var(--testo-debole)', fontSize: '14px', lineHeight: 1.5, marginBottom: '18px' }}>
+              Un turno è una fascia oraria con le sue atlete — per esempio «09:00 — Femminile».
+              Si comincia da lì.
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => navigate('settings')} style={{
-                flex: 1, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '10px',
-                color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
-              }}>ATTIVA</button>
-              <button onClick={() => { rifiutaInvito(); setInvitoBio(false) }} style={{
-                flex: 1, background: 'transparent', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '10px',
-                color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
-              }}>NON ORA</button>
-            </div>
+            <button onClick={() => navigate('turns')} style={pulsanteVuoto}>+ CREA IL PRIMO TURNO</button>
           </div>
         )}
 
-        <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
-          SELEZIONA FASE DELLA SCHEDA
-        </div>
-
-        {/* Phase cards */}
-        {PHASES.map((ph, i) => (
-          <div key={ph.num} className={`fadeUp-${i+1}`} onClick={() => setSelectedPhase(ph)} style={{
-            position: 'relative', height: '140px', borderRadius: '6px',
-            marginBottom: '10px', overflow: 'hidden', cursor: 'pointer',
-          }}>
-            {/* Background image */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              backgroundImage: `url(${ph.img})`,
-              backgroundSize: 'cover', backgroundPosition: 'center',
-              filter: 'brightness(0.4)',
-              transition: 'transform 0.3s ease',
-            }} />
-
-            {/* Color overlay */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: `linear-gradient(135deg, ${ph.accent}55 0%, rgba(0,0,0,0.5) 100%)`,
-            }} />
-
-            {/* Left accent bar */}
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '3px', background: ph.accent }} />
-
-            {/* Content */}
-            <div style={{ position: 'absolute', inset: 0, padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              <div style={{ color: ph.accent, fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
-                FASE {ph.num}
-              </div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px', lineHeight: 1 }}>
-                {ph.label}
-              </div>
-              <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '4px', fontWeight: '300' }}>
-                {ph.sub}
-              </div>
+        {!loading && turni.map((turno, i) => {
+          const attive = schede[turno.id] || []
+          const gruppo = atlete[turno.id] || []
+          return (
+            <div key={turno.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
+              {(attive.length ? attive : [null]).map((scheda, k) => (
+                <CardTurno
+                  key={k}
+                  turno={turno}
+                  scheda={scheda}
+                  atlete={k === 0 ? gruppo : []}
+                  mostraOrario={k === 0}
+                  onApri={() => navigate('turn', { turn: turno, cycle: scheda })}
+                />
+              ))}
             </div>
+          )
+        })}
 
-            {/* Arrow */}
-            <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: 'var(--testo-fioco)', fontSize: '24px' }}>›</div>
-          </div>
-        ))}
-
-        <div style={{ height: '12px' }} />
+        <div style={{ height: '14px' }} />
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
   )
 }
 
-function TurnCard({ turn, cycle, count, onPress, accent = 'var(--accento)' }) {
+function InvitoImpronta({ onAttiva, onNo }) {
   return (
-    <button type="button" onClick={onPress} style={{ ...comePulsante, 
-      background: 'var(--sup)',
-      border: '1px solid var(--sup-alta)',
-      borderRadius: '6px',
-      padding: '16px 18px',
-      marginBottom: '8px',
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      cursor: 'pointer', position: 'relative', overflow: 'hidden',
+    <div style={{
+      background: 'var(--acc-velo)', border: '1px solid var(--acc-bordo-tenue)',
+      borderRadius: '6px', padding: '14px 15px', marginBottom: '18px',
     }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '2px', background: accent }} />
-      <div style={{ paddingLeft: '8px' }}>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
-        <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '2px' }}>
-          {cycle ? <span style={{ color: 'var(--testo-medio)', fontSize: '13px' }}>{cycle.name}</span> : <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>Nessuna scheda attiva</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+        <span style={{ fontSize: '19px' }}>👆</span>
+        <div style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>
+          PROTEGGI L'APP CON L'IMPRONTA
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ background: 'var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.5px' }}>{count} ATL</div>
-        <div style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>›</div>
+      <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
+        Adesso chiunque prenda in mano questo dispositivo sbloccato vede e modifica
+        i dati di tutte le atlete.
       </div>
-    </button>
-  )
-}
-
-function Empty() {
-  return (
-    <div style={{ color: 'var(--testo-fioco)', fontSize: '14px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
-      Nessun turno. Vai in Setup per aggiungerne uno.
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={onAttiva} style={{
+          flex: 1, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '11px',
+          color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+        }}>ATTIVA</button>
+        <button onClick={onNo} style={{
+          flex: 1, background: 'transparent', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '11px',
+          color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+        }}>NON ORA</button>
+      </div>
     </div>
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
-const scroll = { flex: 1, overflowY: 'auto', padding: '20px 16px' }
-const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }
+const pagina = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
+const scorrimento = { flex: 1, overflowY: 'auto', padding: '18px 16px', WebkitOverflowScrolling: 'touch' }
+const testata = { paddingBottom: '18px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }
+const etichetta = { color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginBottom: '11px' }
+const card = {
+  width: '100%', textAlign: 'left', cursor: 'pointer',
+  background: 'var(--sup)', border: '1px solid var(--sup-alta)',
+  borderLeft: '3px solid var(--accento)',
+  borderRadius: '8px', padding: '15px 14px', marginBottom: '9px',
+  font: 'inherit', color: 'inherit', WebkitAppearance: 'none',
+}
+const vuoto = {
+  border: '1px dashed var(--bordo)', borderRadius: '8px',
+  padding: '30px 22px', textAlign: 'center',
+}
+const pulsanteVuoto = {
+  background: 'var(--accento)', border: 'none', borderRadius: '5px', padding: '13px 20px',
+  color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+  fontWeight: '800', letterSpacing: '1.5px', cursor: 'pointer',
+}

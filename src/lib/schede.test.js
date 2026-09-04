@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, secondiDaTesto, numeroDaTesto, TIPO } from './schede'
+import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, secondiDaTesto, numeroDaTesto, settimanaDaCalendario, TIPO } from './schede'
 
 const ex = (id, gruppo = null, reps = {}) => ({
   id,
@@ -140,5 +140,38 @@ describe('numeroDaTesto', () => {
     expect(numeroDaTesto('MAX')).toBeNull()
     expect(numeroDaTesto(null)).toBeNull()
     expect(numeroDaTesto('0')).toBeNull()
+  })
+})
+
+describe('settimanaDaCalendario', () => {
+  const giorniFa = n => {
+    const d = new Date()
+    d.setDate(d.getDate() - n)
+    return { start_date: d.toISOString().slice(0, 10) }
+  }
+
+  it('conta le settimane dalla data di inizio', () => {
+    expect(settimanaDaCalendario(giorniFa(0))).toBe(1)
+    expect(settimanaDaCalendario(giorniFa(6))).toBe(1)
+    expect(settimanaDaCalendario(giorniFa(7))).toBe(2)
+    expect(settimanaDaCalendario(giorniFa(25))).toBe(4)  // lo scenario dimostrativo
+    expect(settimanaDaCalendario(giorniFa(35))).toBe(6)
+  })
+
+  it('si ferma alla sesta: le schede durano sei settimane', () => {
+    expect(settimanaDaCalendario(giorniFa(90))).toBe(6)
+    expect(settimanaDaCalendario(giorniFa(400))).toBe(6)
+  })
+
+  it('non azzarda una settimana su una scheda che deve ancora iniziare', () => {
+    const domani = new Date()
+    domani.setDate(domani.getDate() + 1)
+    expect(settimanaDaCalendario({ start_date: domani.toISOString().slice(0, 10) })).toBeNull()
+  })
+
+  it('senza data non inventa niente', () => {
+    expect(settimanaDaCalendario(null)).toBeNull()
+    expect(settimanaDaCalendario({})).toBeNull()
+    expect(settimanaDaCalendario({ start_date: 'non-una-data' })).toBeNull()
   })
 })

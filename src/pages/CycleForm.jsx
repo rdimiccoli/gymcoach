@@ -39,11 +39,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   // Drag state
   const [draggingIdx, setDraggingIdx] = useState(null)
   const [dragOverIdx, setDragOverIdx] = useState(null)
+  const [gruppoSotto, setGruppoSotto] = useState(null) // etichetta del gruppo sotto il dito
   const rowRefs = useRef({})
   const scrollRef = useRef(null)
   const autoScrollRef = useRef(null)
   const repsTimers = useRef({})
   const repsPending = useRef({})
+  const ultimoTocco = useRef({ x: 0, y: 0 })
 
   useEffect(() => {
     loadExercises()
@@ -376,20 +378,81 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (autoScrollRef.current) { clearInterval(autoScrollRef.current); autoScrollRef.current = null }
   }
 
+  /**
+   * Sposta un esercizio di una posizione, con un tocco.
+   *
+   * Il trascinamento resta, ma richiede precisione e pazienza: su una lista
+   * lunga, con il telefono in mano, è faticoso per chiunque. Due frecce sono
+   * noiose e infallibili, e chi ha fretta continua a trascinare.
+   */
+  async function spostaDi(idx, verso) {
+    const destinazione = idx + verso
+    const lista = exList[day]
+    if (destinazione < 0 || destinazione >= lista.length) return
+
+    const nuova = [...lista]
+    ;[nuova[idx], nuova[destinazione]] = [nuova[destinazione], nuova[idx]]
+    setExList(prev => ({ ...prev, [day]: nuova }))
+
+    // Solo le due righe scambiate cambiano posizione: due scritture, non N.
+    const esiti = await Promise.all(
+      [idx, destinazione]
+        .filter(i => nuova[i]?.id)
+        .map(i => supabase.from('cycle_exercises').update({ sort_order: i }).eq('id', nuova[i].id))
+    )
+    if (esiti.some(r => r.error)) {
+      console.error('spostamento', esiti.filter(r => r.error).map(r => r.error))
+      notifyError('Nuovo ordine non salvato. Ricarica la scheda per verificare.')
+    }
+  }
+
   function onDragStart(e, idx) {
     e.stopPropagation()
     setDraggingIdx(idx); setDragOverIdx(idx)
   }
 
+  /**
+   * Che gruppo c'è sotto il dito, se ce n'è uno.
+   *
+   * Qui prima c'era un onTouchEnd sull'intestazione del gruppo, e non è MAI
+   * stato eseguito: gli eventi touch scattano sull'elemento dove il dito è
+   * partito — la maniglia ⠿ — non dove è arrivato. Trascinare un esercizio
+   * dentro una superserie sembrava funzionare e non faceva niente.
+   * L'unico modo corretto è guardare cosa c'è alle coordinate del dito.
+   */
+  function gruppoSottoAl(x, y) {
+    const el = document.elementFromPoint(x, y)
+    return el?.closest?.('[data-gruppo]')?.dataset.gruppo ?? null
+  }
+
   function onDragMove(e) {
     e.preventDefault()
-    const y = e.touches[0].clientY
-    setDragOverIdx(getIndexFromY(y))
-    startAutoScroll(y)
+    const t = e.touches[0]
+    ultimoTocco.current = { x: t.clientX, y: t.clientY }
+    const sopraGruppo = gruppoSottoAl(t.clientX, t.clientY)
+    setGruppoSotto(sopraGruppo)
+    // Sopra un'intestazione di gruppo non si riordina: si sta scegliendo dove
+    // far entrare l'esercizio, e vedere la lista che si riorganizza confonde.
+    if (!sopraGruppo) setDragOverIdx(getIndexFromY(t.clientY))
+    startAutoScroll(t.clientY)
   }
 
   async function onDragEnd() {
     stopAutoScroll()
+    const { x, y } = ultimoTocco.current
+    const gruppo = gruppoSottoAl(x, y)
+    setGruppoSotto(null)
+
+    // Rilasciato su un'intestazione di gruppo: l'esercizio ci entra.
+    if (gruppo !== null && draggingIdx !== null) {
+      const ex = exList[day][draggingIdx]
+      if (ex && ex.supersetGroup !== gruppo) {
+        await moveExToGroup(draggingIdx, gruppo)
+        return
+      }
+      setDraggingIdx(null); setDragOverIdx(null); return
+    }
+
     if (draggingIdx === null || dragOverIdx === null || draggingIdx === dragOverIdx) {
       setDraggingIdx(null); setDragOverIdx(null); return
     }
@@ -506,11 +569,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               {isGroup && (
                 <div
                   onClick={() => draggingIdx === null && setCollapsedGroups(prev => ({ ...prev, [group.label]: !prev[group.label] }))}
-                  onTouchEnd={() => { if (draggingIdx !== null) { moveExToGroup(draggingIdx, group.label) } }}
+                  data-gruppo={group.label}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isCollapsed ? '0' : '6px', cursor: 'pointer',
-                    background: draggingIdx !== null ? `rgba(${isCircuit?'59,130,246':'217,92,26'},0.15)` : 'transparent',
+                    background: gruppoSotto === group.label ? `rgba(${isCircuit?'59,130,246':'217,92,26'},0.28)`
+                      : draggingIdx !== null ? `rgba(${isCircuit?'59,130,246':'217,92,26'},0.10)` : 'transparent',
                     borderRadius: '4px', padding: draggingIdx !== null ? '4px 6px' : '0',
-                    border: draggingIdx !== null ? `1px dashed ${accent}` : 'none',
+                    border: draggingIdx !== null ? `${gruppoSotto === group.label ? '2px solid' : '1px dashed'} ${accent}` : 'none',
                   }}>
                   <div style={{ color: accent, fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                     {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {group.label.replace('SS-','').replace('CIR-','')}
@@ -542,8 +606,21 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                     }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: readOnly ? 0 : '10px' }}>
                       {!readOnly && (
-                        <div onTouchStart={e => onDragStart(e, ex.idx)} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
-                          style={{ fontSize: '20px', color: 'var(--testo-fioco)', cursor: 'grab', padding: '4px 6px', userSelect: 'none', flexShrink: 0, touchAction: 'none' }}>⠿</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                          {/* Frecce: noiose e infallibili. Chi ha fretta trascina la maniglia. */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <button type="button" aria-label={`Sposta ${ex.name} in su`}
+                              onPointerUp={e => { e.stopPropagation(); spostaDi(ex.idx, -1) }}
+                              disabled={ex.idx === 0}
+                              style={{ ...freccia, opacity: ex.idx === 0 ? 0.2 : 1 }}>▲</button>
+                            <button type="button" aria-label={`Sposta ${ex.name} in giù`}
+                              onPointerUp={e => { e.stopPropagation(); spostaDi(ex.idx, 1) }}
+                              disabled={ex.idx === exList[day].length - 1}
+                              style={{ ...freccia, opacity: ex.idx === exList[day].length - 1 ? 0.2 : 1 }}>▼</button>
+                          </div>
+                          <div onTouchStart={e => onDragStart(e, ex.idx)} onTouchMove={onDragMove} onTouchEnd={onDragEnd}
+                            style={{ fontSize: '20px', color: 'var(--testo-fioco)', cursor: 'grab', padding: '4px 6px', userSelect: 'none', touchAction: 'none' }}>⠿</div>
+                        </div>
                       )}
                       <div style={{ flex: 1, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{ex.name}</div>
                       {!readOnly && (
@@ -728,5 +805,13 @@ const page = { display: 'flex', flexDirection: 'column', height: '100dvh', backg
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
+// 26x22: piccole ma raggiungibili col pollice, e non rubano spazio al nome.
+const freccia = {
+  width: '26px', height: '22px', flexShrink: 0,
+  background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px',
+  color: 'var(--testo-medio)', fontSize: '12px', lineHeight: 1,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  padding: 0, touchAction: 'manipulation', cursor: 'pointer',
+}
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }

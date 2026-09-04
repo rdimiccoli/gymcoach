@@ -29,17 +29,6 @@ export default function Settings({ navigate, goHome, session }) {
   useEffect(() => { loadData() }, [])
   useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
 
-  async function cambiaHomeType(nuovo) {
-    if (!coach || coach.home_type === nuovo) return
-    const precedente = coach.home_type
-    setCoach(c => ({ ...c, home_type: nuovo })) // ottimistico: il tocco deve rispondere subito
-    const { error } = await run(
-      supabase.from('coaches').update({ home_type: nuovo }).eq('id', session.user.id),
-      'Schermata iniziale non salvata.'
-    )
-    if (error) setCoach(c => ({ ...c, home_type: precedente }))
-  }
-
   async function toggleBiometria() {
     if (bioAttivo) {
       disattivaBlocco()
@@ -202,36 +191,6 @@ export default function Settings({ navigate, goHome, session }) {
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{stats.clients}</div>
               <div style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI LISTA →</div>
             </button>
-          </div>
-        </div>
-
-        {/* Schermata iniziale */}
-        <div style={{ background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px' }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px', marginBottom: '3px' }}>
-            ⬡ SCHERMATA INIZIALE
-          </div>
-          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '11px', lineHeight: 1.4 }}>
-            Da cosa vuoi partire quando apri l'app.
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[
-              { id: 'phases', etichetta: 'FASI', sotto: 'Scegli prima la fase' },
-              { id: 'turns', etichetta: 'TURNI', sotto: 'Vai dritta ai turni' },
-            ].map(opt => {
-              const attiva = (coach?.home_type ?? 'phases') === opt.id
-              return (
-                <button key={opt.id} onClick={() => cambiaHomeType(opt.id)} style={{
-                  flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: '4px', cursor: 'pointer',
-                  background: attiva ? 'var(--acc-riempimento)' : 'var(--sup)',
-                  border: `1px solid ${attiva ? 'var(--acc-bordo-forte)' : 'var(--sup-alta)'}`,
-                }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px', color: attiva ? 'var(--accento)' : 'var(--testo-medio)' }}>
-                    {attiva ? '● ' : ''}{opt.etichetta}
-                  </div>
-                  <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '2px' }}>{opt.sotto}</div>
-                </button>
-              )
-            })}
           </div>
         </div>
 
