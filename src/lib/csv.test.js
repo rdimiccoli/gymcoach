@@ -90,7 +90,7 @@ describe('csvDaEsercizi', () => {
 
   it('sopravvive al giro completo: esportare e reimportare non cambia i dati', () => {
     const { esercizi } = eserciziDaCsv(CSV_REALE)
-    const rigenerato = csvDaEsercizi(esercizi.map((e, i) => ({
+    const rigenerato = csvDaEsercizi(esercizi.map(e => ({
       id: '', sort_order: e.ordine, day: e.giorno,
       reps_a: e.repsA, reps_b: e.repsB, reps_c: e.repsC,
       superset_group: e.gruppo, exercise_name: e.nome,

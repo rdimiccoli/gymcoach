@@ -45,4 +45,11 @@ export default [
     files: ['**/*.test.js'],
     languageOptions: { globals: { ...globals.node } },
   },
+
+  {
+    // Le funzioni in api/ girano su Node (serverless di Vercel), non nel
+    // browser: hanno process e non hanno window.
+    files: ['api/**/*.js'],
+    languageOptions: { globals: { ...globals.node } },
+  },
 ]
