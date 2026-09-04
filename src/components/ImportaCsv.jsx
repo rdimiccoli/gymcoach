@@ -82,7 +82,7 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '4px' }}>
           IMPORTA DA CSV
         </div>
-        <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginBottom: '14px', lineHeight: 1.5 }}>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '14px', lineHeight: 1.5 }}>
           Incolla il file esportato, oppure le celle copiate da un foglio di calcolo.
           <br />
           <span style={{ color: 'var(--testo-chiaro)' }}>Obbligatorie:</span>{' '}
@@ -112,25 +112,25 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
 
         {problemi.length > 0 && (
           <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', padding: '10px 12px', marginTop: '12px' }}>
-            <div style={{ color: '#fca5a5', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '5px' }}>
+            <div style={{ color: '#fca5a5', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '5px' }}>
               ⚠ {problemi.length} {problemi.length === 1 ? 'RIGA SCARTATA' : 'RIGHE SCARTATE'}
             </div>
             {problemi.slice(0, 5).map((p, i) => (
-              <div key={i} style={{ color: 'var(--testo-medio)', fontSize: '11px', lineHeight: 1.4 }}>{p}</div>
+              <div key={i} style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4 }}>{p}</div>
             ))}
             {problemi.length > 5 && (
-              <div style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>...e altre {problemi.length - 5}</div>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>...e altre {problemi.length - 5}</div>
             )}
           </div>
         )}
 
         {esercizi.length > 0 && (
           <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', padding: '11px 13px', marginTop: '12px' }}>
-            <div style={{ color: '#86efac', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '5px' }}>
+            <div style={{ color: '#86efac', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '5px' }}>
               ✓ {esercizi.length} ESERCIZI PRONTI
             </div>
             {giorniToccati.map(g => (
-              <div key={g} style={{ color: 'var(--testo-chiaro)', fontSize: '12px' }}>
+              <div key={g} style={{ color: 'var(--testo-chiaro)', fontSize: '13px' }}>
                 Giorno {g}: {perGiorno[g]} esercizi
                 {(esistentiPerGiorno?.[g] || 0) > 0 && (
                   <span style={{ color: 'var(--attenzione)' }}> · si aggiungono ai {esistentiPerGiorno[g]} già presenti</span>
@@ -138,7 +138,7 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
               </div>
             ))}
             {giorniGiaPieni.length > 0 && (
-              <div style={{ color: 'rgba(234,179,8,0.8)', fontSize: '11px', marginTop: '6px', lineHeight: 1.4 }}>
+              <div style={{ color: 'rgba(234,179,8,0.8)', fontSize: '13px', marginTop: '6px', lineHeight: 1.4 }}>
                 Gli esercizi vengono <strong>aggiunti</strong>, non sostituiti. Se vuoi rifare
                 un giorno da zero, cancella prima quelli che ci sono.
               </div>
@@ -155,7 +155,7 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
           }}>
           {inCorso ? 'IMPORTAZIONE...' : `✓ IMPORTA ${esercizi.length || ''}`.trim()}
         </button>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '14px', cursor: 'pointer' }}>
           Annulla
         </button>
       </div>

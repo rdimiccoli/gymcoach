@@ -184,7 +184,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {client.surname} {client.name}
                   </span>
-                  <span style={{ color: 'var(--testo-debole)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>Sett. {client.current_week}</span>
+                  <span style={{ color: 'var(--testo-debole)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif' }}>Sett. {client.current_week}</span>
                   {selectedClient === client.id && <span style={{ color: 'var(--accento)', fontSize: '16px' }}>✓</span>}
                 </button>
               ))}
@@ -198,7 +198,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                   flex: 1, padding: '11px 6px', borderRadius: '4px',
                   border: `1px solid ${selectedWeekRange === i ? 'var(--acc-bordo-marcato)' : 'var(--sup-alta)'}`,
                   background: selectedWeekRange === i ? 'var(--acc-riempimento)' : 'var(--sup)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '0.5px',
                   color: selectedWeekRange === i ? 'var(--accento)' : 'var(--testo-medio)', cursor: 'pointer'
                 }}>{wr.label}</button>
               ))}
@@ -215,9 +215,9 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '900', color: '#fff' }}>
                         {clients.find(c => c.id === selectedClient)?.surname} {clients.find(c => c.id === selectedClient)?.name}
                       </div>
-                      <div style={{ color: 'var(--accento)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{WEEK_RANGES[selectedWeekRange].label}</div>
+                      <div style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{WEEK_RANGES[selectedWeekRange].label}</div>
                     </div>
-                    <div style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>{cycle?.name}</div>
+                    <div style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>{cycle?.name}</div>
                   </div>
 
                   {/* Day tabs */}
@@ -225,7 +225,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     {[1,2,3].map(d => (
                       <button key={d} onClick={() => setPreviewDay(d)} style={{
                         flex: 1, padding: '7px', borderRadius: '4px', border: 'none',
-                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700',
+                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700',
                         background: previewDay === d ? 'var(--accento)' : 'var(--sup-alta)',
                         color: previewDay === d ? '#fff' : 'var(--testo-debole)'
                       }}>G{d}</button>
@@ -240,7 +240,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     return (
                       <div key={gi} style={{ marginBottom: '8px' }}>
                         {(isCircuit || isSuperSet) && (
-                          <div style={{ color: accent, fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px', marginBottom: '4px' }}>
+                          <div style={{ color: accent, fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px', marginBottom: '4px' }}>
                             {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'}
                           </div>
                         )}
@@ -256,14 +256,14 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                             }}>
                               <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: '#fff' }}>{ex?.exercises?.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
+                                <span style={{ color: 'var(--testo-medio)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
                                 {kg != null && (
-                                  <span style={{ background: 'var(--acc-riempimento-forte)', border: '1px solid var(--acc-bordo-forte)', borderRadius: '3px', padding: '2px 8px', color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                  <span style={{ background: 'var(--acc-riempimento-forte)', border: '1px solid var(--acc-bordo-forte)', borderRadius: '3px', padding: '2px 8px', color: 'var(--accento)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                     {kg}kg
                                   </span>
                                 )}
                                 {kg == null && !isCircuit && (
-                                  <span style={{ color: 'var(--bordo-forte)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>— kg</span>
+                                  <span style={{ color: 'var(--bordo-forte)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif' }}>— kg</span>
                                 )}
                               </div>
                             </div>
@@ -273,16 +273,16 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     )
                   })}
                   {previewGroups.length === 0 && (
-                    <div style={{ color: 'var(--bordo-forte)', fontSize: '12px', textAlign: 'center', padding: '12px' }}>Nessun esercizio per il Giorno {previewDay}</div>
+                    <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '12px' }}>Nessun esercizio per il Giorno {previewDay}</div>
                   )}
                 </div>
 
                 {/* Send buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={shareText} style={{ flex: 2, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
+                  <button onClick={shareText} style={{ flex: 2, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px' }}>
                     📤 INVIA SU WHATSAPP
                   </button>
-                  <button onClick={copyText} style={{ flex: 1, background: copied ? 'rgba(34,197,94,0.15)' : 'var(--sup-alta)', border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'var(--bordo)'}`, borderRadius: '4px', padding: '14px', color: copied ? 'var(--ok)' : 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700' }}>
+                  <button onClick={copyText} style={{ flex: 1, background: copied ? 'rgba(34,197,94,0.15)' : 'var(--sup-alta)', border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'var(--bordo)'}`, borderRadius: '4px', padding: '14px', color: copied ? 'var(--ok)' : 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700' }}>
                     {copied ? '✓ OK!' : '📋 COPIA'}
                   </button>
                 </div>
@@ -299,4 +299,4 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
-const stepLabel = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '10px', textTransform: 'uppercase' }
+const stepLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '10px', textTransform: 'uppercase' }

@@ -157,7 +157,7 @@ export default function Settings({ navigate, goHome, session }) {
             <input type={showPwd ? 'text' : 'password'} value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
               placeholder="Ripeti la nuova password" style={{ ...inp, marginBottom: '8px' }} />
 
-            {pwdError && <div style={{ color: 'var(--errore)', fontSize: '12px', marginBottom: '12px', paddingLeft: '2px' }}>{pwdError}</div>}
+            {pwdError && <div style={{ color: 'var(--errore)', fontSize: '13px', marginBottom: '12px', paddingLeft: '2px' }}>{pwdError}</div>}
 
             <button onClick={savePassword} disabled={saving || !currentPwd || !newPwd || !confirmPwd}
               style={{ ...bigBtn, marginTop: '16px', opacity: !currentPwd || !newPwd || !confirmPwd ? 0.3 : 1 }}>
@@ -181,9 +181,9 @@ export default function Settings({ navigate, goHome, session }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
             <div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{coach?.name?.toUpperCase()}</div>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '2px' }}>{session.user.email}</div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{session.user.email}</div>
             </div>
-            <button onClick={() => setView('editName')} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '7px 12px', borderRadius: '3px' }}>
+            <button onClick={() => setView('editName')} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '7px 12px', borderRadius: '3px' }}>
               MODIFICA
             </button>
           </div>
@@ -192,15 +192,15 @@ export default function Settings({ navigate, goHome, session }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <button onClick={() => navigate('turns')}
               style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '10px 12px', border: '1px solid var(--sup-alta)', textAlign: 'left', cursor: 'pointer' }}>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>TURNI</div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>TURNI</div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{stats.turns}</div>
-              <div style={{ color: 'var(--accento)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI TURNI →</div>
+              <div style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI TURNI →</div>
             </button>
             <button onClick={() => navigate('athletes')}
               style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '4px', padding: '10px 12px', border: '1px solid var(--sup-alta)', textAlign: 'left', cursor: 'pointer' }}>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>ATLETI ATTIVI</div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '2px' }}>ATLETI ATTIVI</div>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{stats.clients}</div>
-              <div style={{ color: 'var(--accento)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI LISTA →</div>
+              <div style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '4px', letterSpacing: '1px' }}>VEDI LISTA →</div>
             </button>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function Settings({ navigate, goHome, session }) {
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px', marginBottom: '3px' }}>
             ⬡ SCHERMATA INIZIALE
           </div>
-          <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginBottom: '11px', lineHeight: 1.4 }}>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '11px', lineHeight: 1.4 }}>
             Da cosa vuoi partire quando apri l'app.
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -225,10 +225,10 @@ export default function Settings({ navigate, goHome, session }) {
                   background: attiva ? 'var(--acc-riempimento)' : 'var(--sup)',
                   border: `1px solid ${attiva ? 'var(--acc-bordo-forte)' : 'var(--sup-alta)'}`,
                 }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', color: attiva ? 'var(--accento)' : 'var(--testo-medio)' }}>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px', color: attiva ? 'var(--accento)' : 'var(--testo-medio)' }}>
                     {attiva ? '● ' : ''}{opt.etichetta}
                   </div>
-                  <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', marginTop: '2px' }}>{opt.sotto}</div>
+                  <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '2px' }}>{opt.sotto}</div>
                 </button>
               )
             })}
@@ -247,7 +247,7 @@ export default function Settings({ navigate, goHome, session }) {
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
                   👆 SBLOCCO BIOMETRICO
                 </div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '3px', lineHeight: 1.4 }}>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
                   {bioAttivo
                     ? `Attivo su questo dispositivo. L'app si riblocca dopo ${MINUTI_RIBLOCCO} minuti in secondo piano.`
                     : 'Chiedi impronta, volto o PIN all\'apertura. Senza, chi prende in mano il dispositivo entra direttamente.'}
@@ -259,14 +259,14 @@ export default function Settings({ navigate, goHome, session }) {
                 border: bioAttivo ? '1px solid rgba(239,68,68,0.35)' : 'none',
                 borderRadius: '4px', padding: '9px 14px',
                 color: bioAttivo ? 'rgba(239,68,68,0.9)' : '#fff',
-                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
                 fontWeight: '700', letterSpacing: '1px',
                 opacity: bioInCorso ? 0.5 : 1, cursor: 'pointer',
               }}>
                 {bioInCorso ? '...' : bioAttivo ? 'DISATTIVA' : 'ATTIVA'}
               </button>
             </div>
-            <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', marginTop: '8px', lineHeight: 1.35 }}>
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '8px', lineHeight: 1.35 }}>
               L'impostazione vale solo su questo dispositivo: va attivata su ogni telefono o computer che usi.
             </div>
           </div>
@@ -292,7 +292,7 @@ export default function Settings({ navigate, goHome, session }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
-const fieldLabel = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
 const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--testo-debole)', fontSize: '18px', lineHeight: 1, padding: '4px' }

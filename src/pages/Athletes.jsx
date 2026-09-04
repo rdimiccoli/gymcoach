@@ -59,7 +59,7 @@ export default function Athletes({ navigate, goHome, session }) {
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-          <span style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>
+          <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>
             {visibili.length} {visibili.length === 1 ? 'risultato' : 'risultati'}
           </span>
           <button onClick={() => setMostraArchiviate(v => !v)} style={{
@@ -67,7 +67,7 @@ export default function Athletes({ navigate, goHome, session }) {
             border: `1px solid ${mostraArchiviate ? 'var(--acc-bordo-forte)' : 'var(--bordo)'}`,
             borderRadius: '3px', padding: '5px 10px',
             color: mostraArchiviate ? 'var(--accento)' : 'var(--testo-debole)',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
           }}>
             {mostraArchiviate ? '● CON ARCHIVIATE' : 'MOSTRA ARCHIVIATE'}
           </button>
@@ -92,13 +92,13 @@ export default function Athletes({ navigate, goHome, session }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {a.surname} {a.name}
-                {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '9px', marginLeft: '7px', letterSpacing: '1px' }}>ARCHIVIATA</span>}
+                {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '7px', letterSpacing: '1px' }}>ARCHIVIATA</span>}
               </div>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '2px' }}>{a.turnName}</div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{a.turnName}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               <div style={{ background: 'var(--acc-riempimento)', borderRadius: '3px', padding: '4px 9px' }}>
-                <span style={{ color: 'var(--accento)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>
+                <span style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>
                   SETT. {a.current_week}
                 </span>
               </div>
@@ -116,4 +116,4 @@ export default function Athletes({ navigate, goHome, session }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '12px 16px', WebkitOverflowScrolling: 'touch' }
-const vuoto = { color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }
+const vuoto = { color: 'var(--testo-fioco)', fontSize: '14px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }

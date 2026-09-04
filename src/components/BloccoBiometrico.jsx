@@ -44,7 +44,7 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
         GYM<span style={{ color: 'var(--accento)' }}>COACH</span>
       </div>
       {nomeCoach && (
-        <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', marginTop: '8px', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '13px', letterSpacing: '2px', marginTop: '8px', textTransform: 'uppercase', fontFamily: 'Barlow Condensed, sans-serif' }}>
           {nomeCoach}
         </div>
       )}
@@ -62,7 +62,7 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
         <div style={{
           background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)',
           borderRadius: '8px', padding: '12px 14px', marginBottom: '18px',
-          color: '#fca5a5', fontSize: '12px', maxWidth: '300px', lineHeight: 1.4,
+          color: '#fca5a5', fontSize: '13px', maxWidth: '300px', lineHeight: 1.4,
         }}>
           {errore}
           {credenzialePersa && (
@@ -89,7 +89,7 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
           width: '100%', maxWidth: '300px', marginTop: '10px',
           background: 'transparent', border: '1px solid var(--testo-fioco)',
           borderRadius: '6px', padding: '14px', color: 'var(--testo-forte)',
-          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
           fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
         }}>
           RIMUOVI IL BLOCCO ED ENTRA
@@ -104,12 +104,12 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
         background: 'transparent', border: '1px solid var(--bordo-forte)',
         borderRadius: '6px', padding: '13px',
         color: 'var(--testo-chiaro)',
-        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
         fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
       }}>
         NON FUNZIONA? ENTRA CON LA PASSWORD
       </button>
-      <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '10px', maxWidth: '280px', lineHeight: 1.4 }}>
+      <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '10px', maxWidth: '280px', lineHeight: 1.4 }}>
         Lo sblocco biometrico verrà disattivato su questo dispositivo: potrai
         riattivarlo dalle impostazioni.
       </div>

@@ -102,7 +102,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
         {loading && <ScheletroStorico />}
 
         {!loading && history.length === 0 && (
-          <div style={{ color: 'var(--bordo-forte)', textAlign: 'center', padding: '40px', fontSize: '13px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
+          <div style={{ color: 'var(--bordo-forte)', textAlign: 'center', padding: '40px', fontSize: '14px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
             Nessun carico registrato ancora per questo atleta.
           </div>
         )}
@@ -112,17 +112,17 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
             {/* Summary bar */}
             <div style={{ background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', gap: '20px' }}>
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>ESERCIZI TRACCIATI</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>ESERCIZI TRACCIATI</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>{history.length}</div>
               </div>
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SESSIONI TOTALI</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SESSIONI TOTALI</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>
                   {history.reduce((sum, ex) => sum + ex.entries.length, 0)}
                 </div>
               </div>
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '9px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETTIMANA ATT.</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETTIMANA ATT.</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: 'var(--accento)' }}>{client.current_week}</div>
               </div>
             </div>
@@ -152,15 +152,15 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
                         {/* Latest load */}
-                        <span style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                        <span style={{ color: 'var(--accento)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                           {latest.kg}kg
                         </span>
-                        <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                        <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                           {WEEK_LABEL(latest.week)}
                         </span>
                         {/* Trend */}
                         {trend !== null && (
-                          <span style={{ fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: trend > 0 ? 'var(--ok)' : trend < 0 ? 'var(--errore)' : 'var(--testo-fioco)' }}>
+                          <span style={{ fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: trend > 0 ? 'var(--ok)' : trend < 0 ? 'var(--errore)' : 'var(--testo-fioco)' }}>
                             {trend > 0 ? `↑ +${trend}kg` : trend < 0 ? `↓ ${trend}kg` : '='}
                           </span>
                         )}
@@ -168,7 +168,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: 'var(--testo-fioco)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px' }}>BEST</div>
+                        <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px' }}>BEST</div>
                         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-chiaro)' }}>{ex.best}kg</div>
                       </div>
                       <div style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>{isOpen ? '∨' : '›'}</div>
@@ -193,16 +193,16 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                           background: i === 0 ? 'var(--acc-velo)' : 'transparent'
                         }}>
                           <div>
-                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '600', color: i === 0 ? '#fff' : 'var(--testo-chiaro)', letterSpacing: '0.3px' }}>
+                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: i === 0 ? '#fff' : 'var(--testo-chiaro)', letterSpacing: '0.3px' }}>
                               {entry.cycleName}
-                              {i === 0 && <span style={{ marginLeft: '6px', color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '1px' }}>ULTIMO</span>}
+                              {i === 0 && <span style={{ marginLeft: '6px', color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>ULTIMO</span>}
                             </div>
                             <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
-                              <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                              <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                 {WEEK_LABEL(entry.week)}
                               </span>
                               {entry.date && (
-                                <span style={{ color: 'var(--bordo-forte)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                <span style={{ color: 'var(--bordo-forte)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                   {new Date(entry.date).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })}
                                 </span>
                               )}
@@ -210,13 +210,13 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: i === 0 ? 'var(--accento)' : 'var(--testo-medio)' }}>
-                              {entry.kg}<span style={{ fontSize: '12px', fontWeight: '400' }}>kg</span>
+                              {entry.kg}<span style={{ fontSize: '13px', fontWeight: '400' }}>kg</span>
                             </div>
                             {/* Delta vs previous entry */}
                             {i < ex.entries.length - 1 && (() => {
                               const delta = parseFloat((entry.kg - ex.entries[i+1].kg).toFixed(2))
                               return delta !== 0 ? (
-                                <div style={{ color: delta > 0 ? 'var(--ok)' : 'var(--errore)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                <div style={{ color: delta > 0 ? 'var(--ok)' : 'var(--errore)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                   {delta > 0 ? `+${delta}` : delta}kg
                                 </div>
                               ) : null

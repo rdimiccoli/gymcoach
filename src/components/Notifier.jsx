@@ -26,7 +26,7 @@ export default function Notifier() {
           <span style={{ fontSize: '16px', flexShrink: 0 }}>{m.type === 'error' ? '⚠️' : '✓'}</span>
           <span style={{
             color: m.type === 'error' ? '#fca5a5' : '#86efac',
-            fontSize: '13px', lineHeight: 1.35, flex: 1,
+            fontSize: '14px', lineHeight: 1.35, flex: 1,
           }}>{m.text}</span>
         </div>
       ))}

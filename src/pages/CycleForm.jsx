@@ -442,8 +442,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           <div style={{ background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo-tenue)', borderRadius: '6px', padding: '12px 14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '18px' }}>📋</span>
             <div>
-              <div style={{ color: 'var(--accento)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>CLONANDO DA</div>
-              <div style={{ color: 'var(--testo-forte)', fontSize: '13px', marginTop: '1px' }}>{cloneInfo?.name}</div>
+              <div style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>CLONANDO DA</div>
+              <div style={{ color: 'var(--testo-forte)', fontSize: '14px', marginTop: '1px' }}>{cloneInfo?.name}</div>
             </div>
           </div>
         )}
@@ -470,7 +470,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         {[1,2,3].map(d => (
           <button key={d} onClick={() => { setDay(d); setActiveGroup(null) }} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>GIORNO {d}</button>
@@ -479,7 +479,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
       {!readOnly && exList[day].length > 1 && (
         <div style={{ padding: '5px 16px', background: 'var(--sup-velo)', borderBottom: '1px solid var(--sup)' }}>
-          <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', textAlign: 'center' }}>
+          <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', textAlign: 'center' }}>
             ⠿ TIENI PREMUTO E TRASCINA — SCORRE AUTOMATICAMENTE
           </div>
         </div>
@@ -487,7 +487,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
       <div ref={scrollRef} style={scroll}>
         {groups.length === 0 && (
-          <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px', marginBottom: '12px' }}>
+          <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px', marginBottom: '12px' }}>
             Nessun esercizio per il Giorno {day}
           </div>
         )}
@@ -512,14 +512,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                     borderRadius: '4px', padding: draggingIdx !== null ? '4px 6px' : '0',
                     border: draggingIdx !== null ? `1px dashed ${accent}` : 'none',
                   }}>
-                  <div style={{ color: accent, fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                  <div style={{ color: accent, fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                     {isCircuit ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {group.label.replace('SS-','').replace('CIR-','')}
                   </div>
                   {/* Un gruppo con un esercizio solo è quasi sempre il residuo di
                       una cancellazione: l'etichetta resta attaccata al superstite
                       e nessuno se ne accorge finché non si guarda il database. */}
                   {group.exercises.length === 1 && (
-                    <div style={{ color: 'var(--attenzione)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '3px', padding: '2px 6px' }}>
+                    <div style={{ color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '3px', padding: '2px 6px' }}>
                       ⚠ DA SOLO
                     </div>
                   )}
@@ -552,7 +552,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                             style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px', touchAction: 'manipulation' }}>✏️</button>
                           {[1,2,3].filter(d => d !== day).map(targetDay => (
                             <button key={targetDay} onPointerUp={e => { e.stopPropagation(); moveToDay(day, ex.idx, targetDay) }}
-                              style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '3px 7px', color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation' }}>
+                              style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '3px 7px', color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation' }}>
                               G{targetDay}
                             </button>
                           ))}
@@ -566,13 +566,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         {isCircuit
                           ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
-                              <div style={{ color: 'rgba(59,130,246,0.7)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
+                              <div style={{ color: 'rgba(59,130,246,0.7)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                               <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)' }} />
                             </div>
                           ))
                           : [['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
                             <div key={field}>
-                              <div style={{ color: 'var(--testo-fioco)', fontSize: '9px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
+                              <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                               <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={repsInp} />
                             </div>
                           ))
@@ -585,7 +585,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
               {!readOnly && isGroup && !isCollapsed && (
                 <button onClick={() => { setActiveGroup({ label: group.label, type: group.type }); setShowSearch(true) }}
-                  style={{ width: '100%', borderRadius: '6px', padding: '9px', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', background: isCircuit ? 'rgba(59,130,246,0.08)' : 'var(--acc-fondo)', border: `1px dashed ${isCircuit ? 'rgba(59,130,246,0.35)' : 'var(--acc-bordo)'}`, color: accent }}>
+                  style={{ width: '100%', borderRadius: '6px', padding: '9px', marginBottom: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1.5px', background: isCircuit ? 'rgba(59,130,246,0.08)' : 'var(--acc-fondo)', border: `1px dashed ${isCircuit ? 'rgba(59,130,246,0.35)' : 'var(--acc-bordo)'}`, color: accent }}>
                   {isCircuit ? '🔄' : '⚡'} + AGGIUNGI A {group.label.replace('SS-','').replace('CIR-','')}
                 </button>
               )}
@@ -595,17 +595,17 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
         {!readOnly && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px', marginTop: '8px' }}>
-            <button onClick={() => { setActiveGroup(null); setShowSearch(true) }} style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px' }}>+ ESERCIZIO</button>
+            <button onClick={() => { setActiveGroup(null); setShowSearch(true) }} style={{ ...bigBtn, fontSize: '13px', padding: '11px 6px', letterSpacing: '0.5px' }}>+ ESERCIZIO</button>
             <button onClick={() => { setActiveGroup({ label: generateLabel('SS'), type: 'superset' }); setShowSearch(true) }}
-              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'var(--acc-fondo-forte)', border: '1px solid var(--acc-bordo)', color: 'var(--accento)' }}>⚡ SUPERSERIE</button>
+              style={{ ...bigBtn, fontSize: '13px', padding: '11px 6px', letterSpacing: '0.5px', background: 'var(--acc-fondo-forte)', border: '1px solid var(--acc-bordo)', color: 'var(--accento)' }}>⚡ SUPERSERIE</button>
             <button onClick={() => { setActiveGroup({ label: generateLabel('CIR'), type: 'circuit' }); setShowSearch(true) }}
-              style={{ ...bigBtn, fontSize: '11px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.35)', color: 'var(--circuito)' }}>🔄 CIRCUITO</button>
+              style={{ ...bigBtn, fontSize: '13px', padding: '11px 6px', letterSpacing: '0.5px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.35)', color: 'var(--circuito)' }}>🔄 CIRCUITO</button>
           </div>
         )}
 
         {!readOnly && currentCycleId && (
           <button onClick={() => setMostraImport(true)}
-            style={{ ...bigBtn, marginTop: '10px', background: 'transparent', border: '1px solid var(--bordo-forte)', color: 'var(--testo-chiaro)', fontSize: '12px', letterSpacing: '1px' }}>
+            style={{ ...bigBtn, marginTop: '10px', background: 'transparent', border: '1px solid var(--bordo-forte)', color: 'var(--testo-chiaro)', fontSize: '13px', letterSpacing: '1px' }}>
             ⬆ IMPORTA DA CSV
           </button>
         )}
@@ -621,14 +621,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         <div style={{ position: 'absolute', inset: 0, background: 'var(--fondo)', zIndex: 50, display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--sup-alta)' }}>
             {activeGroup && (
-              <div style={{ color: activeGroup.type === 'circuit' ? 'var(--circuito)' : 'var(--accento)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>
+              <div style={{ color: activeGroup.type === 'circuit' ? 'var(--circuito)' : 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '8px', fontWeight: '700' }}>
                 {activeGroup.type === 'circuit' ? '🔄 CIRCUITO' : '⚡ SUPERSERIE'} {activeGroup.label.replace('SS-','').replace('CIR-','')}
               </div>
             )}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
               <button onClick={() => { setShowSearch(false); setSearch(''); setActiveGroup(null) }}
-                style={{ color: 'var(--testo-medio)', background: 'none', border: 'none', fontSize: '13px', whiteSpace: 'nowrap' }}>Annulla</button>
+                style={{ color: 'var(--testo-medio)', background: 'none', border: 'none', fontSize: '14px', whiteSpace: 'nowrap' }}>Annulla</button>
             </div>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
@@ -662,12 +662,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>ELIMINA ESERCIZIO</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '4px' }}>Sei sicura di voler eliminare</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '4px' }}>Sei sicura di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{deleteExConfirm?.name}?</div>
             <button onClick={executeRemoveExercise} style={{ width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
               🗑 SÌ, ELIMINA
             </button>
-            <button onClick={() => setDeleteExConfirm(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '13px' }}>Annulla</button>
+            <button onClick={() => setDeleteExConfirm(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -681,10 +681,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }} />
             {usoEsercizio !== null && usoEsercizio > 1 && (
               <div style={{ background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px' }}>
-                <div style={{ color: 'var(--attenzione)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '3px' }}>
+                <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', marginBottom: '3px' }}>
                   ⚠ USATO IN {usoEsercizio} SCHEDE
                 </div>
-                <div style={{ color: 'var(--testo-medio)', fontSize: '11px', lineHeight: 1.4 }}>
+                <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4 }}>
                   Il catalogo esercizi è condiviso fra tutte le coach.
                   {usatoInQuestaScheda
                     ? ' Rinominare in tutte le schede cambia il nome anche in quelle già completate e nello storico degli atleti.'
@@ -714,7 +714,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
               }}>
               {usatoInQuestaScheda ? 'RINOMINA IN TUTTE LE SCHEDE' : '✓ SALVA'}
             </button>
-            <button onClick={() => setEditExerciseModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '13px' }}>Annulla</button>
+            <button onClick={() => setEditExerciseModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -726,7 +726,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
-const fieldLabel = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }

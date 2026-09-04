@@ -171,10 +171,10 @@ export default function CyclesList({ navigate, goHome, session }) {
               {isAlert && activeCycle && (
                 <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: '6px', padding: '10px 14px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ color: 'var(--attenzione)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>⚠ TUTTI ALLA SETTIMANA 6</div>
-                    <div style={{ color: 'var(--testo-debole)', fontSize: '10px', marginTop: '2px' }}>È ora di completare questa scheda?</div>
+                    <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>⚠ TUTTI ALLA SETTIMANA 6</div>
+                    <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '2px' }}>È ora di completare questa scheda?</div>
                   </div>
-                  <button onClick={() => setCompleteModal(activeCycle)} style={{ background: 'var(--attenzione)', border: 'none', borderRadius: '3px', padding: '6px 12px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '800', letterSpacing: '1px' }}>
+                  <button onClick={() => setCompleteModal(activeCycle)} style={{ background: 'var(--attenzione)', border: 'none', borderRadius: '3px', padding: '6px 12px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>
                     COMPLETA
                   </button>
                 </div>
@@ -191,7 +191,7 @@ export default function CyclesList({ navigate, goHome, session }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
                       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cycle?.name || '(senza nome)'}</div>
-                      <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '2px' }}>
+                      <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '2px' }}>
                         {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
                       </div>
                     </div>
@@ -199,14 +199,14 @@ export default function CyclesList({ navigate, goHome, session }) {
                       {cycle.is_active ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 5px var(--ok)' }} />
-                          <span style={{ color: 'var(--ok)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>ATTIVA</span>
+                          <span style={{ color: 'var(--ok)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>ATTIVA</span>
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--testo-fioco)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>COMPLETATA</span>
+                        <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>COMPLETATA</span>
                       )}
                       {/* OPEN BUTTON — only this is tappable for navigation */}
                       <button onClick={() => navigate('cycle-form', { turnId: turn.id, cycleId: cycle.id, readOnly: !cycle.is_active })}
-                        style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '6px 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px' }}>
+                        style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '6px 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
                         APRI →
                       </button>
                     </div>
@@ -230,7 +230,7 @@ export default function CyclesList({ navigate, goHome, session }) {
               ))}
 
               {!(cyclesByTurn[turn.id]?.length) && (
-                <div style={{ color: 'var(--bordo-forte)', fontSize: '12px', textAlign: 'center', padding: '16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
+                <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
                   Nessuna scheda ancora
                 </div>
               )}
@@ -239,7 +239,7 @@ export default function CyclesList({ navigate, goHome, session }) {
         })}
 
         {!loading && turns.length === 0 && (
-          <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
+          <div style={{ color: 'var(--testo-fioco)', fontSize: '14px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
             Aggiungi prima un turno dalla tab Turni.
           </div>
         )}
@@ -254,11 +254,11 @@ export default function CyclesList({ navigate, goHome, session }) {
             <div style={sheetTitle}>NUOVA SCHEDA</div>
             <div style={sheetSub}>Inizia da zero oppure clona una scheda esistente.</div>
             <button onClick={() => startNewCycle(cloneModal.turnId, null)} style={{ ...sheetBtnGrey, flexShrink: 0 }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', letterSpacing: '1px' }}>✏️ INIZIA DA ZERO</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', letterSpacing: '1px' }}>✏️ INIZIA DA ZERO</div>
             </button>
             {allCycles.length > 0 && (
               <>
-                <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px', flexShrink: 0 }}>📋 CLONA DA UNA SCHEDA ESISTENTE</div>
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px', flexShrink: 0 }}>📋 CLONA DA UNA SCHEDA ESISTENTE</div>
                 <div style={{ overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
                   {allCycles.map(cycle => (
                     <button key={cycle.id} onClick={() => startNewCycle(cloneModal.turnId, cycle.id)}
@@ -266,11 +266,11 @@ export default function CyclesList({ navigate, goHome, session }) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{cycle?.name || '(senza nome)'}</div>
-                          <div style={{ color: 'var(--testo-debole)', fontSize: '10px', marginTop: '2px' }}>{cycle?.turnName || ''}</div>
+                          <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '2px' }}>{cycle?.turnName || ''}</div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           {cycle.is_active && <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 4px var(--ok)' }} />}
-                          <div style={{ color: 'var(--accento)', fontSize: '13px' }}>›</div>
+                          <div style={{ color: 'var(--accento)', fontSize: '14px' }}>›</div>
                         </div>
                       </div>
                     </button>
@@ -316,9 +316,9 @@ export default function CyclesList({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA SCHEDA</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '6px' }}>Sei sicura di voler eliminare</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Sei sicura di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>{deleteModal.cycle.name}?</div>
-            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '11px', marginBottom: '20px' }}>
+            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '13px', marginBottom: '20px' }}>
               ⚠ Verranno eliminati tutti gli esercizi e i carichi associati.{deleteModal.cycle.is_active ? ' Se non resta nessun\'altra scheda attiva, la più recente verrà riattivata.' : ''}
             </div>
             <button onClick={() => deleteCycle(deleteModal.cycle, deleteModal.turnId)}
@@ -337,14 +337,14 @@ export default function CyclesList({ navigate, goHome, session }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px', WebkitOverflowScrolling: 'touch' }
-const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
-const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
-const actionBtn = { background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '7px 12px', color: 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
+const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
+const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
+const actionBtn = { background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '7px 12px', color: 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
 const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }
 const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }
-const sheetSub = { color: 'var(--testo-debole)', fontSize: '12px', marginBottom: '20px' }
+const sheetSub = { color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '20px' }
 const sheetBtnOrange = { width: '100%', background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', textAlign: 'left', cursor: 'pointer' }
 const sheetBtnGrey = { width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', textAlign: 'left', cursor: 'pointer' }
 const sheetBtnYellow = { width: '100%', background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', textAlign: 'left', cursor: 'pointer' }
-const cancelBtn = { background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '13px', cursor: 'pointer' }
+const cancelBtn = { background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px', cursor: 'pointer' }

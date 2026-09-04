@@ -83,7 +83,7 @@ export default function Login() {
             lineHeight: 1,
             marginBottom: '8px',
           }}>GYM<span style={{ color: 'var(--accento)' }}>COACH</span></div>
-          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '14px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>
             Gestione schede · Carichi · Progressi
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function Login() {
           </div>
 
           {error && (
-            <div style={{ color: 'var(--errore)', fontSize: '13px', marginBottom: '12px', paddingLeft: '4px' }}>{error}</div>
+            <div style={{ color: 'var(--errore)', fontSize: '14px', marginBottom: '12px', paddingLeft: '4px' }}>{error}</div>
           )}
 
           <button type="submit" disabled={loading} style={btn}>
@@ -131,19 +131,19 @@ export default function Login() {
           <div style={{ textAlign: 'center', marginTop: '18px' }}>
             <span
               onClick={() => { setShowReset(true); setResetEmail(email) }}
-              style={{ color: 'var(--acc-testo-tenue)', fontSize: '12px', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
+              style={{ color: 'var(--acc-testo-tenue)', fontSize: '13px', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
               PASSWORD DIMENTICATA?
             </span>
           </div>
         ) : resetSent ? (
           <div style={{ marginTop: '18px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo-tenue)', borderRadius: '4px', padding: '14px', textAlign: 'center' }}>
-            <div style={{ color: 'var(--accento)', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ RICHIESTA INVIATA</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '11px' }}>Se l'indirizzo è registrato riceverai il link per reimpostare la password. Controlla anche lo spam.</div>
-            <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'var(--testo-debole)', fontSize: '11px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
+            <div style={{ color: 'var(--accento)', fontSize: '14px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ RICHIESTA INVIATA</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px' }}>Se l'indirizzo è registrato riceverai il link per reimpostare la password. Controlla anche lo spam.</div>
+            <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'var(--testo-debole)', fontSize: '13px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
           </div>
         ) : (
           <div style={{ marginTop: '18px' }}>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '11px', marginBottom: '8px', letterSpacing: '0.5px' }}>Inserisci la tua email per ricevere il link di reset:</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '8px', letterSpacing: '0.5px' }}>Inserisci la tua email per ricevere il link di reset:</div>
             <input
               value={resetEmail}
               onChange={e => setResetEmail(e.target.value)}
@@ -154,12 +154,12 @@ export default function Login() {
               {resetLoading ? 'INVIO...' : 'INVIA LINK DI RESET'}
             </button>
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <span onClick={() => setShowReset(false)} style={{ color: 'var(--testo-debole)', fontSize: '11px', cursor: 'pointer' }}>← Torna al login</span>
+              <span onClick={() => setShowReset(false)} style={{ color: 'var(--testo-debole)', fontSize: '13px', cursor: 'pointer' }}>← Torna al login</span>
             </div>
           </div>
         )}
 
-        <div style={{ color: 'var(--bordo-forte)', fontSize: '11px', textAlign: 'center', marginTop: '24px', letterSpacing: '1px' }}>
+        <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', marginTop: '24px', letterSpacing: '1px' }}>
           RISERVATO AI COACH
         </div>
       </div>

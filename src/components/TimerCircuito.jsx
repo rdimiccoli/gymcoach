@@ -125,10 +125,10 @@ export default function TimerCircuito({ group, onClose }) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', flexShrink: 0 }}>
-        <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
+        <span style={{ color: 'var(--testo-debole)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
           GIRO {Math.min(giro, giri)} / {giri}
         </span>
-        <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
+        <span style={{ color: 'var(--testo-debole)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
           {indice + 1} / {esercizi.length}
         </span>
       </div>
@@ -143,7 +143,7 @@ export default function TimerCircuito({ group, onClose }) {
           </>
         ) : (
           <>
-            <div style={{ color: colore, fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '3px' }}>
+            <div style={{ color: colore, fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '3px' }}>
               {fase === 'riposo' ? 'RIPOSO' : fase === 'pronti' ? 'PRONTI?' : 'LAVORO'}
             </div>
             <div style={{
@@ -156,7 +156,7 @@ export default function TimerCircuito({ group, onClose }) {
               {fase === 'riposo' ? (prossimo?.exercises?.name ?? '') : (esercizio?.exercises?.name ?? '')}
             </div>
             {fase !== 'riposo' && prossimo && (
-              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '4px' }}>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '14px', marginTop: '4px' }}>
                 poi · {prossimo?.exercises?.name}
               </div>
             )}

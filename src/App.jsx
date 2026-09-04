@@ -228,13 +228,13 @@ export default function App() {
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
               🆕 Aggiornamento disponibile
             </div>
-            <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '2px' }}>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>
               Tocca AGGIORNA per installare la nuova versione
             </div>
           </div>
           <button
             onClick={() => updateServiceWorker(true)}
-            style={{ background: 'var(--accento)', border: 'none', borderRadius: '6px', padding: '10px 16px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', flexShrink: 0, cursor: 'pointer' }}>
+            style={{ background: 'var(--accento)', border: 'none', borderRadius: '6px', padding: '10px 16px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px', flexShrink: 0, cursor: 'pointer' }}>
             AGGIORNA
           </button>
         </div>
@@ -246,7 +246,7 @@ export default function App() {
           <div style={{ background: '#1a1a1a', border: '1px solid var(--bordo)', borderRadius: '12px', padding: '28px 24px', width: '100%', maxWidth: '320px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>👋</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>USCIRE DA GYMCOACH?</div>
-            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '24px' }}>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '14px', marginBottom: '24px' }}>
               {puoUscire()
                 ? "Sei sicura di voler uscire dall'app?"
                 : 'Sei già alla schermata iniziale. Per chiudere GymCoach usa il gesto o il tasto del telefono.'}

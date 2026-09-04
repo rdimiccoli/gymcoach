@@ -184,7 +184,7 @@ export default function Turns({ navigate, goHome, session }) {
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
               </div>
-              <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '1px' }}>Settimana {client.current_week}/6</div>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Settimana {client.current_week}/6</div>
             </div>
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -193,7 +193,7 @@ export default function Turns({ navigate, goHome, session }) {
                 ✏️
               </button>
               <button onClick={() => toggleClient(client)}
-                style={{ background: 'var(--sup-alta)', border: '1px solid var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '6px 10px', borderRadius: '3px' }}>
+                style={{ background: 'var(--sup-alta)', border: '1px solid var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '6px 10px', borderRadius: '3px' }}>
                 {client.is_active ? 'ARCHIVIA' : 'RIATTIVA'}
               </button>
               <button onClick={() => confirmDeleteClient(client)}
@@ -230,13 +230,13 @@ export default function Turns({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA CLIENTE</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '6px' }}>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>
               Sei sicura di voler eliminare
             </div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
               {deleteConfirm.surname} {deleteConfirm.name}?
             </div>
-            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '11px', marginBottom: '20px' }}>
+            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '13px', marginBottom: '20px' }}>
               ⚠ Verranno eliminati anche tutti i suoi carichi storici.
             </div>
             <button onClick={executeDeleteClient}
@@ -264,7 +264,7 @@ export default function Turns({ navigate, goHome, session }) {
           {['Maschile','Femminile','Misto'].map(t => (
             <button key={t} onClick={() => setTurnType(t)} style={{
               flex: 1, padding: '11px 6px', borderRadius: '4px', border: 'none',
-              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '0.5px',
+              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '0.5px',
               background: turnType === t ? 'var(--accento)' : 'var(--sup-alta)',
               color: turnType === t ? '#fff' : 'var(--testo-debole)'
             }}>{t.toUpperCase()}</button>
@@ -286,14 +286,14 @@ export default function Turns({ navigate, goHome, session }) {
       <div style={scroll}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
           <div style={sectionLabel}>I MIEI TURNI</div>
-          <button onClick={() => setView('addTurn')} style={{ background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '6px 14px', borderRadius: '3px' }}>+ AGGIUNGI</button>
+          <button onClick={() => setView('addTurn')} style={{ background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '6px 14px', borderRadius: '3px' }}>+ AGGIUNGI</button>
         </div>
         {loading && <ScheletroElenco righe={4} />}
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
             <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
-              <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '1px' }}>Tocca per gestire clienti</div>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Tocca per gestire clienti</div>
             </button>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</button>
@@ -322,8 +322,8 @@ export default function Turns({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA TURNO</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '6px' }}>Sei sicura di voler eliminare questo turno?</div>
-            <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '11px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Sei sicura di voler eliminare questo turno?</div>
+            <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '13px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>
             <button onClick={executeDeleteTurn}
               style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>🗑 SÌ, ELIMINA</button>
             <button onClick={() => setDeleteTurnConfirm(null)} style={cancelBtn}>Annulla</button>
@@ -337,13 +337,13 @@ export default function Turns({ navigate, goHome, session }) {
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
-const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }
-const fieldLabel = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }
+const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
 const row = { background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '6px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
-const emptyText = { color: 'var(--bordo-forte)', fontSize: '12px', textAlign: 'center', padding: '20px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }
+const emptyText = { color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '20px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
 const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }
 const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }
-const cancelBtn = { background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '13px', cursor: 'pointer' }
+const cancelBtn = { background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '14px', cursor: 'pointer' }

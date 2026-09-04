@@ -32,7 +32,7 @@ export default function BottomNav({ active, navigate, goHome }) {
             <item.Icona />
           </div>
           <div style={{
-            fontSize: '11px',
+            fontSize: '13px',
             letterSpacing: '0.5px',
             fontFamily: 'Barlow Condensed, sans-serif',
             fontWeight: '700',

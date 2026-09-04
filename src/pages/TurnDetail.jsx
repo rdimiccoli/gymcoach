@@ -239,7 +239,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     <div style={page}>
       <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '12px' }}>Vai in Schede per crearne una.</span></div>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '13px' }}>Vai in Schede per crearne una.</span></div>
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
@@ -252,7 +252,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>GIORNO {d}</button>
@@ -262,7 +262,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       <div style={scroll}>
         {loading && <ScheletroElenco righe={4} />}
         {!loading && exercises.length === 0 && (
-          <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
+          <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
             Nessun esercizio per il Giorno {day}.
           </div>
         )}
@@ -289,10 +289,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                   onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
                   style={{ ...comePulsante, flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }}>
                   {group.type === 'superset' && (
-                    <div style={{ color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
+                    <div style={{ color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
                   )}
                   {group.type === 'circuit' && (
-                    <div style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
+                    <div style={{ color: 'var(--circuito)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
                   )}
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {group.exercises.map(e => e?.exercises?.name).join(' + ')}
@@ -307,7 +307,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                     flexShrink: 0,
                     background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.45)',
                     borderRadius: '3px', padding: '6px 10px', color: 'var(--circuito)',
-                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
+                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px',
                     touchAction: 'manipulation', cursor: 'pointer',
                   }}>▶ TIMER</button>
                 )}
@@ -331,15 +331,15 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                             <button type="button" onClick={() => navigate('athlete-profile', { client })}
                               style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               {client.name} {client.surname}
-                              {isLate && <span style={{ color: '#E8A030', fontSize: '9px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
-                              <span style={{ color: 'var(--testo-fioco)', fontSize: '12px' }}>›</span>
+                              {isLate && <span style={{ color: '#E8A030', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
+                              <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
-                              ? <div style={{ color: 'var(--circuito)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
+                              ? <div style={{ color: 'var(--circuito)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
                               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
                                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                    <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
+                                    <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
                                     <span style={{ color: 'var(--accento)', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
                                   </div>
                                   {/* In una superserie ogni esercizio ha le sue ripetizioni:
@@ -354,7 +354,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                           <button onClick={() => setEditModal({ client, group })} style={{
                             background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo)',
                             borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
-                            color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
+                            color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px'
                           }}>DETTAGLI</button>
                         </div>
 
@@ -375,21 +375,21 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                               <div key={ex.id} style={{ background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {group.exercises.length > 1 && (
-                                    <div style={{ color: 'var(--testo-medio)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {ex?.exercises?.name?.toUpperCase() ?? ''}
                                     </div>
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                    <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                    <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       × {repsPerSettimana(ex, client.current_week)}
                                     </span>
                                     {prevKg !== undefined && (
-                                      <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                      <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                         prec. {prevKg}
                                       </span>
                                     )}
                                     {diff !== null && diff !== 0 && (
-                                      <span style={{ fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
+                                      <span style={{ fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
                                         {diff > 0 ? `↑+${diff}` : `↓${diff}`}
                                       </span>
                                     )}
@@ -402,7 +402,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                   <span style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
                                     {currentKg !== undefined ? currentKg : '—'}
                                   </span>
-                                  <span style={{ color: 'var(--testo-debole)', fontSize: '9px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
+                                  <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
                                 </button>
                                 <button onClick={() => modificaCarico(client, ex, 1)}
                                   style={{ ...tastoCarico, background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>+</button>
@@ -423,14 +423,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                               border: '1px solid rgba(234,179,8,0.2)',
                               borderRadius: '4px', padding: '6px 9px',
                             }}>
-                              <span style={{ fontSize: '11px', flexShrink: 0 }}>📝</span>
+                              <span style={{ fontSize: '13px', flexShrink: 0 }}>📝</span>
                               <div style={{ minWidth: 0 }}>
                                 {group.exercises.length > 1 && (
-                                  <span style={{ color: 'rgba(234,179,8,0.75)', fontSize: '9px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', marginRight: '5px' }}>
+                                  <span style={{ color: 'rgba(234,179,8,0.75)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', marginRight: '5px' }}>
                                     {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
                                   </span>
                                 )}
-                                <span style={{ color: 'var(--testo-chiaro)', fontSize: '11px', lineHeight: 1.35 }}>
+                                <span style={{ color: 'var(--testo-chiaro)', fontSize: '13px', lineHeight: 1.35 }}>
                                   {notes[`${client.id}_${ex.id}`]}
                                 </span>
                               </div>
@@ -450,12 +450,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           <div style={{ marginTop: '16px', background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '6px', padding: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
               <div>
-                <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
                 {/* `cycles.start_date` c'era da sempre e non serviva a niente
                     oltre che a comparire nella lista. Da lì si sa a che punto
                     dovrebbe essere la scheda, invece di contare a mano. */}
                 {settimanaAttesa && (
-                  <div style={{ color: 'var(--testo-medio)', fontSize: '11px', marginTop: '3px' }}>
+                  <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '3px' }}>
                     Da calendario siamo alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaAttesa}</strong>
                     {indietro.length > 0 && <> · <span style={{ color: '#E8A030' }}>{indietro.length} indietro</span></>}
                   </div>
@@ -465,7 +465,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                 <button onClick={() => setConfermaAvanza(true)} style={{
                   flexShrink: 0, background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo-forte)',
                   borderRadius: '4px', padding: '8px 12px', color: 'var(--accento)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
                 }}>+1 A TUTTE</button>
               )}
             </div>
@@ -473,13 +473,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
               <div key={client.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid var(--sup)' }}>
                 <div>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '0.5px' }}>{client.name} {client.surname}</div>
-                  <div style={{ color: 'var(--testo-fioco)', fontSize: '10px' }}>Sett. {client.current_week}/6</div>
+                  <div style={{ color: 'var(--testo-fioco)', fontSize: '12px' }}>Sett. {client.current_week}/6</div>
                 </div>
                 <button onClick={() => advanceWeek(client)} disabled={client.current_week >= 6} style={{
                   background: client.current_week >= 6 ? 'var(--sup)' : 'var(--accento)',
                   border: 'none', borderRadius: '3px', padding: '6px 14px',
                   color: client.current_week >= 6 ? 'var(--bordo-forte)' : '#fff',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px'
                 }}>
                   {client.current_week >= 6 ? 'COMPLETO' : '+ AVANZA'}
                 </button>
@@ -496,11 +496,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>AVANZA TUTTE DI UNA SETTIMANA</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '20px' }}>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '20px' }}>
               {clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.
             </div>
             <button onClick={avanzaTutte} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>✓ AVANZA TUTTE</button>
-            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>Annulla</button>
+            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px', cursor: 'pointer' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -576,17 +576,17 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
         {client?.name?.toUpperCase()} {client?.surname?.toUpperCase()}
       </div>
-      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
           ? <span style={{ color: 'var(--circuito)' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
           : <span>Settimana {week} · {repsPerSettimana(group.exercises[0], week)}</span>
         }
       </div>
       {group.type === 'superset' && (
-        <div style={{ color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>⚡ SUPERSERIE</div>
+        <div style={{ color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>⚡ SUPERSERIE</div>
       )}
       {group.type === 'circuit' && (
-        <div style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>🔄 CIRCUITO — inserisci i carichi usati</div>
+        <div style={{ color: 'var(--circuito)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>🔄 CIRCUITO — inserisci i carichi usati</div>
       )}
 
       {group.exercises.map(ex => {
@@ -601,9 +601,9 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
             {/* Previous load reference */}
             {prev ? (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '3px', padding: '3px 8px', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
-                <span style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
-                <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
+                <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
+                <span style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
+                <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
               </div>
             ) : (
               <div style={{ height: '4px' }} />
@@ -627,7 +627,7 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
                   border: `1px solid ${delta > 0 ? 'var(--acc-bordo)' : 'var(--bordo)'}`,
                   borderRadius: '4px', padding: '9px 4px',
                   color: delta > 0 ? 'var(--accento)' : 'var(--testo-chiaro)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700'
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700'
                 }}>{label}</button>
               ))}
             </div>
@@ -656,7 +656,7 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
       <button onClick={handleSave} style={{ background: 'var(--accento)', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '2px' }}>
         SALVA CARICHI ✓
       </button>
-      <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '13px', marginTop: '4px' }}>
+      <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '14px', marginTop: '4px' }}>
         Annulla
       </button>
     </div>

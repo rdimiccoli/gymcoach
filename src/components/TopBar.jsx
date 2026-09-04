@@ -26,7 +26,7 @@ export default function TopBar({ title, subtitle, onBack }) {
           color: '#fff', letterSpacing: '1px',
           textTransform: 'uppercase',
         }}>{title}</div>
-        {subtitle && <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '1px', letterSpacing: '0.5px' }}>{subtitle}</div>}
+        {subtitle && <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '1px', letterSpacing: '0.5px' }}>{subtitle}</div>}
       </div>
       <img src="/logo_OAD.png" alt="OAD" style={{ height: '32px', mixBlendMode: 'screen', flexShrink: 0, opacity: 0.85 }} />
     </div>

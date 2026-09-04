@@ -33,7 +33,7 @@ export default function ChangePassword({ onDone }) {
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', letterSpacing: '2px', marginBottom: '6px' }}>
         GYM<span style={{ color: 'var(--accento)' }}>COACH</span>
       </div>
-      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', letterSpacing: '2px', marginBottom: '36px', textTransform: 'uppercase' }}>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '13px', letterSpacing: '2px', marginBottom: '36px', textTransform: 'uppercase' }}>
         Nuova password
       </div>
 
@@ -41,7 +41,7 @@ export default function ChangePassword({ onDone }) {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>✅</div>
           <div style={{ color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', letterSpacing: '1px' }}>PASSWORD AGGIORNATA</div>
-          <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '6px' }}>Accesso in corso...</div>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '6px' }}>Accesso in corso...</div>
         </div>
       ) : (
         <div style={{ width: '100%', maxWidth: '360px' }}>
@@ -69,7 +69,7 @@ export default function ChangePassword({ onDone }) {
           />
 
           {error && (
-            <div style={{ color: 'var(--errore)', fontSize: '12px', marginBottom: '12px', paddingLeft: '2px' }}>{error}</div>
+            <div style={{ color: 'var(--errore)', fontSize: '13px', marginBottom: '12px', paddingLeft: '2px' }}>{error}</div>
           )}
 
           <button
@@ -85,7 +85,7 @@ export default function ChangePassword({ onDone }) {
   )
 }
 
-const label = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const label = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '16px 18px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const btn = { width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '17px', color: '#fff', fontSize: '15px', fontWeight: '700', letterSpacing: '3px', fontFamily: 'Barlow Condensed, sans-serif', cursor: 'pointer' }
 const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--testo-debole)', fontSize: '18px', lineHeight: 1, padding: '4px' }
