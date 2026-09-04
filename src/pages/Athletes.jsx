@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -74,7 +75,7 @@ export default function Athletes({ navigate, goHome, session }) {
       </div>
 
       <div style={scroll}>
-        {loading && <div style={vuoto}>Caricamento...</div>}
+        {loading && <ScheletroElenco righe={5} />}
         {!loading && visibili.length === 0 && (
           <div style={vuoto}>
             {testo ? `Nessuna atleta trovata per "${cerca.trim()}".` : 'Nessuna atleta. Aggiungile dalla scheda del turno.'}

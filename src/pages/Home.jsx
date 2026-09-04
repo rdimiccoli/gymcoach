@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
+import { ScheletroSchede, ScheletroElenco } from '../components/Scheletro'
 import BottomNav from '../components/BottomNav'
 
 const WEEKDAYS = ['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato']
@@ -103,7 +104,18 @@ export default function Home({ navigate, goHome, session }) {
     setLoading(false)
   }
 
-  if (loading) return <Loader />
+  if (loading) return (
+    <div style={page}>
+      <div style={scroll}>
+        <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }}>
+          <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
+          <div className="osso" style={{ width: '58%', height: '30px', borderRadius: '3px' }} />
+        </div>
+        <ScheletroSchede righe={3} />
+      </div>
+      <BottomNav active="home" navigate={navigate} goHome={goHome} />
+    </div>
+  )
 
   // `coaches.home_type` veniva scritta a ogni creazione di coach e non letta
   // mai da nessuno: la vista alternativa promessa da patch.sql non esisteva.
@@ -311,17 +323,6 @@ function Empty() {
   return (
     <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
       Nessun turno. Vai in Setup per aggiungerne uno.
-    </div>
-  )
-}
-
-function Loader() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--fondo)', gap: '12px' }}>
-      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '36px', fontWeight: '900', letterSpacing: '4px' }}>
-        GYM<span style={{ color: 'var(--accento)' }}>COACH</span>
-      </div>
-      <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', letterSpacing: '2px' }}>CARICAMENTO...</div>
     </div>
   )
 }

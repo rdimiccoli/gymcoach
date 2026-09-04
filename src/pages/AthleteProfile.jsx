@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import Andamento from '../components/Andamento'
+import { ScheletroStorico } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -97,11 +99,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
       />
 
       <div style={scroll}>
-        {loading && (
-          <div style={{ color: 'var(--testo-fioco)', textAlign: 'center', padding: '40px', fontSize: '13px' }}>
-            Caricamento storico...
-          </div>
-        )}
+        {loading && <ScheletroStorico />}
 
         {!loading && history.length === 0 && (
           <div style={{ color: 'var(--bordo-forte)', textAlign: 'center', padding: '40px', fontSize: '13px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
@@ -180,6 +178,13 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                   {/* History entries */}
                   {isOpen && (
                     <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--acc-riempimento)', borderTop: 'none', borderRadius: '0 0 6px 6px', overflow: 'hidden' }}>
+                      {/* Le voci arrivano dalla più recente alla più vecchia:
+                          il grafico le vuole nell'ordine in cui sono successe. */}
+                      {ex.entries.length > 1 && (
+                        <div style={{ padding: '14px 14px 4px' }}>
+                          <Andamento punti={[...ex.entries].reverse().map(e => ({ kg: e.kg, etichetta: WEEK_LABEL(e.week).replace('Sett. ', 'S') }))} />
+                        </div>
+                      )}
                       {ex.entries.map((entry, i) => (
                         <div key={i} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',

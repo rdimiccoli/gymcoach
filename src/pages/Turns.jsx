@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
+import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -286,7 +287,7 @@ export default function Turns({ navigate, goHome, session }) {
           <div style={sectionLabel}>I MIEI TURNI</div>
           <button onClick={() => setView('addTurn')} style={{ background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', padding: '6px 14px', borderRadius: '3px' }}>+ AGGIUNGI</button>
         </div>
-        {loading && <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', padding: '12px', textAlign: 'center' }}>Caricamento...</div>}
+        {loading && <ScheletroElenco righe={4} />}
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
             <div onClick={() => loadClients(turn)} style={{ flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>

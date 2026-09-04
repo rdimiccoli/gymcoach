@@ -113,3 +113,17 @@ button { cursor: pointer; }
 .fadeUp-1 { animation: fadeUp 0.4s ease 0.05s both; }
 .fadeUp-2 { animation: fadeUp 0.4s ease 0.1s both; }
 .fadeUp-3 { animation: fadeUp 0.4s ease 0.15s both; }
+
+/* ── scheletri di caricamento ─────────────────────────────────────────── */
+.osso {
+  background: var(--sup-alta);
+  animation: respiro 1.5s ease-in-out infinite;
+}
+@keyframes respiro {
+  0%, 100% { opacity: .45 }
+  50%      { opacity: .95 }
+}
+/* Chi ha chiesto meno movimento vede la forma ferma, non il lampeggio. */
+@media (prefers-reduced-motion: reduce) {
+  .osso { animation: none; opacity: .6 }
+}

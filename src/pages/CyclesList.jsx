@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { csvDaEsercizi } from '../lib/csv'
+import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -154,7 +155,7 @@ export default function CyclesList({ navigate, goHome, session }) {
     <div style={page}>
       <TopBar title="SCHEDE" subtitle="Storico e gestione" />
       <div style={scroll}>
-        {loading && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <ScheletroElenco righe={4} />}
 
         {turns.map(turn => {
           const isAlert = completedAlerts.includes(turn.id)

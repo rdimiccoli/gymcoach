@@ -5,6 +5,7 @@ import { salvaCarichi } from '../lib/coda'
 import { tocco, conferma } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto } from '../lib/schede'
 import TimerCircuito from '../components/TimerCircuito'
+import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -257,7 +258,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       </div>
 
       <div style={scroll}>
-        {loading && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <ScheletroElenco righe={4} />}
         {!loading && exercises.length === 0 && (
           <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
             Nessun esercizio per il Giorno {day}.

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
+import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -166,7 +167,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       <TopBar title="CONDIVIDI SCHEDA" subtitle="Seleziona cliente e settimana" onBack={goBack} />
 
       <div style={scroll}>
-        {loading && <div style={{ color: 'var(--testo-fioco)', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <ScheletroElenco righe={4} />}
 
         {!loading && (
           <>
