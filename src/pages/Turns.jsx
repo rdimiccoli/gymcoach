@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { ScheletroElenco } from '../components/Scheletro'
+import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -231,7 +232,7 @@ export default function Turns({ navigate, goHome, session }) {
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA CLIENTE</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>
-              Sei sicura di voler eliminare
+              Confermi di voler eliminare
             </div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
               {deleteConfirm.surname} {deleteConfirm.name}?
@@ -284,10 +285,7 @@ export default function Turns({ navigate, goHome, session }) {
     <div style={page}>
       <TopBar title="TURNI" />
       <div style={scroll}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <div style={sectionLabel}>I MIEI TURNI</div>
-          <button onClick={() => setView('addTurn')} style={{ background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '6px 14px', borderRadius: '3px' }}>+ AGGIUNGI</button>
-        </div>
+        <div style={sectionLabel}>I MIEI TURNI</div>
         {loading && <ScheletroElenco righe={4} />}
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
@@ -303,7 +301,8 @@ export default function Turns({ navigate, goHome, session }) {
           </div>
         ))}
         {!loading && turns.length === 0 && <div style={emptyText}>Nessun turno ancora.</div>}
-        <div style={{ height: '20px' }} />
+        {/* spazio perché l'ultima riga non finisca sotto il pulsante flottante */}
+        <div style={{ height: '76px' }} />
       </div>
       {renameTurnModal && (
         <div style={overlay}>
@@ -322,7 +321,7 @@ export default function Turns({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA TURNO</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Sei sicura di voler eliminare questo turno?</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare questo turno?</div>
             <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '13px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>
             <button onClick={executeDeleteTurn}
               style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>🗑 SÌ, ELIMINA</button>
@@ -330,6 +329,7 @@ export default function Turns({ navigate, goHome, session }) {
           </div>
         </div>
       )}
+      <PulsanteFlottante etichetta="NUOVO TURNO" onClick={() => setView('addTurn')} />
       <BottomNav active="turns" navigate={navigate} goHome={goHome} />
     </div>
   )

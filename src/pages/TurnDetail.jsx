@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
-import { tocco, conferma } from '../lib/aptico'
+import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
@@ -27,6 +27,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   // (client_id, cycle_exercise_id) senza la settimana: la nota vale per
   // l'atleta su quell'esercizio per tutta la scheda, non per una settimana.
   const [notes, setNotes] = useState({})
+  // record[clientId_exerciseId] = massimo di sempre su quell_esercizio
+  const [record, setRecord] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [confermaAvanza, setConfermaAvanza] = useState(false)
@@ -70,6 +72,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
       })
       setLoads(loadMap)
+
+      // ── Record personali ──────────────────────────────────────────────
+      // Il massimo di sempre non si ricava da loadMap: quello copre solo
+      // questa scheda. Lo stesso esercizio in schede diverse ha righe
+      // cycle_exercises diverse, quindi si passa da exercise_id.
+      const idEsercizi = [...new Set(exData.map(e => e.exercise_id).filter(Boolean))]
+      if (idEsercizi.length) {
+        const { data: storico } = await run(
+          supabase.from('client_loads')
+            .select('kg, client_id, cycle_exercises!inner(exercise_id)')
+            .in('client_id', clIds)
+            .in('cycle_exercises.exercise_id', idEsercizi),
+          'Impossibile calcolare i record personali.'
+        )
+        const massimi = {}
+        storico?.forEach(r => {
+          const chiave = `${r.client_id}_${r.cycle_exercises?.exercise_id}`
+          if (r.kg != null && (massimi[chiave] === undefined || r.kg > massimi[chiave])) massimi[chiave] = r.kg
+        })
+        setRecord(massimi)
+      }
 
       const noteMap = {}
       noteData?.forEach(n => { noteMap[`${n.client_id}_${n.cycle_exercise_id}`] = n.note })
@@ -137,6 +160,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       })
       return next
     })
+    loadUpdates.forEach(({ cycleExId, kg }) => {
+      const ex = exercises.find(e => e.id === cycleExId)
+      const cliente = clients.find(c => c.id === clientId)
+      if (ex && cliente) controllaRecord(cliente, ex, kg)
+    })
     conferma()
     notifyOk(differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
     setEditModal(null)
@@ -156,17 +184,39 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     setLoads(prev => ({ ...prev, [chiave]: nuovo }))
     carichiPendenti.current[chiave] = {
       client_id: client.id, cycle_exercise_id: ex.id, kg: nuovo, week: settimana,
+      __client: client, __ex: ex,
     }
     clearTimeout(timerCarichi.current[chiave])
     timerCarichi.current[chiave] = setTimeout(() => scriviCarico(chiave), 900)
+  }
+
+  /**
+   * Se il carico appena messo supera il massimo di sempre su quell'esercizio,
+   * lo si dice. I dati c'erano già: mancava solo il confronto.
+   *
+   * Il record si aggiorna subito in memoria, altrimenti toccando + due volte
+   * l'app griderebbe «record» due volte per la stessa serie.
+   */
+  function controllaRecord(client, ex, kg) {
+    if (kg == null || !ex?.exercise_id) return
+    const chiave = `${client.id}_${ex.exercise_id}`
+    const massimo = record[chiave]
+    // Il primo carico in assoluto non è un record: è solo il primo.
+    if (massimo === undefined || kg <= massimo) return
+    setRecord(prev => ({ ...prev, [chiave]: kg }))
+    festa()
+    notifyOk(`🏆 Record di ${client.name}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${massimo})`)
   }
 
   async function scriviCarico(chiave) {
     const riga = carichiPendenti.current[chiave]
     if (!riga) return
     delete carichiPendenti.current[chiave]
+    // eslint-disable-next-line no-unused-vars
+    const { __client, __ex, ...daSpedire } = riga
     clearTimeout(timerCarichi.current[chiave])
-    const { errore } = await salvaCarichi(session.user.id, [riga])
+    const { errore } = await salvaCarichi(session.user.id, [daSpedire])
+    if (!errore) controllaRecord(riga.__client, riga.__ex, riga.kg)
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
@@ -375,6 +425,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                     <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       × {repsPerSettimana(ex, client.current_week)}
                                     </span>
+                                    {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
+                                      && currentKg >= record[`${client.id}_${ex.exercise_id}`] && currentKg > 0 && (
+                                      <span title="Massimo di sempre su questo esercizio"
+                                        style={{ color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                        🏆 RECORD
+                                      </span>
+                                    )}
                                     {prevKg !== undefined && (
                                       <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                         prec. {prevKg}

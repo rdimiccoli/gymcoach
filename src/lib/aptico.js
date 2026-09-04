@@ -28,3 +28,6 @@ export const conferma = () => batti([12, 40, 12])
 
 /** Qualcosa è andato storto: un colpo più lungo. */
 export const errore = () => batti(45)
+
+/** Un record personale: tre colpetti, si sente che è successo qualcosa di bello. */
+export const festa = () => batti([15, 60, 15, 60, 25])

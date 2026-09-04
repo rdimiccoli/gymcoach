@@ -287,7 +287,7 @@ export default function CyclesList({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>COMPLETA SCHEDA</div>
-            <div style={sheetSub}>Sei sicura di voler completare "{completeModal.name}"?</div>
+            <div style={sheetSub}>Confermi di voler completare "{completeModal.name}"?</div>
             <button onClick={() => completeCycle(completeModal)} style={sheetBtnYellow}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--attenzione)', letterSpacing: '1px' }}>✓ SÌ, COMPLETA</div>
             </button>
@@ -316,7 +316,7 @@ export default function CyclesList({ navigate, goHome, session }) {
         <div style={overlay}>
           <div style={sheet}>
             <div style={sheetTitle}>ELIMINA SCHEDA</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Sei sicura di voler eliminare</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>{deleteModal.cycle.name}?</div>
             <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '13px', marginBottom: '20px' }}>
               ⚠ Verranno eliminati tutti gli esercizi e i carichi associati.{deleteModal.cycle.is_active ? ' Se non resta nessun\'altra scheda attiva, la più recente verrà riattivata.' : ''}

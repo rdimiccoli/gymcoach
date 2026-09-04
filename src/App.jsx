@@ -11,6 +11,7 @@ import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
+import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
 import Notifier from './components/Notifier'
 import IndicatoreCoda from './components/IndicatoreCoda'
 // Caricati solo quando servono davvero: il blocco biometrico riguarda chi
@@ -74,6 +75,7 @@ export default function App() {
   const [stack, setStack] = useState(() => leggiNavigazione() || HOME)
   const [showExitModal, setShowExitModal] = useState(false)
   const [sbloccato, setSbloccato] = useState(false)
+  const [intro, setIntro] = useState(introDaMostrare)
   const stackRef = useRef(stack)
   const nascostaDa = useRef(null)
 
@@ -192,6 +194,9 @@ export default function App() {
     )
   }
 
+  // Dopo il lucchetto e prima di tutto il resto: se non l'ha mai vista.
+  if (intro) return <><PrimoAccesso nome={session.user.email?.split('@')[0]} onChiudi={() => setIntro(false)} /><Notifier /></>
+
   const current = stack[stack.length - 1]
   const props = { navigate, goBack, goHome, params: current.params, session }
 
@@ -248,7 +253,7 @@ export default function App() {
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>USCIRE DA GYMCOACH?</div>
             <div style={{ color: 'var(--testo-debole)', fontSize: '14px', marginBottom: '24px' }}>
               {puoUscire()
-                ? "Sei sicura di voler uscire dall'app?"
+                ? "Vuoi uscire dall'app?"
                 : 'Sei già alla schermata iniziale. Per chiudere GymCoach usa il gesto o il tasto del telefono.'}
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
