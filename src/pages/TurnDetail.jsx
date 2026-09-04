@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
+import { tocco, conferma } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto } from '../lib/schede'
 import TimerCircuito from '../components/TimerCircuito'
 import TopBar from '../components/TopBar'
@@ -133,6 +134,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       })
       return next
     })
+    conferma()
     notifyOk(differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
     setEditModal(null)
   }
@@ -141,6 +143,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   // aggiorna subito — il tocco deve rispondere all'istante — e la scrittura
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
+    tocco() // conferma il tocco senza obbligare a guardare lo schermo
     const settimana = client.current_week
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])

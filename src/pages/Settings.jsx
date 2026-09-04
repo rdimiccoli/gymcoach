@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { IconaOcchio } from '../components/Icone'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { biometriaDisponibile, bloccoAttivo, attivaBlocco, disattivaBlocco, MINUTI_RIBLOCCO } from '../lib/biometria'
@@ -145,7 +146,7 @@ export default function Settings({ navigate, goHome, session }) {
             <div style={{ position: 'relative', marginBottom: '16px' }}>
               <input type={showPwd ? 'text' : 'password'} value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
                 placeholder="Password attuale" style={{ ...inp, paddingRight: '48px' }} />
-              <button type="button" onClick={() => setShowPwd(v => !v)} style={eyeBtn}>{showPwd ? '👁' : '👁‍🗨'}</button>
+              <button type="button" onClick={() => setShowPwd(v => !v)} style={eyeBtn}><IconaOcchio barrato={!showPwd} /></button>
             </div>
 
             <div style={fieldLabel}>NUOVA PASSWORD</div>

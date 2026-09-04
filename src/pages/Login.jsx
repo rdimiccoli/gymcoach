@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IconaOcchio } from '../components/Icone'
 import { supabase } from '../supabaseClient'
 
 export default function Login() {
@@ -112,7 +113,7 @@ export default function Login() {
                 fontSize: '18px', lineHeight: 1, padding: '4px',
               }}
             >
-              {showPassword ? '👁' : '👁‍🗨'}
+              <IconaOcchio barrato={!showPassword} />
             </button>
           </div>
 

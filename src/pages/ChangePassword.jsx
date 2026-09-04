@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IconaOcchio } from '../components/Icone'
 import { supabase } from '../supabaseClient'
 
 export default function ChangePassword({ onDone }) {
@@ -54,7 +55,7 @@ export default function ChangePassword({ onDone }) {
               style={{ ...inp, paddingRight: '48px' }}
             />
             <button type="button" onClick={() => setShowPassword(v => !v)} style={eyeBtn}>
-              {showPassword ? '👁' : '👁‍🗨'}
+              <IconaOcchio barrato={!showPassword} />
             </button>
           </div>
 

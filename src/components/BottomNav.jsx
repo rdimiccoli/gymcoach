@@ -1,10 +1,11 @@
+import { IconaHome, IconaSchede, IconaTurni, IconaAtleti, IconaImpostazioni } from './Icone'
 export default function BottomNav({ active, navigate, goHome }) {
   const items = [
-    { id: 'home',     icon: '⬡', label: 'HOME',    action: goHome },
-    { id: 'cycles',   icon: '◈', label: 'SCHEDE',  action: () => navigate('cycles') },
-    { id: 'turns',    icon: '◷', label: 'TURNI',   action: () => navigate('turns') },
-    { id: 'athletes', icon: '◍', label: 'ATLETI',  action: () => navigate('athletes') },
-    { id: 'settings', icon: '◎', label: 'IMPOST.', action: () => navigate('settings') },
+    { id: 'home',     Icona: IconaHome,          label: 'HOME',    action: goHome },
+    { id: 'cycles',   Icona: IconaSchede,        label: 'SCHEDE',  action: () => navigate('cycles') },
+    { id: 'turns',    Icona: IconaTurni,         label: 'TURNI',   action: () => navigate('turns') },
+    { id: 'athletes', Icona: IconaAtleti,        label: 'ATLETI',  action: () => navigate('athletes') },
+    { id: 'settings', Icona: IconaImpostazioni,  label: 'IMPOST.', action: () => navigate('settings') },
   ]
   return (
     <div style={{
@@ -27,8 +28,8 @@ export default function BottomNav({ active, navigate, goHome }) {
               width: '28px', height: '3px', background: 'var(--accento)', borderRadius: '0 0 3px 3px'
             }} />
           )}
-          <div style={{ fontSize: '24px', color: active === item.id ? 'var(--accento)' : '#444', lineHeight: 1 }}>
-            {item.icon}
+          <div style={{ color: active === item.id ? 'var(--accento)' : '#4a4643', display: 'flex', lineHeight: 1 }}>
+            <item.Icona />
           </div>
           <div style={{
             fontSize: '11px',
