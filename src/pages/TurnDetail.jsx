@@ -5,6 +5,7 @@ import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
+import { capacita } from '../lib/capacita'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -32,12 +33,21 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [confermaAvanza, setConfermaAvanza] = useState(false)
+  // Chi oggi non c'era. Si riempie solo nella conferma di «+1 a tutte»: fuori
+  // di lì l'assenza non serve a niente, e una schermata in più sarebbe una
+  // complicazione senza scopo.
+  const [assentiOggi, setAssentiOggi] = useState(() => new Set())
+  const [presenzeAttive, setPresenzeAttive] = useState(false)
   const [timer, setTimer] = useState(null)
   const [loading, setLoading] = useState(true)
   const timerCarichi = useRef({})
   const carichiPendenti = useRef({})
 
   useEffect(() => { if (cycle) loadData(); else setLoading(false) }, [day, cycle])
+
+  // Se la migrazione delle presenze non è stata eseguita, la conferma resta
+  // quella di prima. Nessun pulsante che finisce in errore.
+  useEffect(() => { capacita().then(c => setPresenzeAttive(c.presenze)) }, [])
 
   // Uscendo dalla schermata le modifiche ancora in attesa partono comunque.
   useEffect(() => () => { Object.keys(carichiPendenti.current).forEach(scriviCarico) }, [])
@@ -225,19 +235,24 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const indietro = settimanaAttesa ? clients.filter(c => c.current_week < settimanaAttesa) : []
 
   /**
-   * Avanza tutte di una settimana. Con decine di atlete farlo una per una
+   * Avanza di una settimana chi c'era. Con decine di atlete farlo una per una
    * significava decine di tocchi ogni lunedì.
    * Raggruppate per settimana attuale: al massimo cinque richieste, che siano
    * cinque atlete o cinquanta.
+   *
+   * Chi è segnato assente resta indietro — che è tutto il punto: prima
+   * avanzava anche chi non si presentava da tre sessioni, e la settimana
+   * scritta nella scheda smetteva di dire la verità.
    */
   async function avanzaTutte() {
     setConfermaAvanza(false)
+    const salta = presenzeAttive ? assentiOggi : new Set()
+    const daAvanzare = clients.filter(c => c.current_week < 6 && !salta.has(c.id))
+
     const perSettimana = {}
-    clients.filter(c => c.current_week < 6).forEach(c => {
-      ;(perSettimana[c.current_week] ||= []).push(c.id)
-    })
+    daAvanzare.forEach(c => { (perSettimana[c.current_week] ||= []).push(c.id) })
     const settimane = Object.keys(perSettimana)
-    if (!settimane.length) return
+    if (!settimane.length) { notifyError('Nessuna atleta da avanzare.'); return }
 
     for (const w of settimane) {
       const { error } = await run(
@@ -246,8 +261,48 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       )
       if (error) { await loadData(); return }
     }
-    setClients(prev => prev.map(c => c.current_week < 6 ? { ...c, current_week: c.current_week + 1 } : c))
-    notifyOk('Settimana avanzata per tutte')
+
+    const avanzati = new Set(daAvanzare.map(c => c.id))
+    setClients(prev => prev.map(c => avanzati.has(c.id) ? { ...c, current_week: c.current_week + 1 } : c))
+
+    const assenti = clients.filter(c => salta.has(c.id))
+    notifyOk(assenti.length
+      ? `Avanzate ${daAvanzare.length} · ${assenti.length} ferme perché assenti`
+      : 'Settimana avanzata per tutte')
+    conferma()
+
+    if (presenzeAttive) await registraPresenze(daAvanzare, assenti)
+    setAssentiOggi(new Set())
+  }
+
+  /**
+   * Scrive chi c'era e chi no. Dopo l'avanzamento e non prima: la settimana è
+   * la cosa che conta, e se questa scrittura fallisce non deve trascinarsi
+   * dietro anche quella. Il coach viene avvisato, ma il lavoro è salvo.
+   */
+  async function registraPresenze(presenti, assenti) {
+    const oggi = new Date()
+    // Non toISOString(): quella converte in UTC, e alle 23:00 scriverebbe la
+    // sessione sul giorno dopo.
+    const giorno = `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, '0')}-${String(oggi.getDate()).padStart(2, '0')}`
+    const righe = [
+      ...presenti.map(c => ({ client_id: c.id, session_date: giorno, present: true })),
+      ...assenti.map(c => ({ client_id: c.id, session_date: giorno, present: false })),
+    ]
+    if (!righe.length) return
+    await run(
+      supabase.from('client_attendance').upsert(righe, { onConflict: 'client_id,session_date' }),
+      'Settimana avanzata, ma le presenze di oggi non sono state salvate.'
+    )
+  }
+
+  function alternaPresenza(id) {
+    tocco()
+    setAssentiOggi(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
   }
 
   async function advanceWeek(client) {
@@ -544,11 +599,64 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
       {confermaAvanza && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
           <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>AVANZA TUTTE DI UNA SETTIMANA</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '20px' }}>
-              {clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>
+              {presenzeAttive ? 'CHI C’ERA OGGI?' : 'AVANZA TUTTE DI UNA SETTIMANA'}
             </div>
-            <button onClick={avanzaTutte} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>✓ AVANZA TUTTE</button>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: presenzeAttive ? '16px' : '20px' }}>
+              {presenzeAttive
+                ? 'Tocca chi non si è presentato. Le altre passano alla settimana successiva.'
+                : `${clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.`}
+            </div>
+
+            {/* Assente per esclusione: chi non viene toccato avanza. Se il
+                coach ignora questa lista e preme il pulsante, succede
+                esattamente quello che succedeva prima. */}
+            {presenzeAttive && (
+              <div style={{ maxHeight: '46vh', overflowY: 'auto', marginBottom: '16px', marginLeft: '-4px', marginRight: '-4px' }}>
+                {clients.filter(c => c.current_week < 6).map(client => {
+                  const assente = assentiOggi.has(client.id)
+                  return (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => alternaPresenza(client.id)}
+                      style={{
+                        ...comePulsante,
+                        display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                        padding: '13px 12px', marginBottom: '6px', borderRadius: '8px',
+                        background: assente ? 'transparent' : 'var(--sup)',
+                        border: `1px solid ${assente ? 'var(--bordo)' : 'transparent'}`,
+                        textAlign: 'left', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{
+                        flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: assente ? 'transparent' : 'var(--accento)',
+                        border: assente ? '1px solid var(--bordo-forte)' : 'none',
+                        color: '#fff', fontSize: '15px', lineHeight: 1,
+                      }}>{assente ? '' : '✓'}</span>
+                      <span style={{
+                        flex: 1, minWidth: 0,
+                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700',
+                        letterSpacing: '0.5px',
+                        color: assente ? 'var(--testo-fioco)' : '#fff',
+                      }}>{client.name} {client.surname}</span>
+                      <span style={{
+                        flexShrink: 0, fontSize: '12px', fontWeight: '700', letterSpacing: '1px',
+                        color: assente ? 'var(--testo-fioco)' : 'var(--testo-medio)',
+                      }}>{assente ? 'ASSENTE' : `SETT. ${client.current_week}`}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <button onClick={avanzaTutte} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>
+              {presenzeAttive
+                ? `✓ AVANZA ${clients.filter(c => c.current_week < 6 && !assentiOggi.has(c.id)).length}`
+                : '✓ AVANZA TUTTE'}
+            </button>
             <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px', cursor: 'pointer' }}>Annulla</button>
           </div>
         </div>

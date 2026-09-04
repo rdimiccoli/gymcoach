@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
+import { capacita } from '../lib/capacita'
 // Con il parser CSV dietro: pesa solo per chi importa davvero.
 const ImportaCsv = lazy(() => import('../components/ImportaCsv'))
 import TopBar from '../components/TopBar'
@@ -24,10 +25,16 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  // Il catalogo esercizi è condiviso fra tutti i coach e cresce a ogni scheda:
+  // oltre il centinaio di voci, scorrere per trovare «panca» è il collo di
+  // bottiglia. Il gruppo muscolare taglia la lista in un tocco.
+  const [gruppoAttivo, setGruppoAttivo] = useState(null)
+  const [categorieAttive, setCategorieAttive] = useState(false)
   const [activeGroup, setActiveGroup] = useState(null)
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
+  useEffect(() => { capacita().then(c => setCategorieAttive(c.categorie)) }, [])
   const [cloneInfo, setCloneInfo] = useState(null)
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
@@ -482,7 +489,18 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   const getGroups = () => raggruppaEsercizi(exList[day], { indice: true })
 
-  const filtered = allExercises.filter(e => e?.name && e.name.toLowerCase().includes(search.toLowerCase()))
+  const filtered = allExercises.filter(e =>
+    e?.name &&
+    e.name.toLowerCase().includes(search.toLowerCase()) &&
+    (!gruppoAttivo || e.muscle_group === gruppoAttivo)
+  )
+
+  // Solo i gruppi che esistono davvero nel catalogo: se nessuno ha ancora
+  // classificato niente, i filtri non compaiono e la schermata resta quella
+  // di prima.
+  const gruppi = categorieAttive
+    ? [...new Set(allExercises.map(e => e?.muscle_group).filter(Boolean))].sort()
+    : []
 
   // "Solo in questa scheda" ha senso soltanto se l'esercizio è davvero usato qui:
   // dal catalogo di ricerca si può rinominare solo globalmente.
@@ -704,9 +722,34 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             )}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca esercizio..." style={{ ...inp, flex: 1 }} />
-              <button onClick={() => { setShowSearch(false); setSearch(''); setActiveGroup(null) }}
+              <button onClick={() => { setShowSearch(false); setSearch(''); setActiveGroup(null); setGruppoAttivo(null) }}
                 style={{ color: 'var(--testo-medio)', background: 'none', border: 'none', fontSize: '14px', whiteSpace: 'nowrap' }}>Annulla</button>
             </div>
+
+            {gruppi.length > 0 && (
+              <div style={{ display: 'flex', gap: '7px', overflowX: 'auto', marginTop: '11px', paddingBottom: '2px' }}>
+                {[null, ...gruppi].map(g => {
+                  const attivo = gruppoAttivo === g
+                  return (
+                    <button
+                      key={g ?? 'tutti'}
+                      type="button"
+                      onClick={() => setGruppoAttivo(g)}
+                      style={{
+                        ...comePulsante,
+                        flexShrink: 0, padding: '8px 14px', borderRadius: '20px',
+                        background: attivo ? 'var(--accento)' : 'var(--sup)',
+                        border: `1px solid ${attivo ? 'var(--accento)' : 'var(--bordo)'}`,
+                        color: attivo ? '#fff' : 'var(--testo-medio)',
+                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
+                        fontWeight: '700', letterSpacing: '1px', whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                      }}
+                    >{(g ?? 'Tutti').toUpperCase()}</button>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px' }}>
             {search.length > 1 && filtered.length === 0 && (
@@ -716,7 +759,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             )}
             {filtered.map(ex => (
               <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <button type="button" onClick={() => addExercise(ex)} style={{ ...comePulsante,  flex: 1, padding: '14px 16px', background: 'var(--sup)', borderRadius: '6px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff', cursor: 'pointer', border: '1px solid var(--sup-alta)' }}>{ex.name}</button>
+                <button type="button" onClick={() => addExercise(ex)} style={{ ...comePulsante,  flex: 1, padding: '14px 16px', background: 'var(--sup)', borderRadius: '6px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff', cursor: 'pointer', border: '1px solid var(--sup-alta)', textAlign: 'left' }}>
+                  {ex.name}
+                  {categorieAttive && ex.equipment && (
+                    <span style={{ display: 'block', fontFamily: 'system-ui, sans-serif', fontSize: '12px', fontWeight: '400', color: 'var(--testo-fioco)', letterSpacing: 0, marginTop: '2px' }}>
+                      {ex.equipment}
+                    </span>
+                  )}
+                </button>
                 <button onClick={() => { setEditExerciseModal(ex); setEditExerciseName(ex.name) }}
                   style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '10px 12px', color: 'var(--testo-medio)', fontSize: '14px', flexShrink: 0 }}>✏️</button>
               </div>

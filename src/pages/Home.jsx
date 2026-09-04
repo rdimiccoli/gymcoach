@@ -65,7 +65,10 @@ export default function Home({ navigate, goHome, session }) {
     setCoach(c)
 
     const { data: t } = await run(
-      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      // Niente filtro sul coach: decide la policy del database, che è l'unico
+      // posto dove quella regola può stare senza poter essere aggirata.
+      // Filtrare anche qui escluderebbe i turni che un collega ha condiviso.
+      supabase.from('turns').select('*').order('time'),
       'Impossibile caricare i turni.'
     )
     setTurni(t || [])

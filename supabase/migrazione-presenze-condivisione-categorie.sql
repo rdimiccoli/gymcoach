@@ -229,6 +229,28 @@ from (values
 where e.name = v.nome and e.muscle_group is null;
 
 
+-- ═══ PASSO 4 · POTER VEDERE I COLLEGHI ════════════════════════════════════
+-- Serve al PASSO 2, e nel primo giro me l'ero dimenticato: per condividere un
+-- turno con Anna, l'app deve poter mostrare Anna in un elenco. Ma la policy su
+-- `coaches` è «ognuno vede solo sé stesso», quindi l'elenco sarebbe vuoto.
+--
+-- Non tocco quella policy: la tabella `coaches` resta chiusa com'è, email
+-- comprese. Si passa solo di qui, e di qui escono soltanto NOME e ID — il
+-- minimo per far comparire un nome in una lista e sapere a chi dare il turno.
+
+create or replace function public.colleghi()
+returns table (id uuid, name text)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.name
+  from coaches c
+  where c.id <> auth.uid()
+  order by c.name;
+$$;
+
+revoke all on function public.colleghi() from public;
+grant execute on function public.colleghi() to authenticated;
+
+
 -- ═══ VERIFICA ═════════════════════════════════════════════════════════════
 -- 1. Le policy attive adesso. Su turns devono essercene 4 (select, insert,
 --    update, delete); sulle altre una sola. Se ne vedi di più, quelle vecchie

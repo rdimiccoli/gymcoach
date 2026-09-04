@@ -12,7 +12,8 @@ import BottomNav from '../components/BottomNav'
  * senza ricerca: con decine di atlete, trovarne una senza ricordare il suo
  * turno voleva dire scorrere.
  */
-export default function Athletes({ navigate, goHome, session }) {
+// `session` non serve più: chi vede cosa lo decide la policy del database.
+export default function Athletes({ navigate, goHome }) {
   const [atlete, setAtlete] = useState([])
   const [cerca, setCerca] = useState('')
   const [mostraArchiviate, setMostraArchiviate] = useState(false)
@@ -22,7 +23,8 @@ export default function Athletes({ navigate, goHome, session }) {
 
   async function loadData() {
     const { data: turni } = await run(
-      supabase.from('turns').select('id, name').eq('coach_id', session.user.id),
+      // Filtro a carico della policy: coprendo un collega servono le sue atlete.
+      supabase.from('turns').select('id, name'),
       'Impossibile caricare i turni.'
     )
     if (!turni?.length) { setAtlete([]); setLoading(false); return }

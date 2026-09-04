@@ -5,7 +5,8 @@ import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function CyclesList({ navigate, goHome, session }) {
+// `session` non serve più: chi vede cosa lo decide la policy del database.
+export default function CyclesList({ navigate, goHome }) {
   const [turns, setTurns] = useState([])
   const [cyclesByTurn, setCyclesByTurn] = useState({})
   const [loading, setLoading] = useState(true)
@@ -21,7 +22,8 @@ export default function CyclesList({ navigate, goHome, session }) {
 
   async function loadData() {
     const { data: t } = await run(
-      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      // Filtro a carico della policy: vedi anche le schede dei turni condivisi.
+      supabase.from('turns').select('*').order('time'),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])
