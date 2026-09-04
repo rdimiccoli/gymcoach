@@ -233,7 +233,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     <div style={page}>
       <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '12px' }}>Vai in Schede per crearne una.</span></div>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '12px' }}>Vai in Schede per crearne una.</span></div>
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
@@ -242,21 +242,21 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   return (
     <div style={page}>
       <TopBar title={turn.name} subtitle={phase ? `${cycle.name} · ${phase.label}` : cycle.name} onBack={goBack} />
-      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px',
-            background: day === d ? '#D95C1A' : 'rgba(255,255,255,0.05)',
-            color: day === d ? '#fff' : 'rgba(255,255,255,0.3)'
+            background: day === d ? 'var(--accento)' : 'var(--sup)',
+            color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>GIORNO {d}</button>
         ))}
       </div>
 
       <div style={scroll}>
-        {loading && <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
         {!loading && exercises.length === 0 && (
-          <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+          <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
             Nessun esercizio per il Giorno {day}.
           </div>
         )}
@@ -268,25 +268,25 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
             <div key={gi} style={{ marginBottom: '8px' }}>
               <div onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
                 style={{
-                  background: group.type === 'circuit' ? 'rgba(59,130,246,0.06)' : group.type === 'superset' ? 'rgba(217,92,26,0.08)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${group.type === 'circuit' ? 'rgba(59,130,246,0.25)' : group.type === 'superset' ? 'rgba(217,92,26,0.25)' : 'rgba(255,255,255,0.07)'}`,
-                  borderLeft: group.type === 'circuit' ? '2px solid #3b82f6' : group.type === 'superset' ? '2px solid #D95C1A' : undefined,
+                  background: group.type === 'circuit' ? 'rgba(59,130,246,0.06)' : group.type === 'superset' ? 'var(--acc-fondo)' : 'var(--sup)',
+                  border: `1px solid ${group.type === 'circuit' ? 'rgba(59,130,246,0.25)' : group.type === 'superset' ? 'var(--acc-bordo-tenue)' : 'var(--sup-alta)'}`,
+                  borderLeft: group.type === 'circuit' ? '2px solid var(--circuito)' : group.type === 'superset' ? '2px solid var(--accento)' : undefined,
                   borderRadius: isExpanded ? '6px 6px 0 0' : '6px',
                   padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
                 }}>
                 <div style={{ flex: 1 }}>
                   {group.type === 'superset' && (
-                    <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
+                    <div style={{ color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
                   )}
                   {group.type === 'circuit' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                      <span style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</span>
+                      <span style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</span>
                       {/* Durata, riposo e giri sono già nel database: finora
                           venivano solo stampati e cronometrati a mano. */}
                       {secondiDaTesto(group.exercises[0]?.reps_a) && (
                         <button onClick={e => { e.stopPropagation(); setTimer(group) }} style={{
                           background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.45)',
-                          borderRadius: '3px', padding: '3px 9px', color: '#3b82f6',
+                          borderRadius: '3px', padding: '3px 9px', color: 'var(--circuito)',
                           fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
                           touchAction: 'manipulation', cursor: 'pointer',
                         }}>▶ TIMER</button>
@@ -297,11 +297,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                     {group.exercises.map(e => e?.exercises?.name).join(' + ')}
                   </div>
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '16px', marginLeft: '8px' }}>{isExpanded ? '∨' : '›'}</div>
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '16px', marginLeft: '8px' }}>{isExpanded ? '∨' : '›'}</div>
               </div>
 
               {isExpanded && (
-                <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.06)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'var(--acc-riempimento)' : 'var(--sup-alta)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map(client => {
                     // "In ritardo" = indietro rispetto alla fase che il coach ha
                     // scelto in home. Prima era fisso a `< 3`, quindi marcava con
@@ -309,7 +309,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                     // semplicemente all'inizio del ciclo.
                     const isLate = phase ? client.current_week < phase.weekRange[0] : false
                     return (
-                      <div key={client.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
+                      <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Clickable name → athlete profile */}
@@ -317,29 +317,29 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                               style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               {client.name} {client.surname}
                               {isLate && <span style={{ color: '#E8A030', fontSize: '9px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
-                              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>›</span>
+                              <span style={{ color: 'var(--testo-fioco)', fontSize: '12px' }}>›</span>
                             </div>
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
-                              ? <div style={{ color: '#3b82f6', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
+                              ? <div style={{ color: 'var(--circuito)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
                               : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
                                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
-                                    <span style={{ color: '#D95C1A', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
+                                    <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
+                                    <span style={{ color: 'var(--accento)', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
                                   </div>
                                   {/* In una superserie ogni esercizio ha le sue ripetizioni:
                                       mostrarne una sola qui sarebbe falso, stanno nei badge sotto. */}
                                   {group.exercises.length === 1 && <>
-                                    <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
+                                    <div style={{ width: '1px', height: '16px', background: 'var(--bordo)' }} />
                                     <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], client.current_week)}</span>
                                   </>}
                                 </div>
                             }
                           </div>
                           <button onClick={() => setEditModal({ client, group })} style={{
-                            background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.3)',
+                            background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo)',
                             borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
-                            color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
+                            color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
                           }}>DETTAGLI</button>
                         </div>
 
@@ -357,24 +357,24 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div key={ex.id} style={{ background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {group.exercises.length > 1 && (
-                                    <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ color: 'var(--testo-medio)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {ex?.exercises?.name?.toUpperCase() ?? ''}
                                     </div>
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                    <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                       × {repsPerSettimana(ex, client.current_week)}
                                     </span>
                                     {prevKg !== undefined && (
-                                      <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                      <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>
                                         prec. {prevKg}
                                       </span>
                                     )}
                                     {diff !== null && diff !== 0 && (
-                                      <span style={{ fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? '#22c55e' : '#ef4444' }}>
+                                      <span style={{ fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
                                         {diff > 0 ? `↑+${diff}` : `↓${diff}`}
                                       </span>
                                     )}
@@ -384,13 +384,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                 <button onClick={() => modificaCarico(client, ex, -1)} style={tastoCarico}>−</button>
                                 <div onClick={() => setEditModal({ client, group })}
                                   style={{ minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
-                                  <span style={{ color: currentKg !== undefined ? '#fff' : 'rgba(255,255,255,0.22)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
+                                  <span style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
                                     {currentKg !== undefined ? currentKg : '—'}
                                   </span>
-                                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
+                                  <span style={{ color: 'var(--testo-debole)', fontSize: '9px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
                                 </div>
                                 <button onClick={() => modificaCarico(client, ex, 1)}
-                                  style={{ ...tastoCarico, background: 'rgba(217,92,26,0.18)', borderColor: 'rgba(217,92,26,0.45)', color: '#D95C1A' }}>+</button>
+                                  style={{ ...tastoCarico, background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>+</button>
                               </div>
                             )
                           })}
@@ -415,7 +415,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                     {ex?.exercises?.name?.split(' ')[0]?.toUpperCase() ?? ''}
                                   </span>
                                 )}
-                                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', lineHeight: 1.35 }}>
+                                <span style={{ color: 'var(--testo-chiaro)', fontSize: '11px', lineHeight: 1.35 }}>
                                   {notes[`${client.id}_${ex.id}`]}
                                 </span>
                               </div>
@@ -432,38 +432,38 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
         {/* Advance week */}
         {!loading && clients.length > 0 && exercises.length > 0 && (
-          <div style={{ marginTop: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', padding: '14px' }}>
+          <div style={{ marginTop: '16px', background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '6px', padding: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
               <div>
-                <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
                 {/* `cycles.start_date` c'era da sempre e non serviva a niente
                     oltre che a comparire nella lista. Da lì si sa a che punto
                     dovrebbe essere la scheda, invece di contare a mano. */}
                 {settimanaAttesa && (
-                  <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '3px' }}>
-                    Da calendario siamo alla <strong style={{ color: '#D95C1A' }}>settimana {settimanaAttesa}</strong>
+                  <div style={{ color: 'var(--testo-medio)', fontSize: '11px', marginTop: '3px' }}>
+                    Da calendario siamo alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaAttesa}</strong>
                     {indietro.length > 0 && <> · <span style={{ color: '#E8A030' }}>{indietro.length} indietro</span></>}
                   </div>
                 )}
               </div>
               {clients.some(c => c.current_week < 6) && (
                 <button onClick={() => setConfermaAvanza(true)} style={{
-                  flexShrink: 0, background: 'rgba(217,92,26,0.15)', border: '1px solid rgba(217,92,26,0.4)',
-                  borderRadius: '4px', padding: '8px 12px', color: '#D95C1A',
+                  flexShrink: 0, background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo-forte)',
+                  borderRadius: '4px', padding: '8px 12px', color: 'var(--accento)',
                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
                 }}>+1 A TUTTE</button>
               )}
             </div>
             {clients.map(client => (
-              <div key={client.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div key={client.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid var(--sup)' }}>
                 <div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.5px' }}>{client.name} {client.surname}</div>
-                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px' }}>Sett. {client.current_week}/6</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '0.5px' }}>{client.name} {client.surname}</div>
+                  <div style={{ color: 'var(--testo-fioco)', fontSize: '10px' }}>Sett. {client.current_week}/6</div>
                 </div>
                 <button onClick={() => advanceWeek(client)} disabled={client.current_week >= 6} style={{
-                  background: client.current_week >= 6 ? 'rgba(255,255,255,0.04)' : '#D95C1A',
+                  background: client.current_week >= 6 ? 'var(--sup)' : 'var(--accento)',
                   border: 'none', borderRadius: '3px', padding: '6px 14px',
-                  color: client.current_week >= 6 ? 'rgba(255,255,255,0.15)' : '#fff',
+                  color: client.current_week >= 6 ? 'var(--bordo-forte)' : '#fff',
                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '11px', fontWeight: '700', letterSpacing: '1px'
                 }}>
                   {client.current_week >= 6 ? 'COMPLETO' : '+ AVANZA'}
@@ -479,13 +479,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
       {confermaAvanza && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
-          <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
+          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>AVANZA TUTTE DI UNA SETTIMANA</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginBottom: '20px' }}>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '20px' }}>
               {clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.
             </div>
-            <button onClick={avanzaTutte} style={{ width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>✓ AVANZA TUTTE</button>
-            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', width: '100%', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>Annulla</button>
+            <button onClick={avanzaTutte} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>✓ AVANZA TUTTE</button>
+            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '13px', cursor: 'pointer' }}>Annulla</button>
           </div>
         </div>
       )}
@@ -557,38 +557,38 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
   }
 
   return (
-    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
+    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
         {client?.name?.toUpperCase()} {client?.surname?.toUpperCase()}
       </div>
-      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
-          ? <span style={{ color: '#3b82f6' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
+          ? <span style={{ color: 'var(--circuito)' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
           : <span>Settimana {week} · {repsPerSettimana(group.exercises[0], week)}</span>
         }
       </div>
       {group.type === 'superset' && (
-        <div style={{ color: '#D95C1A', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>⚡ SUPERSERIE</div>
+        <div style={{ color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>⚡ SUPERSERIE</div>
       )}
       {group.type === 'circuit' && (
-        <div style={{ color: '#3b82f6', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>🔄 CIRCUITO — inserisci i carichi usati</div>
+        <div style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '16px' }}>🔄 CIRCUITO — inserisci i carichi usati</div>
       )}
 
       {group.exercises.map(ex => {
         const prev = getPrevLoad(ex)
         const val = kgMap[ex.id]
         return (
-          <div key={ex.id} style={{ marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '14px' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.5px', marginBottom: '4px' }}>
+          <div key={ex.id} style={{ marginBottom: '14px', background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '8px', padding: '14px' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '0.5px', marginBottom: '4px' }}>
               {ex?.exercises?.name?.toUpperCase() ?? ''}
             </div>
 
             {/* Previous load reference */}
             {prev ? (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(217,92,26,0.08)', border: '1px solid rgba(217,92,26,0.2)', borderRadius: '3px', padding: '3px 8px', marginBottom: '12px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
-                <span style={{ color: '#D95C1A', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
-                <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '3px', padding: '3px 8px', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--testo-debole)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
+                <span style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
+                <span style={{ color: 'var(--testo-fioco)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
               </div>
             ) : (
               <div style={{ height: '4px' }} />
@@ -599,19 +599,19 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
               <input
                 type="number" value={val}
                 onChange={e => handleManualInput(ex.id, e.target.value)}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
+                style={{ flex: 1, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
               />
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', color: 'rgba(255,255,255,0.3)', fontWeight: '700' }}>KG</div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', color: 'var(--testo-debole)', fontWeight: '700' }}>KG</div>
             </div>
 
             {/* +/- buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
               {[[-1,'−1'],[-0.5,'−0.5'],[0.5,'+0.5'],[1,'+1']].map(([delta, label]) => (
                 <button key={label} onClick={() => change(ex.id, delta)} style={{
-                  background: delta > 0 ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${delta > 0 ? 'rgba(217,92,26,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  background: delta > 0 ? 'var(--acc-riempimento)' : 'var(--sup-alta)',
+                  border: `1px solid ${delta > 0 ? 'var(--acc-bordo)' : 'var(--bordo)'}`,
                   borderRadius: '4px', padding: '9px 4px',
-                  color: delta > 0 ? '#D95C1A' : 'rgba(255,255,255,0.5)',
+                  color: delta > 0 ? 'var(--accento)' : 'var(--testo-chiaro)',
                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700'
                 }}>{label}</button>
               ))}
@@ -627,8 +627,8 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
               rows={2}
               style={{
                 width: '100%', marginTop: '10px', boxSizing: 'border-box',
-                background: 'rgba(255,255,255,0.05)',
-                border: `1px solid ${noteMap[ex.id]?.trim() ? 'rgba(234,179,8,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                background: 'var(--sup)',
+                border: `1px solid ${noteMap[ex.id]?.trim() ? 'rgba(234,179,8,0.35)' : 'var(--bordo)'}`,
                 borderRadius: '4px', padding: '10px 12px',
                 color: '#fff', fontSize: '16px', lineHeight: 1.4,
                 outline: 'none', resize: 'vertical', fontFamily: 'inherit',
@@ -638,17 +638,17 @@ function LoadModal({ client, group, loads, notes, onSave, onClose }) {
         )
       })}
 
-      <button onClick={handleSave} style={{ background: '#D95C1A', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '2px' }}>
+      <button onClick={handleSave} style={{ background: 'var(--accento)', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '2px' }}>
         SALVA CARICHI ✓
       </button>
-      <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.2)', width: '100%', padding: '10px', fontSize: '13px', marginTop: '4px' }}>
+      <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '13px', marginTop: '4px' }}>
         Annulla
       </button>
     </div>
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden', position: 'relative' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
-const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: '5px', color: 'rgba(255,255,255,0.75)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
+const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }

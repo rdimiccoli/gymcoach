@@ -1,3 +1,75 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TOKEN DI DESIGN
+   Prima di questo file l'arancione della palestra era scritto a mano 77 volte,
+   in 17 sfumature diverse, e i grigi in 24. Nessuno l'aveva deciso: era
+   successo. Qui ogni valore ha un nome, e un nome solo.
+
+   Cambiare --accento ricolora tutta l'app.
+
+   Ogni variabile ha due dichiarazioni: la prima è il valore fisso, la seconda
+   lo ricava da --accento con color-mix. Chi supporta color-mix usa la seconda
+   e segue il tema; chi non lo supporta si tiene la prima e vede l'app di
+   sempre. Nessuno resta con un colore mancante.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: dark;
+
+  /* ── il colore della palestra ───────────────────────────────────── */
+  --accento: #D95C1A;
+
+  --acc-velo:            rgba(217,92,26,.06);
+  --acc-velo:            color-mix(in srgb, var(--accento) 6%, transparent);
+  --acc-fondo:           rgba(217,92,26,.08);
+  --acc-fondo:           color-mix(in srgb, var(--accento) 8%, transparent);
+  --acc-fondo-forte:     rgba(217,92,26,.12);
+  --acc-fondo-forte:     color-mix(in srgb, var(--accento) 12%, transparent);
+  --acc-riempimento:     rgba(217,92,26,.15);
+  --acc-riempimento:     color-mix(in srgb, var(--accento) 15%, transparent);
+  --acc-riempimento-forte: rgba(217,92,26,.20);
+  --acc-riempimento-forte: color-mix(in srgb, var(--accento) 20%, transparent);
+  --acc-bordo-tenue:     rgba(217,92,26,.25);
+  --acc-bordo-tenue:     color-mix(in srgb, var(--accento) 25%, transparent);
+  --acc-bordo:           rgba(217,92,26,.30);
+  --acc-bordo:           color-mix(in srgb, var(--accento) 30%, transparent);
+  --acc-bordo-forte:     rgba(217,92,26,.40);
+  --acc-bordo-forte:     color-mix(in srgb, var(--accento) 40%, transparent);
+  --acc-bordo-marcato:   rgba(217,92,26,.50);
+  --acc-bordo-marcato:   color-mix(in srgb, var(--accento) 50%, transparent);
+  --acc-testo-tenue:     rgba(217,92,26,.70);
+  --acc-testo-tenue:     color-mix(in srgb, var(--accento) 70%, transparent);
+
+  /* ── fondi e superfici ──────────────────────────────────────────── */
+  --fondo: #0a0a0a;
+  --superficie-modale: #141414;
+
+  /* ── neutri, dal più tenue al più forte ─────────────────────────── */
+  --sup-velo:      rgba(255,255,255,.02);
+  --sup:           rgba(255,255,255,.04);
+  --sup-alta:      rgba(255,255,255,.07);
+  --bordo:         rgba(255,255,255,.10);
+  --bordo-forte:   rgba(255,255,255,.15);
+  --testo-fioco:   rgba(255,255,255,.22);
+  --testo-debole:  rgba(255,255,255,.32);
+  --testo-medio:   rgba(255,255,255,.42);
+  --testo-chiaro:  rgba(255,255,255,.52);
+  --testo-forte:   rgba(255,255,255,.68);
+  --testo:         #fff;
+
+  /* ── colori con un significato, non decorativi ──────────────────── */
+  --ok: #22c55e;
+  --attenzione: #eab308;
+  --errore: #ef4444;
+  --circuito: #3b82f6;
+
+  /* ── raggi: una scala, non otto numeri sparsi ───────────────────── */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --r-foglio: 16px 16px 0 0;
+}
+
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body, #root {

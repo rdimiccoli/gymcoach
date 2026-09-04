@@ -32,10 +32,10 @@ export default function IndicatoreCoda({ userId }) {
     }}>
       <span style={{ fontSize: '15px' }}>{inCorso ? '⏳' : '📡'}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: '#eab308', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>
+        <div style={{ color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>
           {quanti} {quanti === 1 ? 'CARICO IN ATTESA' : 'CARICHI IN ATTESA'}
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px', marginTop: '1px' }}>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '10px', marginTop: '1px' }}>
           {inCorso ? 'Invio in corso...' : 'Salvati sul telefono. Partono da soli appena torna la rete — tocca per riprovare ora.'}
         </div>
       </div>

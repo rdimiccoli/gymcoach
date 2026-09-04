@@ -112,23 +112,23 @@ export default function TimerCircuito({ group, onClose }) {
 
   const totale = fase === 'riposo' ? riposo : durata
   const percentuale = fase === 'pronti' || fase === 'fine' ? 0 : ((totale - rimasti) / totale) * 100
-  const colore = fase === 'riposo' ? '#3b82f6' : fase === 'fine' ? '#22c55e' : '#D95C1A'
+  const colore = fase === 'riposo' ? 'var(--circuito)' : fase === 'fine' ? 'var(--ok)' : 'var(--accento)'
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 2500, background: '#0a0a0a',
+      position: 'fixed', inset: 0, zIndex: 2500, background: 'var(--fondo)',
       display: 'flex', flexDirection: 'column', padding: '20px', textAlign: 'center',
     }}>
       {/* barra di avanzamento del tempo */}
-      <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ height: '4px', background: 'var(--sup-alta)', borderRadius: '2px', overflow: 'hidden', flexShrink: 0 }}>
         <div style={{ height: '100%', width: `${percentuale}%`, background: colore, transition: 'width 0.2s linear' }} />
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', flexShrink: 0 }}>
-        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
+        <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
           GIRO {Math.min(giro, giri)} / {giri}
         </span>
-        <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
+        <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1.5px' }}>
           {indice + 1} / {esercizi.length}
         </span>
       </div>
@@ -137,7 +137,7 @@ export default function TimerCircuito({ group, onClose }) {
         {fase === 'fine' ? (
           <>
             <div style={{ fontSize: '64px' }}>🎉</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', color: '#22c55e', letterSpacing: '2px' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', color: 'var(--ok)', letterSpacing: '2px' }}>
               CIRCUITO COMPLETATO
             </div>
           </>
@@ -152,11 +152,11 @@ export default function TimerCircuito({ group, onClose }) {
             }}>
               {fase === 'pronti' ? durata : rimasti}
             </div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '700', color: fase === 'riposo' ? 'rgba(255,255,255,0.4)' : '#fff', letterSpacing: '1px', padding: '0 10px' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '700', color: fase === 'riposo' ? 'var(--testo-medio)' : '#fff', letterSpacing: '1px', padding: '0 10px' }}>
               {fase === 'riposo' ? (prossimo?.exercises?.name ?? '') : (esercizio?.exercises?.name ?? '')}
             </div>
             {fase !== 'riposo' && prossimo && (
-              <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '13px', marginTop: '4px' }}>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '4px' }}>
                 poi · {prossimo?.exercises?.name}
               </div>
             )}
@@ -166,7 +166,7 @@ export default function TimerCircuito({ group, onClose }) {
 
       <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
         {fase === 'pronti' && (
-          <button onClick={avvia} style={{ ...tasto, flex: 2, background: '#D95C1A', color: '#fff', border: 'none' }}>▶ VIA</button>
+          <button onClick={avvia} style={{ ...tasto, flex: 2, background: 'var(--accento)', color: '#fff', border: 'none' }}>▶ VIA</button>
         )}
         {(fase === 'lavoro' || fase === 'riposo') && (
           <button
@@ -174,11 +174,11 @@ export default function TimerCircuito({ group, onClose }) {
               if (inPausa) { scadenza.current = Date.now() + rimasti * 1000; setInPausa(false) }
               else setInPausa(true)
             }}
-            style={{ ...tasto, flex: 2, background: inPausa ? '#D95C1A' : 'rgba(255,255,255,0.08)', color: inPausa ? '#fff' : 'rgba(255,255,255,0.7)', border: inPausa ? 'none' : '1px solid rgba(255,255,255,0.15)' }}>
+            style={{ ...tasto, flex: 2, background: inPausa ? 'var(--accento)' : 'var(--sup-alta)', color: inPausa ? '#fff' : 'var(--testo-forte)', border: inPausa ? 'none' : '1px solid var(--bordo-forte)' }}>
             {inPausa ? '▶ RIPRENDI' : '⏸ PAUSA'}
           </button>
         )}
-        <button onClick={onClose} style={{ ...tasto, flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.5)' }}>
+        <button onClick={onClose} style={{ ...tasto, flex: 1, background: 'transparent', border: '1px solid var(--bordo-forte)', color: 'var(--testo-chiaro)' }}>
           {fase === 'fine' ? 'CHIUDI' : 'ESCI'}
         </button>
       </div>

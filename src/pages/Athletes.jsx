@@ -46,26 +46,26 @@ export default function Athletes({ navigate, goHome, session }) {
     <div style={page}>
       <TopBar title="ATLETI" subtitle={`${attive} attive${mostraArchiviate ? ` · ${atlete.length - attive} archiviate` : ''}`} />
 
-      <div style={{ padding: '12px 16px 8px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '12px 16px 8px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         <input
           value={cerca}
           onChange={e => setCerca(e.target.value)}
           placeholder="Cerca per nome, cognome o turno..."
           style={{
             width: '100%', boxSizing: 'border-box',
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+            background: 'var(--sup-alta)', border: '1px solid var(--bordo)',
             borderRadius: '6px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none',
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>
+          <span style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>
             {visibili.length} {visibili.length === 1 ? 'risultato' : 'risultati'}
           </span>
           <button onClick={() => setMostraArchiviate(v => !v)} style={{
-            background: mostraArchiviate ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${mostraArchiviate ? 'rgba(217,92,26,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            background: mostraArchiviate ? 'var(--acc-riempimento)' : 'var(--sup)',
+            border: `1px solid ${mostraArchiviate ? 'var(--acc-bordo-forte)' : 'var(--bordo)'}`,
             borderRadius: '3px', padding: '5px 10px',
-            color: mostraArchiviate ? '#D95C1A' : 'rgba(255,255,255,0.35)',
+            color: mostraArchiviate ? 'var(--accento)' : 'var(--testo-debole)',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
           }}>
             {mostraArchiviate ? '● CON ARCHIVIATE' : 'MOSTRA ARCHIVIATE'}
@@ -83,7 +83,7 @@ export default function Athletes({ navigate, goHome, session }) {
 
         {visibili.map(a => (
           <div key={a.id} onClick={() => navigate('athlete-profile', { client: a })} style={{
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+            background: 'var(--sup)', border: '1px solid var(--sup-alta)',
             borderRadius: '6px', padding: '12px 14px', marginBottom: '7px',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             cursor: 'pointer', opacity: a.is_active ? 1 : 0.45,
@@ -91,17 +91,17 @@ export default function Athletes({ navigate, goHome, session }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {a.surname} {a.name}
-                {!a.is_active && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '9px', marginLeft: '7px', letterSpacing: '1px' }}>ARCHIVIATA</span>}
+                {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '9px', marginLeft: '7px', letterSpacing: '1px' }}>ARCHIVIATA</span>}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '2px' }}>{a.turnName}</div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '11px', marginTop: '2px' }}>{a.turnName}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <div style={{ background: 'rgba(217,92,26,0.15)', borderRadius: '3px', padding: '4px 9px' }}>
-                <span style={{ color: '#D95C1A', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>
+              <div style={{ background: 'var(--acc-riempimento)', borderRadius: '3px', padding: '4px 9px' }}>
+                <span style={{ color: 'var(--accento)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>
                   SETT. {a.current_week}
                 </span>
               </div>
-              <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px' }}>›</span>
+              <span style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>›</span>
             </div>
           </div>
         ))}
@@ -113,6 +113,6 @@ export default function Athletes({ navigate, goHome, session }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '12px 16px', WebkitOverflowScrolling: 'touch' }
-const vuoto = { color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }
+const vuoto = { color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }

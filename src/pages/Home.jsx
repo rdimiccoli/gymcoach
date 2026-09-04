@@ -11,7 +11,7 @@ const PHASES = [
     num: 1, label: 'SETTIMANA 1 — 2', sub: 'Fase iniziale della scheda',
     weekRange: [1,2],
     img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=70',
-    accent: '#D95C1A',
+    accent: 'var(--accento)',
   },
   {
     num: 2, label: 'SETTIMANA 3 — 4', sub: 'Fase intermedia della scheda',
@@ -114,13 +114,13 @@ export default function Home({ navigate, goHome, session }) {
     return (
       <div style={page}>
         <div style={scroll}>
-          <div style={{ paddingBottom: '18px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '18px' }}>
+          <div style={{ paddingBottom: '18px', borderBottom: '1px solid var(--sup)', marginBottom: '18px' }}>
             <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '8px', display: 'block' }} />
-            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
               {dayName.toUpperCase()} · {dateStr}
             </div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
-              COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
+              COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span>
             </div>
           </div>
           <div style={sectionLabel}>I TUOI TURNI DI OGGI</div>
@@ -152,10 +152,10 @@ export default function Home({ navigate, goHome, session }) {
             backgroundSize: 'cover', backgroundPosition: 'center',
             filter: 'brightness(0.35)',
           }} />
-          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 0%, #0a0a0a 100%)` }} />
+          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 0%, var(--fondo) 100%)` }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button onClick={() => setSelectedPhase(null)} style={{
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+              background: 'var(--bordo)', border: '1px solid var(--bordo-forte)',
               borderRadius: '3px', width: '34px', height: '34px',
               color: '#fff', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
             }}>‹</button>
@@ -189,46 +189,46 @@ export default function Home({ navigate, goHome, session }) {
       <div style={scroll}>
 
         {/* Header */}
-        <div style={{ paddingBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '20px' }}>
+        <div style={{ paddingBottom: '20px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }}>
           <img src="/logo_OAD.png" alt="OAD" style={{ height: '28px', mixBlendMode: 'screen', marginBottom: '8px', display: 'block' }} />
-          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
             {dayName.toUpperCase()} · {dateStr}
           </div>
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1 }}>
-            COACH <span style={{ color: '#D95C1A' }}>{coach?.name?.toUpperCase()}</span>
+            COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span>
           </div>
         </div>
 
         {invitoBio && (
           <div style={{
-            background: 'rgba(217,92,26,0.07)', border: '1px solid rgba(217,92,26,0.28)',
+            background: 'var(--acc-velo)', border: '1px solid var(--acc-bordo-tenue)',
             borderRadius: '6px', padding: '13px 15px', marginBottom: '16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
               <span style={{ fontSize: '18px' }}>👆</span>
-              <div style={{ color: '#D95C1A', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>
+              <div style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1.5px' }}>
                 PROTEGGI L'APP CON L'IMPRONTA
               </div>
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', lineHeight: 1.45, marginBottom: '12px' }}>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '11px', lineHeight: 1.45, marginBottom: '12px' }}>
               Adesso chiunque prenda in mano questo dispositivo sbloccato vede e modifica
               i dati di tutte le atlete. Con lo sblocco biometrico bastano un tocco e il
               tuo volto o la tua impronta.
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => navigate('settings')} style={{
-                flex: 1, background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '10px',
+                flex: 1, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '10px',
                 color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
               }}>ATTIVA</button>
               <button onClick={() => { rifiutaInvito(); setInvitoBio(false) }} style={{
-                flex: 1, background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', padding: '10px',
-                color: 'rgba(255,255,255,0.35)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+                flex: 1, background: 'transparent', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '10px',
+                color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
               }}>NON ORA</button>
             </div>
           </div>
         )}
 
-        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }}>
           SELEZIONA FASE DELLA SCHEDA
         </div>
 
@@ -264,13 +264,13 @@ export default function Home({ navigate, goHome, session }) {
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px', lineHeight: 1 }}>
                 {ph.label}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '4px', fontWeight: '300' }}>
+              <div style={{ color: 'var(--testo-medio)', fontSize: '11px', marginTop: '4px', fontWeight: '300' }}>
                 {ph.sub}
               </div>
             </div>
 
             {/* Arrow */}
-            <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.25)', fontSize: '24px' }}>›</div>
+            <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: 'var(--testo-fioco)', fontSize: '24px' }}>›</div>
           </div>
         ))}
 
@@ -281,11 +281,11 @@ export default function Home({ navigate, goHome, session }) {
   )
 }
 
-function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
+function TurnCard({ turn, cycle, count, onPress, accent = 'var(--accento)' }) {
   return (
     <div onClick={onPress} style={{
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.07)',
+      background: 'var(--sup)',
+      border: '1px solid var(--sup-alta)',
       borderRadius: '6px',
       padding: '16px 18px',
       marginBottom: '8px',
@@ -295,13 +295,13 @@ function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '2px', background: accent }} />
       <div style={{ paddingLeft: '8px' }}>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
-        <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px', marginTop: '2px' }}>
-          {cycle ? <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px' }}>{cycle.name}</span> : <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>Nessuna scheda attiva</span>}
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '2px' }}>
+          {cycle ? <span style={{ color: 'var(--testo-medio)', fontSize: '11px' }}>{cycle.name}</span> : <span style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>Nessuna scheda attiva</span>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.5px' }}>{count} ATL</div>
-        <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px' }}>›</div>
+        <div style={{ background: 'var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.5px' }}>{count} ATL</div>
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>›</div>
       </div>
     </div>
   )
@@ -309,7 +309,7 @@ function TurnCard({ turn, cycle, count, onPress, accent = '#D95C1A' }) {
 
 function Empty() {
   return (
-    <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px' }}>
+    <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
       Nessun turno. Vai in Setup per aggiungerne uno.
     </div>
   )
@@ -317,15 +317,15 @@ function Empty() {
 
 function Loader() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: '#0a0a0a', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--fondo)', gap: '12px' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '36px', fontWeight: '900', letterSpacing: '4px' }}>
-        GYM<span style={{ color: '#D95C1A' }}>COACH</span>
+        GYM<span style={{ color: 'var(--accento)' }}>COACH</span>
       </div>
-      <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '10px', letterSpacing: '2px' }}>CARICAMENTO...</div>
+      <div style={{ color: 'var(--testo-fioco)', fontSize: '10px', letterSpacing: '2px' }}>CARICAMENTO...</div>
     </div>
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '20px 16px' }
-const sectionLabel = { color: 'rgba(255,255,255,0.25)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }
+const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '12px' }

@@ -78,14 +78,14 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 250, display: 'flex', alignItems: 'flex-end' }}>
-      <div style={{ background: '#141414', borderTop: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px 16px 0 0', padding: '22px 16px 32px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '22px 16px 32px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '4px' }}>
           IMPORTA DA CSV
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', marginBottom: '14px', lineHeight: 1.45 }}>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginBottom: '14px', lineHeight: 1.45 }}>
           Incolla il contenuto del file esportato. Servono almeno le colonne
-          <strong style={{ color: 'rgba(255,255,255,0.55)' }}> exercise_name</strong> e
-          <strong style={{ color: 'rgba(255,255,255,0.55)' }}> day</strong>.
+          <strong style={{ color: 'var(--testo-chiaro)' }}> exercise_name</strong> e
+          <strong style={{ color: 'var(--testo-chiaro)' }}> day</strong>.
         </div>
 
         <textarea
@@ -94,8 +94,8 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
           placeholder={'id,sort_order,day,reps_a,reps_b,reps_c,superset_group,exercise_name\n...'}
           rows={6}
           style={{
-            width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '11px',
+            width: '100%', boxSizing: 'border-box', background: 'var(--sup)',
+            border: '1px solid var(--bordo)', borderRadius: '6px', padding: '11px',
             color: '#fff', fontSize: '16px', fontFamily: 'monospace', outline: 'none', resize: 'vertical',
           }}
         />
@@ -106,10 +106,10 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
               ⚠ {problemi.length} {problemi.length === 1 ? 'RIGA SCARTATA' : 'RIGHE SCARTATE'}
             </div>
             {problemi.slice(0, 5).map((p, i) => (
-              <div key={i} style={{ color: 'rgba(255,255,255,0.45)', fontSize: '11px', lineHeight: 1.4 }}>{p}</div>
+              <div key={i} style={{ color: 'var(--testo-medio)', fontSize: '11px', lineHeight: 1.4 }}>{p}</div>
             ))}
             {problemi.length > 5 && (
-              <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '11px' }}>...e altre {problemi.length - 5}</div>
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>...e altre {problemi.length - 5}</div>
             )}
           </div>
         )}
@@ -120,10 +120,10 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
               ✓ {esercizi.length} ESERCIZI PRONTI
             </div>
             {giorniToccati.map(g => (
-              <div key={g} style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>
+              <div key={g} style={{ color: 'var(--testo-chiaro)', fontSize: '12px' }}>
                 Giorno {g}: {perGiorno[g]} esercizi
                 {(esistentiPerGiorno?.[g] || 0) > 0 && (
-                  <span style={{ color: '#eab308' }}> · si aggiungono ai {esistentiPerGiorno[g]} già presenti</span>
+                  <span style={{ color: 'var(--attenzione)' }}> · si aggiungono ai {esistentiPerGiorno[g]} già presenti</span>
                 )}
               </div>
             ))}
@@ -138,14 +138,14 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
 
         <button onClick={importa} disabled={!esercizi.length || inCorso}
           style={{
-            width: '100%', marginTop: '16px', background: '#D95C1A', border: 'none', borderRadius: '4px',
+            width: '100%', marginTop: '16px', background: 'var(--accento)', border: 'none', borderRadius: '4px',
             padding: '15px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif',
             fontSize: '14px', fontWeight: '800', letterSpacing: '2px',
             opacity: !esercizi.length || inCorso ? 0.35 : 1, cursor: 'pointer',
           }}>
           {inCorso ? 'IMPORTAZIONE...' : `✓ IMPORTA ${esercizi.length || ''}`.trim()}
         </button>
-        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.25)', width: '100%', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '13px', cursor: 'pointer' }}>
           Annulla
         </button>
       </div>

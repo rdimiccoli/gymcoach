@@ -9,7 +9,7 @@ export default function BottomNav({ active, navigate, goHome }) {
   return (
     <div style={{
       background: 'rgba(10,10,10,0.98)',
-      borderTop: '1px solid rgba(255,255,255,0.08)',
+      borderTop: '1px solid var(--sup-alta)',
       padding: '10px 0 28px',
       display: 'flex',
       justifyContent: 'space-around',
@@ -24,10 +24,10 @@ export default function BottomNav({ active, navigate, goHome }) {
           {active === item.id && (
             <div style={{
               position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-              width: '28px', height: '3px', background: '#D95C1A', borderRadius: '0 0 3px 3px'
+              width: '28px', height: '3px', background: 'var(--accento)', borderRadius: '0 0 3px 3px'
             }} />
           )}
-          <div style={{ fontSize: '24px', color: active === item.id ? '#D95C1A' : '#444', lineHeight: 1 }}>
+          <div style={{ fontSize: '24px', color: active === item.id ? 'var(--accento)' : '#444', lineHeight: 1 }}>
             {item.icon}
           </div>
           <div style={{
@@ -35,7 +35,7 @@ export default function BottomNav({ active, navigate, goHome }) {
             letterSpacing: '0.5px',
             fontFamily: 'Barlow Condensed, sans-serif',
             fontWeight: '700',
-            color: active === item.id ? '#D95C1A' : '#555',
+            color: active === item.id ? 'var(--accento)' : '#555',
             textAlign: 'center',
             lineHeight: 1,
           }}>{item.label}</div>

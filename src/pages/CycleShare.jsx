@@ -166,7 +166,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       <TopBar title="CONDIVIDI SCHEDA" subtitle="Seleziona cliente e settimana" onBack={goBack} />
 
       <div style={scroll}>
-        {loading && <div style={{ color: 'rgba(255,255,255,0.2)', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
+        {loading && <div style={{ color: 'var(--testo-fioco)', textAlign: 'center', padding: '32px' }}>Caricamento...</div>}
 
         {!loading && (
           <>
@@ -176,15 +176,15 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
               {clients.map(client => (
                 <button key={client.id} onClick={() => setSelectedClient(client.id)}
                   style={{
-                    padding: '12px 16px', borderRadius: '6px', border: `1px solid ${selectedClient === client.id ? 'rgba(217,92,26,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                    background: selectedClient === client.id ? 'rgba(217,92,26,0.12)' : 'rgba(255,255,255,0.03)',
+                    padding: '12px 16px', borderRadius: '6px', border: `1px solid ${selectedClient === client.id ? 'var(--acc-bordo-marcato)' : 'var(--sup-alta)'}`,
+                    background: selectedClient === client.id ? 'var(--acc-fondo-forte)' : 'var(--sup)',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
                   }}>
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {client.surname} {client.name}
                   </span>
-                  <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>Sett. {client.current_week}</span>
-                  {selectedClient === client.id && <span style={{ color: '#D95C1A', fontSize: '16px' }}>✓</span>}
+                  <span style={{ color: 'var(--testo-debole)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>Sett. {client.current_week}</span>
+                  {selectedClient === client.id && <span style={{ color: 'var(--accento)', fontSize: '16px' }}>✓</span>}
                 </button>
               ))}
             </div>
@@ -195,10 +195,10 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
               {WEEK_RANGES.map((wr, i) => (
                 <button key={i} onClick={() => setSelectedWeekRange(i)} style={{
                   flex: 1, padding: '11px 6px', borderRadius: '4px',
-                  border: `1px solid ${selectedWeekRange === i ? 'rgba(217,92,26,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                  background: selectedWeekRange === i ? 'rgba(217,92,26,0.15)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${selectedWeekRange === i ? 'var(--acc-bordo-marcato)' : 'var(--sup-alta)'}`,
+                  background: selectedWeekRange === i ? 'var(--acc-riempimento)' : 'var(--sup)',
                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px',
-                  color: selectedWeekRange === i ? '#D95C1A' : 'rgba(255,255,255,0.4)', cursor: 'pointer'
+                  color: selectedWeekRange === i ? 'var(--accento)' : 'var(--testo-medio)', cursor: 'pointer'
                 }}>{wr.label}</button>
               ))}
             </div>
@@ -207,16 +207,16 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
             {selectedClient && (
               <>
                 <div style={stepLabel}>3 · ANTEPRIMA</div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
+                <div style={{ background: 'var(--sup-velo)', border: '1px solid var(--sup-alta)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
                   {/* Client + week header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid var(--sup-alta)' }}>
                     <div>
                       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '900', color: '#fff' }}>
                         {clients.find(c => c.id === selectedClient)?.surname} {clients.find(c => c.id === selectedClient)?.name}
                       </div>
-                      <div style={{ color: '#D95C1A', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{WEEK_RANGES[selectedWeekRange].label}</div>
+                      <div style={{ color: 'var(--accento)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{WEEK_RANGES[selectedWeekRange].label}</div>
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>{cycle?.name}</div>
+                    <div style={{ color: 'var(--testo-fioco)', fontSize: '11px' }}>{cycle?.name}</div>
                   </div>
 
                   {/* Day tabs */}
@@ -225,8 +225,8 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                       <button key={d} onClick={() => setPreviewDay(d)} style={{
                         flex: 1, padding: '7px', borderRadius: '4px', border: 'none',
                         fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700',
-                        background: previewDay === d ? '#D95C1A' : 'rgba(255,255,255,0.06)',
-                        color: previewDay === d ? '#fff' : 'rgba(255,255,255,0.3)'
+                        background: previewDay === d ? 'var(--accento)' : 'var(--sup-alta)',
+                        color: previewDay === d ? '#fff' : 'var(--testo-debole)'
                       }}>G{d}</button>
                     ))}
                   </div>
@@ -235,7 +235,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                   {previewGroups.map((group, gi) => {
                     const isCircuit = group.type === 'circuit'
                     const isSuperSet = group.type === 'superset'
-                    const accent = isCircuit ? '#3b82f6' : '#D95C1A'
+                    const accent = isCircuit ? 'var(--circuito)' : 'var(--accento)'
                     return (
                       <div key={gi} style={{ marginBottom: '8px' }}>
                         {(isCircuit || isSuperSet) && (
@@ -250,19 +250,19 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                             <div key={ei} style={{
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                               padding: '8px 10px', marginBottom: '4px', borderRadius: '4px',
-                              background: isCircuit ? 'rgba(59,130,246,0.06)' : isSuperSet ? 'rgba(217,92,26,0.06)' : 'rgba(255,255,255,0.03)',
+                              background: isCircuit ? 'rgba(59,130,246,0.06)' : isSuperSet ? 'var(--acc-velo)' : 'var(--sup)',
                               borderLeft: (isCircuit || isSuperSet) ? `2px solid ${accent}` : undefined,
                             }}>
                               <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: '#fff' }}>{ex?.exercises?.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
+                                <span style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{reps}</span>
                                 {kg != null && (
-                                  <span style={{ background: 'rgba(217,92,26,0.2)', border: '1px solid rgba(217,92,26,0.4)', borderRadius: '3px', padding: '2px 8px', color: '#D95C1A', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                  <span style={{ background: 'var(--acc-riempimento-forte)', border: '1px solid var(--acc-bordo-forte)', borderRadius: '3px', padding: '2px 8px', color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                     {kg}kg
                                   </span>
                                 )}
                                 {kg == null && !isCircuit && (
-                                  <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>— kg</span>
+                                  <span style={{ color: 'var(--bordo-forte)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif' }}>— kg</span>
                                 )}
                               </div>
                             </div>
@@ -272,16 +272,16 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     )
                   })}
                   {previewGroups.length === 0 && (
-                    <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '12px', textAlign: 'center', padding: '12px' }}>Nessun esercizio per il Giorno {previewDay}</div>
+                    <div style={{ color: 'var(--bordo-forte)', fontSize: '12px', textAlign: 'center', padding: '12px' }}>Nessun esercizio per il Giorno {previewDay}</div>
                   )}
                 </div>
 
                 {/* Send buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={shareText} style={{ flex: 2, background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
+                  <button onClick={shareText} style={{ flex: 2, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
                     📤 INVIA SU WHATSAPP
                   </button>
-                  <button onClick={copyText} style={{ flex: 1, background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '4px', padding: '14px', color: copied ? '#22c55e' : 'rgba(255,255,255,0.5)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700' }}>
+                  <button onClick={copyText} style={{ flex: 1, background: copied ? 'rgba(34,197,94,0.15)' : 'var(--sup-alta)', border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'var(--bordo)'}`, borderRadius: '4px', padding: '14px', color: copied ? 'var(--ok)' : 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700' }}>
                     {copied ? '✓ OK!' : '📋 COPIA'}
                   </button>
                 </div>
@@ -296,6 +296,6 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: '#0a0a0a', overflow: 'hidden' }
+const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
-const stepLabel = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '10px', textTransform: 'uppercase' }
+const stepLabel = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '10px', textTransform: 'uppercase' }

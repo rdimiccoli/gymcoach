@@ -23,24 +23,24 @@ export default function ChangePassword({ onDone }) {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: '#0a0a0a',
+      minHeight: '100dvh', background: 'var(--fondo)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 28px',
     }}>
       <img src="/logo_OAD.png" alt="OAD" style={{ height: '40px', mixBlendMode: 'screen', marginBottom: '12px' }} />
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', letterSpacing: '2px', marginBottom: '6px' }}>
-        GYM<span style={{ color: '#D95C1A' }}>COACH</span>
+        GYM<span style={{ color: 'var(--accento)' }}>COACH</span>
       </div>
-      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', letterSpacing: '2px', marginBottom: '36px', textTransform: 'uppercase' }}>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', letterSpacing: '2px', marginBottom: '36px', textTransform: 'uppercase' }}>
         Nuova password
       </div>
 
       {success ? (
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>✅</div>
-          <div style={{ color: '#D95C1A', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', letterSpacing: '1px' }}>PASSWORD AGGIORNATA</div>
-          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginTop: '6px' }}>Accesso in corso...</div>
+          <div style={{ color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', letterSpacing: '1px' }}>PASSWORD AGGIORNATA</div>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '6px' }}>Accesso in corso...</div>
         </div>
       ) : (
         <div style={{ width: '100%', maxWidth: '360px' }}>
@@ -68,7 +68,7 @@ export default function ChangePassword({ onDone }) {
           />
 
           {error && (
-            <div style={{ color: '#E85C1A', fontSize: '12px', marginBottom: '12px', paddingLeft: '2px' }}>{error}</div>
+            <div style={{ color: 'var(--errore)', fontSize: '12px', marginBottom: '12px', paddingLeft: '2px' }}>{error}</div>
           )}
 
           <button
@@ -84,7 +84,7 @@ export default function ChangePassword({ onDone }) {
   )
 }
 
-const label = { color: 'rgba(255,255,255,0.3)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
-const inp = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '16px 18px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
-const btn = { width: '100%', background: '#D95C1A', border: 'none', borderRadius: '4px', padding: '17px', color: '#fff', fontSize: '15px', fontWeight: '700', letterSpacing: '3px', fontFamily: 'Barlow Condensed, sans-serif', cursor: 'pointer' }
-const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: '18px', lineHeight: 1, padding: '4px' }
+const label = { color: 'var(--testo-debole)', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
+const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '16px 18px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
+const btn = { width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '17px', color: '#fff', fontSize: '15px', fontWeight: '700', letterSpacing: '3px', fontFamily: 'Barlow Condensed, sans-serif', cursor: 'pointer' }
+const eyeBtn = { position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--testo-debole)', fontSize: '18px', lineHeight: 1, padding: '4px' }

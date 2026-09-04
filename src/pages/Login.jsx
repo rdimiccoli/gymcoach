@@ -47,7 +47,7 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: '#0a0a0a',
+      background: 'var(--fondo)',
       display: 'flex',
       flexDirection: 'column',
       position: 'relative',
@@ -81,8 +81,8 @@ export default function Login() {
             color: '#fff',
             lineHeight: 1,
             marginBottom: '8px',
-          }}>GYM<span style={{ color: '#D95C1A' }}>COACH</span></div>
-          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>
+          }}>GYM<span style={{ color: 'var(--accento)' }}>COACH</span></div>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', fontWeight: '400', letterSpacing: '2px', textTransform: 'uppercase' }}>
             Gestione schede · Carichi · Progressi
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function Login() {
               style={{
                 position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: showPassword ? '#D95C1A' : 'rgba(255,255,255,0.3)',
+                color: showPassword ? 'var(--accento)' : 'var(--testo-debole)',
                 fontSize: '18px', lineHeight: 1, padding: '4px',
               }}
             >
@@ -117,7 +117,7 @@ export default function Login() {
           </div>
 
           {error && (
-            <div style={{ color: '#E85C1A', fontSize: '13px', marginBottom: '12px', paddingLeft: '4px' }}>{error}</div>
+            <div style={{ color: 'var(--errore)', fontSize: '13px', marginBottom: '12px', paddingLeft: '4px' }}>{error}</div>
           )}
 
           <button type="submit" disabled={loading} style={btn}>
@@ -130,35 +130,35 @@ export default function Login() {
           <div style={{ textAlign: 'center', marginTop: '18px' }}>
             <span
               onClick={() => { setShowReset(true); setResetEmail(email) }}
-              style={{ color: 'rgba(217,92,26,0.7)', fontSize: '12px', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
+              style={{ color: 'var(--acc-testo-tenue)', fontSize: '12px', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
               PASSWORD DIMENTICATA?
             </span>
           </div>
         ) : resetSent ? (
-          <div style={{ marginTop: '18px', background: 'rgba(217,92,26,0.08)', border: '1px solid rgba(217,92,26,0.25)', borderRadius: '4px', padding: '14px', textAlign: 'center' }}>
-            <div style={{ color: '#D95C1A', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ RICHIESTA INVIATA</div>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>Se l'indirizzo è registrato riceverai il link per reimpostare la password. Controlla anche lo spam.</div>
-            <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
+          <div style={{ marginTop: '18px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo-tenue)', borderRadius: '4px', padding: '14px', textAlign: 'center' }}>
+            <div style={{ color: 'var(--accento)', fontSize: '13px', fontWeight: '700', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', marginBottom: '4px' }}>✓ RICHIESTA INVIATA</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '11px' }}>Se l'indirizzo è registrato riceverai il link per reimpostare la password. Controlla anche lo spam.</div>
+            <span onClick={() => { setShowReset(false); setResetSent(false) }} style={{ color: 'var(--testo-debole)', fontSize: '11px', cursor: 'pointer', marginTop: '8px', display: 'inline-block' }}>← Torna al login</span>
           </div>
         ) : (
           <div style={{ marginTop: '18px' }}>
-            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginBottom: '8px', letterSpacing: '0.5px' }}>Inserisci la tua email per ricevere il link di reset:</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '11px', marginBottom: '8px', letterSpacing: '0.5px' }}>Inserisci la tua email per ricevere il link di reset:</div>
             <input
               value={resetEmail}
               onChange={e => setResetEmail(e.target.value)}
               placeholder="Email" type="email"
               style={{ ...inp, marginBottom: '8px' }}
             />
-            <button onClick={handleReset} disabled={resetLoading || !resetEmail.trim()} style={{ ...btn, background: 'transparent', border: '1px solid rgba(217,92,26,0.5)', color: '#D95C1A' }}>
+            <button onClick={handleReset} disabled={resetLoading || !resetEmail.trim()} style={{ ...btn, background: 'transparent', border: '1px solid var(--acc-bordo-marcato)', color: 'var(--accento)' }}>
               {resetLoading ? 'INVIO...' : 'INVIA LINK DI RESET'}
             </button>
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <span onClick={() => setShowReset(false)} style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', cursor: 'pointer' }}>← Torna al login</span>
+              <span onClick={() => setShowReset(false)} style={{ color: 'var(--testo-debole)', fontSize: '11px', cursor: 'pointer' }}>← Torna al login</span>
             </div>
           </div>
         )}
 
-        <div style={{ color: 'rgba(255,255,255,0.15)', fontSize: '11px', textAlign: 'center', marginTop: '24px', letterSpacing: '1px' }}>
+        <div style={{ color: 'var(--bordo-forte)', fontSize: '11px', textAlign: 'center', marginTop: '24px', letterSpacing: '1px' }}>
           RISERVATO AI COACH
         </div>
       </div>
@@ -168,8 +168,8 @@ export default function Login() {
 
 const inp = {
   width: '100%',
-  background: 'rgba(255,255,255,0.07)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'var(--sup-alta)',
+  border: '1px solid var(--bordo)',
   borderRadius: '4px',
   padding: '16px 18px',
   color: '#fff',
@@ -180,7 +180,7 @@ const inp = {
 
 const btn = {
   width: '100%',
-  background: '#D95C1A',
+  background: 'var(--accento)',
   border: 'none',
   borderRadius: '4px',
   padding: '17px',
