@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { comePulsante } from '../lib/stile.js'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
-import ImportaCsv from '../components/ImportaCsv'
+// Con il parser CSV dietro: pesa solo per chi importa davvero.
+const ImportaCsv = lazy(() => import('../components/ImportaCsv'))
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -637,7 +639,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             )}
             {filtered.map(ex => (
               <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <div onClick={() => addExercise(ex)} style={{ flex: 1, padding: '14px 16px', background: 'var(--sup)', borderRadius: '6px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff', cursor: 'pointer', border: '1px solid var(--sup-alta)' }}>{ex.name}</div>
+                <button type="button" onClick={() => addExercise(ex)} style={{ ...comePulsante,  flex: 1, padding: '14px 16px', background: 'var(--sup)', borderRadius: '6px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '600', color: '#fff', cursor: 'pointer', border: '1px solid var(--sup-alta)' }}>{ex.name}</button>
                 <button onClick={() => { setEditExerciseModal(ex); setEditExerciseName(ex.name) }}
                   style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '10px 12px', color: 'var(--testo-medio)', fontSize: '14px', flexShrink: 0 }}>✏️</button>
               </div>
@@ -647,12 +649,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       )}
 
       {mostraImport && (
-        <ImportaCsv
+        <Suspense fallback={null}><ImportaCsv
           cycleId={currentCycleId}
           esistentiPerGiorno={{ 1: exList[1].length, 2: exList[2].length, 3: exList[3].length }}
           onFatto={() => { setMostraImport(false); loadExistingCycle() }}
           onClose={() => setMostraImport(false)}
-        />
+        /></Suspense>
       )}
 
       {/* Delete confirm modal */}

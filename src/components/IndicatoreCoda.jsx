@@ -1,3 +1,4 @@
+import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect } from 'react'
 import { subscribeCoda, sincronizza } from '../lib/coda'
 
@@ -21,7 +22,7 @@ export default function IndicatoreCoda({ userId }) {
   }
 
   return (
-    <div onClick={inCorso ? undefined : forza} style={{
+    <button type="button" onClick={inCorso ? undefined : forza} style={{ ...comePulsante, 
       position: 'fixed', left: '12px', right: '12px', bottom: '84px', zIndex: 900,
       background: 'rgba(30,22,8,0.97)',
       border: '1px solid rgba(234,179,8,0.45)',
@@ -39,6 +40,6 @@ export default function IndicatoreCoda({ userId }) {
           {inCorso ? 'Invio in corso...' : 'Salvati sul telefono. Partono da soli appena torna la rete — tocca per riprovare ora.'}
         </div>
       </div>
-    </div>
+    </button>
   )
 }

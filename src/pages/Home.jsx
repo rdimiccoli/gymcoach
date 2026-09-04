@@ -1,3 +1,4 @@
+import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
@@ -295,7 +296,7 @@ export default function Home({ navigate, goHome, session }) {
 
 function TurnCard({ turn, cycle, count, onPress, accent = 'var(--accento)' }) {
   return (
-    <div onClick={onPress} style={{
+    <button type="button" onClick={onPress} style={{ ...comePulsante, 
       background: 'var(--sup)',
       border: '1px solid var(--sup-alta)',
       borderRadius: '6px',
@@ -315,7 +316,7 @@ function TurnCard({ turn, cycle, count, onPress, accent = 'var(--accento)' }) {
         <div style={{ background: 'var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', padding: '4px 10px', borderRadius: '3px', letterSpacing: '0.5px' }}>{count} ATL</div>
         <div style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>›</div>
       </div>
-    </div>
+    </button>
   )
 }
 

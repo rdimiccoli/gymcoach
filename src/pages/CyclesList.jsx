@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
-import { csvDaEsercizi } from '../lib/csv'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -87,6 +86,8 @@ export default function CyclesList({ navigate, goHome, session }) {
     )
     if (!data?.length) { notifyError('La scheda non ha esercizi da esportare.'); return }
 
+    // Il parser arriva ora, non all'avvio dell'app.
+    const { csvDaEsercizi } = await import('../lib/csv')
     const nomeFile = `${(cycle.name || 'scheda').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-')}.csv`
     // Il BOM serve a Excel per riconoscere l'UTF-8: senza, gli accenti si rompono.
     const blob = new Blob(['﻿' + csvDaEsercizi(data)], { type: 'text/csv;charset=utf-8' })

@@ -1,3 +1,4 @@
+import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
@@ -290,12 +291,12 @@ export default function Turns({ navigate, goHome, session }) {
         {loading && <ScheletroElenco righe={4} />}
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
-            <div onClick={() => loadClients(turn)} style={{ flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
+            <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>{turn.name}</div>
               <div style={{ color: 'var(--testo-fioco)', fontSize: '11px', marginTop: '1px' }}>Tocca per gestire clienti</div>
-            </div>
+            </button>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div onClick={() => loadClients(turn)} style={{ color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</div>
+              <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</button>
               <button onClick={() => { setRenameTurnModal(turn); setRenameTurnValue(turn.name) }} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>
               <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '16px', padding: '4px' }}>✕</button>
             </div>

@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
+import { comePulsante } from '../lib/stile'
 import { tocco, conferma } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto } from '../lib/schede'
-import TimerCircuito from '../components/TimerCircuito'
+// Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
+const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -270,38 +272,47 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           const isExpanded = expanded[groupKey]
           return (
             <div key={gi} style={{ marginBottom: '8px' }}>
-              <div onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+              {/* Il contenitore resta un <div>: dentro c'è il pulsante TIMER, e
+                  un button dentro un altro button è HTML non valido. A essere
+                  cliccabile è il blocco del titolo, che è un button vero e
+                  quindi raggiungibile da tastiera. Il TIMER gli sta accanto. */}
+              <div
                 style={{
                   background: group.type === 'circuit' ? 'rgba(59,130,246,0.06)' : group.type === 'superset' ? 'var(--acc-fondo)' : 'var(--sup)',
                   border: `1px solid ${group.type === 'circuit' ? 'rgba(59,130,246,0.25)' : group.type === 'superset' ? 'var(--acc-bordo-tenue)' : 'var(--sup-alta)'}`,
                   borderLeft: group.type === 'circuit' ? '2px solid var(--circuito)' : group.type === 'superset' ? '2px solid var(--accento)' : undefined,
                   borderRadius: isExpanded ? '6px 6px 0 0' : '6px',
-                  padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
+                  padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
                 }}>
-                <div style={{ flex: 1 }}>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+                  style={{ ...comePulsante, flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }}>
                   {group.type === 'superset' && (
                     <div style={{ color: 'var(--accento)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
                   )}
                   {group.type === 'circuit' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                      <span style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</span>
-                      {/* Durata, riposo e giri sono già nel database: finora
-                          venivano solo stampati e cronometrati a mano. */}
-                      {secondiDaTesto(group.exercises[0]?.reps_a) && (
-                        <button onClick={e => { e.stopPropagation(); setTimer(group) }} style={{
-                          background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.45)',
-                          borderRadius: '3px', padding: '3px 9px', color: 'var(--circuito)',
-                          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
-                          touchAction: 'manipulation', cursor: 'pointer',
-                        }}>▶ TIMER</button>
-                      )}
-                    </div>
+                    <div style={{ color: 'var(--circuito)', fontSize: '9px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>🔄 CIRCUITO {group.label.replace('CIR-','')}</div>
                   )}
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {group.exercises.map(e => e?.exercises?.name).join(' + ')}
                   </div>
-                </div>
-                <div style={{ color: 'var(--testo-fioco)', fontSize: '16px', marginLeft: '8px' }}>{isExpanded ? '∨' : '›'}</div>
+                </button>
+
+                {/* Durata, riposo e giri sono già nel database: finora venivano
+                    solo stampati e cronometrati a mano. Il pulsante compare solo
+                    se la durata è interpretabile. */}
+                {group.type === 'circuit' && secondiDaTesto(group.exercises[0]?.reps_a) && (
+                  <button type="button" onClick={() => setTimer(group)} style={{
+                    flexShrink: 0,
+                    background: 'rgba(59,130,246,0.18)', border: '1px solid rgba(59,130,246,0.45)',
+                    borderRadius: '3px', padding: '6px 10px', color: 'var(--circuito)',
+                    fontFamily: 'Barlow Condensed, sans-serif', fontSize: '10px', fontWeight: '700', letterSpacing: '1px',
+                    touchAction: 'manipulation', cursor: 'pointer',
+                  }}>▶ TIMER</button>
+                )}
+
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '16px' }}>{isExpanded ? '∨' : '›'}</div>
               </div>
 
               {isExpanded && (
@@ -317,12 +328,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Clickable name → athlete profile */}
-                            <div onClick={() => navigate('athlete-profile', { client })}
-                              style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <button type="button" onClick={() => navigate('athlete-profile', { client })}
+                              style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               {client.name} {client.surname}
                               {isLate && <span style={{ color: '#E8A030', fontSize: '9px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '12px' }}>›</span>
-                            </div>
+                            </button>
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
                               ? <div style={{ color: 'var(--circuito)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
@@ -386,13 +397,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                 </div>
 
                                 <button onClick={() => modificaCarico(client, ex, -1)} style={tastoCarico}>−</button>
-                                <div onClick={() => setEditModal({ client, group })}
-                                  style={{ minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
+                                <button type="button" onClick={() => setEditModal({ client, group })}
+                                  style={{ ...comePulsante, minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
                                   <span style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
                                     {currentKg !== undefined ? currentKg : '—'}
                                   </span>
                                   <span style={{ color: 'var(--testo-debole)', fontSize: '9px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
-                                </div>
+                                </button>
                                 <button onClick={() => modificaCarico(client, ex, 1)}
                                   style={{ ...tastoCarico, background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>+</button>
                               </div>
@@ -479,7 +490,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         <div style={{ height: '20px' }} />
       </div>
 
-      {timer && <TimerCircuito group={timer} onClose={() => setTimer(null)} />}
+      {timer && <Suspense fallback={null}><TimerCircuito group={timer} onClose={() => setTimer(null)} /></Suspense>}
 
       {confermaAvanza && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>

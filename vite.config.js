@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  build: { sourcemap: true },
+  // 1,9 MB di sourcemap servite pubblicamente a ogni deploy. Il repo e' gia'
+  // pubblico quindi non era un segreto, ma era peso inutile sul CDN.
+  build: { sourcemap: false },
   plugins: [
     react(),
     VitePWA({

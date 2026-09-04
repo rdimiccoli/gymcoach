@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import Login from './pages/Login'
 import Home from './pages/Home'
@@ -13,7 +13,9 @@ import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
 import Notifier from './components/Notifier'
 import IndicatoreCoda from './components/IndicatoreCoda'
-import BloccoBiometrico from './components/BloccoBiometrico'
+// Caricati solo quando servono davvero: il blocco biometrico riguarda chi
+// l'ha attivato, e finiva nel pacchetto di tutti.
+const BloccoBiometrico = lazy(() => import('./components/BloccoBiometrico'))
 import { bloccoAttivo, disattivaBlocco, MINUTI_RIBLOCCO } from './lib/biometria'
 import { avviaSincronizzazioneAutomatica } from './lib/coda'
 import { supabase } from './supabaseClient'
@@ -169,6 +171,7 @@ export default function App() {
   if (!sbloccato && bloccoAttivo(session.user.id)) {
     return (
       <>
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: 'var(--fondo)' }} />}>
         <BloccoBiometrico
           nomeCoach={session.user.email}
           onSbloccato={() => setSbloccato(true)}
@@ -183,6 +186,7 @@ export default function App() {
             supabase.auth.signOut()
           }}
         />
+        </Suspense>
         <Notifier />
       </>
     )
