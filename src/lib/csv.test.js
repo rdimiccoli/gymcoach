@@ -101,3 +101,43 @@ describe('csvDaEsercizi', () => {
     expect(riletti.map(e => e.gruppo)).toEqual(esercizi.map(e => e.gruppo))
   })
 })
+
+describe('separatore', () => {
+  // Excel in italiano esporta con il punto e virgola; chi copia celle da un
+  // foglio e le incolla ottiene tabulazioni. Accettare solo la virgola voleva
+  // dire fallire nei due casi più probabili.
+  it('legge il punto e virgola di Excel italiano', () => {
+    const { esercizi, problemi } = eserciziDaCsv('exercise_name;day;reps_a\nSquat sumo;1;3x8')
+    expect(problemi).toEqual([])
+    expect(esercizi[0]).toMatchObject({ nome: 'Squat sumo', giorno: 1, repsA: '3x8' })
+  })
+
+  it('legge le tabulazioni di celle incollate da un foglio di calcolo', () => {
+    const { esercizi } = eserciziDaCsv('exercise_name\tday\treps_a\nPanca obliqua\t2\t3x10')
+    expect(esercizi[0]).toMatchObject({ nome: 'Panca obliqua', giorno: 2, repsA: '3x10' })
+  })
+
+  it('non si confonde con le virgole dentro i campi quando il separatore è ;', () => {
+    const { esercizi } = eserciziDaCsv('exercise_name;day;reps_a\n"Panca, obliqua";1;"3x8, poi max"')
+    expect(esercizi[0].nome).toBe('Panca, obliqua')
+    expect(esercizi[0].repsA).toBe('3x8, poi max')
+  })
+
+  it('a parità sceglie la virgola, che è il formato che esportiamo noi', () => {
+    const { esercizi } = eserciziDaCsv('exercise_name,day\nSquat,1')
+    expect(esercizi).toHaveLength(1)
+  })
+})
+
+describe('messaggi quando il file non va', () => {
+  it('dice quali colonne ha letto, non solo quale manca', () => {
+    const { problemi } = eserciziDaCsv('nome,giorno\nSquat,1')
+    expect(problemi[0]).toContain('exercise_name')
+    expect(problemi[0]).toContain('nome, giorno')  // cosa ha letto davvero
+  })
+
+  it('riconosce il caso in cui le colonne non sono state separate', () => {
+    const { problemi } = eserciziDaCsv('exercise_name|day\nSquat|1')
+    expect(problemi[1]).toContain('non siano state separate')
+  })
+})

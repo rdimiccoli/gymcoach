@@ -82,10 +82,20 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '4px' }}>
           IMPORTA DA CSV
         </div>
-        <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginBottom: '14px', lineHeight: 1.45 }}>
-          Incolla il contenuto del file esportato. Servono almeno le colonne
-          <strong style={{ color: 'var(--testo-chiaro)' }}> exercise_name</strong> e
-          <strong style={{ color: 'var(--testo-chiaro)' }}> day</strong>.
+        <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginBottom: '14px', lineHeight: 1.5 }}>
+          Incolla il file esportato, oppure le celle copiate da un foglio di calcolo.
+          <br />
+          <span style={{ color: 'var(--testo-chiaro)' }}>Obbligatorie:</span>{' '}
+          <code style={{ fontFamily: 'monospace', color: 'var(--accento)' }}>exercise_name</code> e{' '}
+          <code style={{ fontFamily: 'monospace', color: 'var(--accento)' }}>day</code> (1, 2 o 3).
+          <br />
+          <span style={{ color: 'var(--testo-debole)' }}>Facoltative:</span>{' '}
+          <code style={{ fontFamily: 'monospace' }}>reps_a</code>{' '}
+          <code style={{ fontFamily: 'monospace' }}>reps_b</code>{' '}
+          <code style={{ fontFamily: 'monospace' }}>reps_c</code>{' '}
+          <code style={{ fontFamily: 'monospace' }}>superset_group</code>{' '}
+          <code style={{ fontFamily: 'monospace' }}>sort_order</code>. L'ordine
+          delle colonne non conta, e quelle in più vengono ignorate.
         </div>
 
         <textarea
