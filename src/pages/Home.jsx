@@ -25,7 +25,7 @@ export default function Home({ navigate, goHome, session }) {
   const [coach, setCoach] = useState(null)
   const [turni, setTurni] = useState([])
   const [schede, setSchede] = useState({})       // turnId → [scheda attive]
-  const [atlete, setAtlete] = useState({})       // turnId → [{ current_week }]
+  const [atlete, setAtlete] = useState({})       // turnId → [{ id }], solo per contarle
   const [loading, setLoading] = useState(true)
 
   const oggi = new Date()
@@ -80,7 +80,9 @@ export default function Home({ navigate, goHome, session }) {
         run(supabase.from('cycles').select('*').in('turn_id', ids)
           .eq('is_active', true).order('created_at', { ascending: false }),
           'Impossibile caricare le schede attive.'),
-        run(supabase.from('clients').select('id, turn_id, current_week').in('turn_id', ids)
+        // Serve solo a contarle sulla card: la settimana non è più una loro
+        // proprietà, viene dalla data d'inizio della scheda.
+        run(supabase.from('clients').select('id, turn_id').in('turn_id', ids)
           .eq('is_active', true),
           'Impossibile caricare gli atleti.'),
       ])

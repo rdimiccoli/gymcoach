@@ -184,7 +184,6 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                     {client.surname} {client.name}
                   </span>
-                  <span style={{ color: 'var(--testo-debole)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif' }}>Sett. {client.current_week}</span>
                   {selectedClient === client.id && <span style={{ color: 'var(--accento)', fontSize: '16px' }}>✓</span>}
                 </button>
               ))}

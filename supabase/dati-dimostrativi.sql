@@ -173,32 +173,38 @@ begin
   join exercises e on e.name = d.nome;
 
   -- ═══ ATLETE ═══════════════════════════════════════════════════════════
-  -- Il turno del mattino è alla settimana 4 da calendario: chi sta sotto
-  -- compare come «in ritardo».
-  insert into clients (turn_id, name, surname, current_week, is_active) values
-    (t_mat, 'Sara',      'Bianchi',   4, true),   -- in pari, storico ricco
-    (t_mat, 'Giulia',    'Colombo',   4, true),   -- in pari
-    (t_mat, 'Martina',   'De Luca',   2, true),   -- ⚠ indietro, ha una nota
-    (t_mat, 'Chiara',    'Esposito',  5, true),   -- avanti
-    (t_mat, 'Alice',     'Ferrari',   1, true),   -- ⚠ indietro, e SENZA carichi
-    (t_mat, 'Elena',     'Gallo',     6, true),   -- ha finito le sei settimane
-    (t_mat, 'Valentina', 'Rossi',     3, false);  -- ARCHIVIATA
+  -- Niente più `current_week` per atleta: la settimana è della scheda e viene
+  -- dalla sua data d'inizio, uguale per tutto il turno. Chi si allena insieme
+  -- risulta insieme, che è come funziona davvero una lezione di gruppo.
+  insert into clients (turn_id, name, surname, is_active) values
+    (t_mat, 'Sara',      'Bianchi',   true),
+    (t_mat, 'Giulia',    'Colombo',   true),
+    (t_mat, 'Martina',   'De Luca',   true),   -- ha una nota sulla panca
+    (t_mat, 'Chiara',    'Esposito',  true),
+    (t_mat, 'Alice',     'Ferrari',   true),   -- SENZA carichi: stato «mai registrato»
+    (t_mat, 'Elena',     'Gallo',     true),
+    (t_mat, 'Valentina', 'Rossi',     false);  -- ARCHIVIATA
 
-  insert into clients (turn_id, name, surname, current_week, is_active) values
-    (t_pom, 'Marco',    'Ricci',   2, true),
-    (t_pom, 'Luca',     'Marino',  2, true),
-    (t_pom, 'Federica', 'Greco',   3, true),
-    (t_pom, 'Davide',   'Conti',   1, true);
+  insert into clients (turn_id, name, surname, is_active) values
+    (t_pom, 'Marco',    'Ricci',   true),
+    (t_pom, 'Luca',     'Marino',  true),
+    (t_pom, 'Federica', 'Greco',   true),
+    (t_pom, 'Davide',   'Conti',   true);
 
-  insert into clients (turn_id, name, surname, current_week, is_active) values
-    (t_ser, 'Anna',   'Lombardi', 1, true),
-    (t_ser, 'Silvia', 'Barbieri', 1, true),
-    (t_ser, 'Paola',  'Fontana',  1, true);
+  insert into clients (turn_id, name, surname, is_active) values
+    (t_ser, 'Anna',   'Lombardi', true),
+    (t_ser, 'Silvia', 'Barbieri', true),
+    (t_ser, 'Paola',  'Fontana',  true);
 
   -- ═══ CARICHI ══════════════════════════════════════════════════════════
   -- Una riga per ogni settimana già svolta, con +2,5 kg a settimana. La base
   -- cambia per atleta ed esercizio: i numeri non sembrano usciti da una
   -- macchina. Alice Ferrari è esclusa apposta ⇒ stato «nessun carico».
+  --
+  -- Quante settimane sono state svolte non lo dice più un contatore per
+  -- atleta: lo dice la data d'inizio della scheda, con la stessa formula che
+  -- usa l'app (settimanaDaCalendario). Autunno 2026 ⇒ 4, Forza Base ⇒ 2,
+  -- Estate 2026 ⇒ 6 perché è finita da un pezzo.
   insert into client_loads (client_id, cycle_exercise_id, week, kg)
   select c.id, ce.id, w,
          round(12 + abs(mod(hashtext(c.surname || ce.id::text), 34)) + (w - 1) * 2.5, 1)
@@ -206,19 +212,9 @@ begin
   join turns t            on t.id = c.turn_id and t.coach_id = v_coach
   join cycles cy          on cy.turn_id = t.id
   join cycle_exercises ce on ce.cycle_id = cy.id
-  cross join lateral generate_series(1, c.current_week) as w
-  where c.is_active and c.surname <> 'Ferrari'
-  on conflict (client_id, cycle_exercise_id, week) do nothing;
-
-  -- La scheda conclusa: sei settimane piene, così i grafici hanno una linea.
-  insert into client_loads (client_id, cycle_exercise_id, week, kg)
-  select c.id, ce.id, w,
-         round(10 + abs(mod(hashtext(c.surname || ce.id::text), 28)) + (w - 1) * 2.5, 1)
-  from clients c
-  join turns t            on t.id = c.turn_id and t.coach_id = v_coach
-  join cycles cy          on cy.turn_id = t.id and cy.id = s_vec
-  join cycle_exercises ce on ce.cycle_id = cy.id
-  cross join lateral generate_series(1, 6) as w
+  cross join lateral generate_series(
+    1, least(6, greatest(1, (current_date - cy.start_date) / 7 + 1))
+  ) as w
   where c.is_active and c.surname <> 'Ferrari'
   on conflict (client_id, cycle_exercise_id, week) do nothing;
 
@@ -250,6 +246,61 @@ begin
 end $$;
 
 
+-- ═══ PASSO 2b · LA COLONNA CHE NON SERVE PIÙ ══════════════════════════════
+-- `clients.current_week` era il contatore che il coach faceva avanzare a mano,
+-- una volta per atleta. Sei persone dello stesso turno, che si allenavano
+-- insieme sulla stessa seduta, risultavano a sei settimane diverse.
+--
+-- Adesso la settimana viene dalla data d'inizio della scheda: una sola, uguale
+-- per tutto il gruppo, che non si sbaglia con un tocco. La colonna va via, e
+-- con lei l'unica fonte di verità in disaccordo con l'altra.
+alter table clients drop column if exists current_week;
+
+
+-- ═══ PASSO 2c · CATEGORIE DEGLI ESERCIZI ══════════════════════════════════
+-- Le colonne le ha già create la migrazione. Qui si riempiono, perché il
+-- catalogo è appena stato ricreato da zero e sarebbe senza categorie.
+update exercises e set muscle_group = v.gruppo, equipment = v.attrezzo
+from (values
+  ('Squat sumo','Gambe','Bilanciere'),          ('Leg press','Gambe','Macchina'),
+  ('Leg curl','Gambe','Macchina'),              ('Stacco rumeno','Gambe','Bilanciere'),
+  ('Affondi camminati','Gambe','Corpo libero'), ('Balzi step piccolo alternati','Gambe','Corpo libero'),
+  ('Panca obliqua','Petto','Bilanciere'),       ('Panca stretta','Petto','Bilanciere'),
+  ('Spinte oblique','Petto','Manubri'),         ('Spinte declinate','Petto','Manubri'),
+  ('Croci ai cavi','Petto','Cavi'),             ('Croci 30','Petto','Manubri'),
+  ('Rematore T-bar','Dorso','Bilanciere'),      ('Alzate dorso al cavo','Dorso','Cavi'),
+  ('Lat machine presa inversa','Dorso','Macchina'),
+  ('Military press','Spalle','Bilanciere'),     ('Alzate laterali 45°','Spalle','Manubri'),
+  ('Thruster bilanciere','Spalle','Bilanciere'),
+  ('Curl in piedi','Braccia','Manubri'),        ('Curl panca 45°','Braccia','Manubri'),
+  ('Plank','Core','Corpo libero'),              ('Barchetta','Core','Corpo libero'),
+  ('Mountain climber','Core','Corpo libero'),
+  ('Swing','Total body','Kettlebell'),          ('Burpees con ostacolo','Total body','Corpo libero'),
+  ('Jumping jack','Total body','Corpo libero')
+) as v(nome, gruppo, attrezzo)
+where e.name = v.nome;
+
+
+-- ═══ PASSO 2d · POTER VEDERE I COLLEGHI ═══════════════════════════════════
+-- Serve alla condivisione dei turni: senza, l'elenco da cui scegliere a chi
+-- passare un turno sarebbe vuoto, perché la policy su `coaches` dice che
+-- ognuno vede solo sé stesso.
+--
+-- Quella policy non si tocca: la tabella resta chiusa, email comprese. Si
+-- passa di qui, e di qui escono soltanto NOME e ID.
+create or replace function public.colleghi()
+returns table (id uuid, name text)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.name
+  from coaches c
+  where c.id <> auth.uid()
+  order by c.name;
+$$;
+
+revoke all on function public.colleghi() from public;
+grant execute on function public.colleghi() to authenticated;
+
+
 -- ═══ VERIFICA ═════════════════════════════════════════════════════════════
 select 'coach'              as cosa, count(*) from coaches
 union all select 'turni',    count(*) from turns
@@ -261,6 +312,15 @@ union all select 'note',     count(*) from client_notes;
 
 -- Atteso: 1 coach · 3 turni · 14 atlete · 4 schede · 33 esercizi in scheda
 --         (carichi e note dipendono dalle settimane, non serve contarli a mano)
+
+-- A che settimana risulta ogni scheda attiva. È il numero che comparirà in
+-- cima al turno: se qui torna, torna anche nell'app.
+select c.name as scheda,
+       c.start_date as iniziata_il,
+       least(6, greatest(1, (current_date - c.start_date) / 7 + 1)) as settimana
+from cycles c
+where c.is_active
+order by c.start_date;
 
 
 -- ═══ PASSO 3 · FACOLTATIVO, E L'UNICO IRREVERSIBILE ═══════════════════════

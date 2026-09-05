@@ -81,7 +81,7 @@ export default function Turns({ navigate, goHome, session }) {
     setSaving(true)
     const { error } = await run(
       supabase.from('clients').insert({
-        turn_id: selectedTurn.id, name: clientName.trim(), surname: clientSurname.trim(), current_week: 1
+        turn_id: selectedTurn.id, name: clientName.trim(), surname: clientSurname.trim()
       }),
       'Cliente non aggiunto. Controlla la connessione e riprova.'
     )
@@ -248,7 +248,7 @@ export default function Turns({ navigate, goHome, session }) {
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
               </div>
-              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Settimana {client.current_week}/6</div>
+              {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Non attiva</div>}
             </div>
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

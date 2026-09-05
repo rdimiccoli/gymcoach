@@ -48,12 +48,15 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [presenze, condivisione, categorie] = await Promise.all([
-      presente('client_attendance', 'id'),
+    // Le presenze non sono più fra queste: servivano a decidere chi far
+    // avanzare di settimana, e la settimana adesso la dà il calendario.
+    // La tabella nel database resta, vuota, se un giorno servissero come
+    // registro delle assenze a sé stante.
+    const [condivisione, categorie] = await Promise.all([
       presente('turn_coaches', 'turn_id'),
       presente('exercises', 'muscle_group'),
     ])
-    return { presenze, condivisione, categorie }
+    return { condivisione, categorie }
   })()
   return richiesta
 }

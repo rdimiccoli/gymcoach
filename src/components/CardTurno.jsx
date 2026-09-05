@@ -5,13 +5,16 @@ import { comePulsante } from '../lib/stile'
  * La card di un turno nella schermata iniziale.
  *
  * Deve dire in un colpo d'occhio, senza leggere: che ora è il turno, che
- * scheda sta girando, a che punto delle sei settimane siamo e se qualcuna è
- * rimasta indietro. Prima queste informazioni erano sparse fra la scelta
- * della fase e la schermata del turno.
+ * scheda sta girando, a che punto delle sei settimane siamo e quante persone
+ * ci sono. Prima queste informazioni erano sparse fra la scelta della fase e
+ * la schermata del turno.
+ *
+ * L'avviso «⚠ N INDIETRO» non c'è più: segnalava che il contatore manuale di
+ * qualcuno non stava al passo del calendario. Ora il calendario è l'unica
+ * fonte, e non può essere in disaccordo con sé stesso.
  */
 export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = true, onApri }) {
   const settimana = settimanaDaCalendario(scheda)
-  const indietro = settimana ? atlete.filter(a => a.current_week < settimana).length : 0
 
   // L'orario è l'identificatore vero del turno: è così che le coach lo chiamano
   // fra loro. Il nome completo («09:00 — Femminile») è ridondante.
@@ -63,9 +66,6 @@ export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = t
                     {atlete.length} {atlete.length === 1 ? 'atleta' : 'atlete'}
                   </span>
                 )}
-                {indietro > 0 && (
-                  <span style={etichettaIndietro}>⚠ {indietro} INDIETRO</span>
-                )}
               </div>
             </>
           ) : (
@@ -106,11 +106,4 @@ const card = {
   background: 'var(--sup)', border: '1px solid var(--sup-alta)',
   borderLeft: '3px solid var(--accento)',
   borderRadius: '8px', padding: '15px 14px', marginBottom: '9px',
-}
-
-const etichettaIndietro = {
-  color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif',
-  fontWeight: '700', letterSpacing: '0.5px',
-  background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)',
-  borderRadius: '3px', padding: '2px 7px',
 }

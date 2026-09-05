@@ -121,9 +121,14 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                   {history.reduce((sum, ex) => sum + ex.entries.length, 0)}
                 </div>
               </div>
+              {/* Al posto della «settimana attuale», che era il contatore
+                  manuale: qui il carico più alto mai sollevato, che è la cosa
+                  che il coach cerca davvero aprendo una scheda atleta. */}
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETTIMANA ATT.</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: 'var(--accento)' }}>{client.current_week}</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>CARICO MAX</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: 'var(--accento)' }}>
+                  {Math.max(0, ...history.flatMap(ex => ex.entries.map(e => Number(e.kg) || 0)))} <span style={{ fontSize: '15px', fontWeight: '700' }}>kg</span>
+                </div>
               </div>
             </div>
 

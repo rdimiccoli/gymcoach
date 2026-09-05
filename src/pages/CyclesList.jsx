@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
+import { settimanaDaCalendario } from '../lib/schede'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -14,6 +15,7 @@ export default function CyclesList({ navigate, goHome }) {
   const [completeModal, setCompleteModal] = useState(null)
   const [renameModal, setRenameModal] = useState(null)
   const [renameValue, setRenameValue] = useState('')
+  const [dataInizio, setDataInizio] = useState('')
   const [deleteModal, setDeleteModal] = useState(null)
   const [completedAlerts, setCompletedAlerts] = useState([])
   const [allCycles, setAllCycles] = useState([]) // all cycles across all turns
@@ -30,24 +32,21 @@ export default function CyclesList({ navigate, goHome }) {
     if (t?.length) {
       const turnIds = t.map(x => x.id)
       // Come in Home: erano 2 query per turno, ora 2 in tutto.
-      const [{ data: tutteLeSchede }, { data: tuttiIClienti }] = await Promise.all([
-        run(supabase.from('cycles').select('*').in('turn_id', turnIds)
+      // La lista degli atleti serviva solo a sapere se avevano finito le sei
+      // settimane. Adesso lo dice il calendario, e questa query sparisce.
+      const { data: tutteLeSchede } = await run(
+        supabase.from('cycles').select('*').in('turn_id', turnIds)
           .order('created_at', { ascending: false }),
-          'Impossibile caricare le schede.'),
-        run(supabase.from('clients').select('id, turn_id, current_week').in('turn_id', turnIds)
-          .eq('is_active', true),
-          'Impossibile caricare gli atleti.'),
-      ])
+        'Impossibile caricare le schede.'
+      )
 
-      const cycleMap = {}, clientiPerTurno = {}
-      turnIds.forEach(id => { cycleMap[id] = []; clientiPerTurno[id] = [] })
+      const cycleMap = {}
+      turnIds.forEach(id => { cycleMap[id] = [] })
       ;(tutteLeSchede || []).forEach(c => { if (cycleMap[c.turn_id]) cycleMap[c.turn_id].push(c) })
-      ;(tuttiIClienti || []).forEach(c => { if (clientiPerTurno[c.turn_id]) clientiPerTurno[c.turn_id].push(c) })
 
       const alerts = turnIds.filter(id => {
         const attiva = cycleMap[id].find(x => x.is_active)
-        const atleti = clientiPerTurno[id]
-        return attiva && atleti.length > 0 && atleti.every(cl => cl.current_week >= 6)
+        return attiva && settimanaDaCalendario(attiva) >= 6
       })
 
       setCyclesByTurn(cycleMap)
@@ -111,11 +110,19 @@ export default function CyclesList({ navigate, goHome }) {
     await loadData()
   }
 
+  /**
+   * Nome e data d'inizio.
+   *
+   * La data non era salvabile: il campo esisteva solo alla creazione, e su una
+   * scheda già avviata non c'era modo di toccarla. Ora è la leva con cui si
+   * corregge la settimana per tutto il gruppo — chiusura, feste, una settimana
+   * saltata — al posto dei sei contatori che si avanzavano a mano.
+   */
   async function renameCycle(cycle) {
     if (!renameValue.trim()) return
     const { error } = await run(
-      supabase.from('cycles').update({ name: renameValue.trim() }).eq('id', cycle.id),
-      'Nome della scheda non salvato.'
+      supabase.from('cycles').update({ name: renameValue.trim(), start_date: dataInizio }).eq('id', cycle.id),
+      'Modifiche alla scheda non salvate.'
     )
     setRenameModal(null)
     if (error) return
@@ -218,8 +225,8 @@ export default function CyclesList({ navigate, goHome }) {
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <button onClick={() => navigate('cycle-share', { cycleId: cycle.id, cycleName: cycle.name })}
                       style={actionBtn}>📤 CONDIVIDI</button>
-                    <button onClick={() => { setRenameModal(cycle); setRenameValue(cycle.name) }}
-                      style={actionBtn}>✏️ RINOMINA</button>
+                    <button onClick={() => { setRenameModal(cycle); setRenameValue(cycle.name); setDataInizio(cycle.start_date || '') }}
+                      style={actionBtn}>✏️ MODIFICA</button>
                     <button onClick={() => esportaCsv(cycle)} style={actionBtn}>⬇ CSV</button>
                     {cycle.is_active && (
                       <button onClick={() => setCompleteModal(cycle)}
@@ -301,13 +308,25 @@ export default function CyclesList({ navigate, goHome }) {
       {renameModal && (
         <div style={overlay}>
           <div style={sheet}>
-            <div style={sheetTitle}>RINOMINA SCHEDA</div>
+            <div style={sheetTitle}>MODIFICA SCHEDA</div>
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '6px' }}>NOME</div>
             <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
               placeholder="Nome scheda" autoFocus
               style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '6px' }}>DATA DI INIZIO</div>
+            <input type="date" value={dataInizio} onChange={e => setDataInizio(e.target.value)}
+              style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }} />
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '18px' }}>
+              È da qui che l’app calcola a che settimana siete.
+              {settimanaDaCalendario({ start_date: dataInizio })
+                ? <> Con questa data il turno è alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaDaCalendario({ start_date: dataInizio })} di 6</strong>. Spostala avanti se il gruppo è rimasto indietro.</>
+                : <> Scegli una data non futura per vedere la settimana.</>}
+            </div>
+
             <button onClick={() => renameCycle(renameModal)} disabled={!renameValue.trim()}
               style={{ ...sheetBtnOrange, opacity: !renameValue.trim() ? 0.3 : 1 }}>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accento)', letterSpacing: '1px' }}>✓ SALVA NOME</div>
+              <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accento)', letterSpacing: '1px' }}>✓ SALVA</div>
             </button>
             <button onClick={() => setRenameModal(null)} style={cancelBtn}>Annulla</button>
           </div>

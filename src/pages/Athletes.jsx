@@ -99,11 +99,6 @@ export default function Athletes({ navigate, goHome }) {
               <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{a.turnName}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <div style={{ background: 'var(--acc-riempimento)', borderRadius: '3px', padding: '4px 9px' }}>
-                <span style={{ color: 'var(--accento)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>
-                  SETT. {a.current_week}
-                </span>
-              </div>
               <span style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>›</span>
             </div>
           </div>

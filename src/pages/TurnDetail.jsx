@@ -5,7 +5,6 @@ import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
-import { capacita } from '../lib/capacita'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -16,9 +15,8 @@ import BottomNav from '../components/BottomNav'
 
 
 export default function TurnDetail({ navigate, goBack, goHome, params, session }) {
-  // `phase` arrivava da Home ma non veniva mai letto: le tre card FASE 1/2/3
-  // portavano tutte alla stessa identica schermata.
-  const { turn, cycle, phase } = params
+  // `phase` è sparito con le fasi: nessuno lo passa più.
+  const { turn, cycle } = params
   const [day, setDay] = useState(1)
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
@@ -32,12 +30,6 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   const [record, setRecord] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
-  const [confermaAvanza, setConfermaAvanza] = useState(false)
-  // Chi oggi non c'era. Si riempie solo nella conferma di «+1 a tutte»: fuori
-  // di lì l'assenza non serve a niente, e una schermata in più sarebbe una
-  // complicazione senza scopo.
-  const [assentiOggi, setAssentiOggi] = useState(() => new Set())
-  const [presenzeAttive, setPresenzeAttive] = useState(false)
   const [timer, setTimer] = useState(null)
   const [loading, setLoading] = useState(true)
   const timerCarichi = useRef({})
@@ -45,9 +37,20 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   useEffect(() => { if (cycle) loadData(); else setLoading(false) }, [day, cycle])
 
-  // Se la migrazione delle presenze non è stata eseguita, la conferma resta
-  // quella di prima. Nessun pulsante che finisce in errore.
-  useEffect(() => { capacita().then(c => setPresenzeAttive(c.presenze)) }, [])
+  /**
+   * La settimana è della SCHEDA, non della singola atleta.
+   *
+   * Prima ogni atleta aveva il suo contatore, che il coach faceva avanzare a
+   * mano. Il risultato era che sei persone dello stesso turno — che si erano
+   * allenate insieme, lo stesso giorno, sulla stessa seduta — risultavano a
+   * sei settimane diverse. Il numero non descriveva niente di vero, e infatti
+   * l'app doveva avvisare «2 indietro» per segnalare che non tornava.
+   *
+   * Ora viene dalla data d'inizio della scheda: una sola, uguale per tutte,
+   * che non si può sbagliare con un tocco accidentale. Se il gruppo resta
+   * davvero indietro si sposta la data d'inizio, e si ricalcola tutto.
+   */
+  const settimana = settimanaDaCalendario(cycle) || 1
 
   // Uscendo dalla schermata le modifiche ancora in attesa partono comunque.
   useEffect(() => () => { Object.keys(carichiPendenti.current).forEach(scriviCarico) }, [])
@@ -185,7 +188,6 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
     tocco() // conferma il tocco senza obbligare a guardare lo schermo
-    const settimana = client.current_week
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])
     const base = Number.isFinite(attuale) ? attuale : 0
@@ -230,95 +232,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
-  const settimanaAttesa = settimanaDaCalendario(cycle)
-
-  const indietro = settimanaAttesa ? clients.filter(c => c.current_week < settimanaAttesa) : []
-
-  /**
-   * Avanza di una settimana chi c'era. Con decine di atlete farlo una per una
-   * significava decine di tocchi ogni lunedì.
-   * Raggruppate per settimana attuale: al massimo cinque richieste, che siano
-   * cinque atlete o cinquanta.
-   *
-   * Chi è segnato assente resta indietro — che è tutto il punto: prima
-   * avanzava anche chi non si presentava da tre sessioni, e la settimana
-   * scritta nella scheda smetteva di dire la verità.
-   */
-  async function avanzaTutte() {
-    setConfermaAvanza(false)
-    const salta = presenzeAttive ? assentiOggi : new Set()
-    const daAvanzare = clients.filter(c => c.current_week < 6 && !salta.has(c.id))
-
-    const perSettimana = {}
-    daAvanzare.forEach(c => { (perSettimana[c.current_week] ||= []).push(c.id) })
-    const settimane = Object.keys(perSettimana)
-    if (!settimane.length) { notifyError('Nessuna atleta da avanzare.'); return }
-
-    for (const w of settimane) {
-      const { error } = await run(
-        supabase.from('clients').update({ current_week: Number(w) + 1 }).in('id', perSettimana[w]),
-        'Avanzamento non riuscito per tutte le atlete.'
-      )
-      if (error) { await loadData(); return }
-    }
-
-    const avanzati = new Set(daAvanzare.map(c => c.id))
-    setClients(prev => prev.map(c => avanzati.has(c.id) ? { ...c, current_week: c.current_week + 1 } : c))
-
-    const assenti = clients.filter(c => salta.has(c.id))
-    notifyOk(assenti.length
-      ? `Avanzate ${daAvanzare.length} · ${assenti.length} ferme perché assenti`
-      : 'Settimana avanzata per tutte')
-    conferma()
-
-    if (presenzeAttive) await registraPresenze(daAvanzare, assenti)
-    setAssentiOggi(new Set())
-  }
-
-  /**
-   * Scrive chi c'era e chi no. Dopo l'avanzamento e non prima: la settimana è
-   * la cosa che conta, e se questa scrittura fallisce non deve trascinarsi
-   * dietro anche quella. Il coach viene avvisato, ma il lavoro è salvo.
-   */
-  async function registraPresenze(presenti, assenti) {
-    const oggi = new Date()
-    // Non toISOString(): quella converte in UTC, e alle 23:00 scriverebbe la
-    // sessione sul giorno dopo.
-    const giorno = `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, '0')}-${String(oggi.getDate()).padStart(2, '0')}`
-    const righe = [
-      ...presenti.map(c => ({ client_id: c.id, session_date: giorno, present: true })),
-      ...assenti.map(c => ({ client_id: c.id, session_date: giorno, present: false })),
-    ]
-    if (!righe.length) return
-    await run(
-      supabase.from('client_attendance').upsert(righe, { onConflict: 'client_id,session_date' }),
-      'Settimana avanzata, ma le presenze di oggi non sono state salvate.'
-    )
-  }
-
-  function alternaPresenza(id) {
-    tocco()
-    setAssentiOggi(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id); else next.add(id)
-      return next
-    })
-  }
-
-  async function advanceWeek(client) {
-    if (client.current_week >= 6) return
-    const newWeek = client.current_week + 1
-    const { error } = await run(
-      supabase.from('clients').update({ current_week: newWeek }).eq('id', client.id),
-      `Impossibile avanzare la settimana di ${client.name} ${client.surname}.`
-    )
-    if (error) return
-    setClients(prev => prev.map(c => c.id === client.id ? { ...c, current_week: newWeek } : c))
-  }
-
   // Get current kg and previous kg+reps for a client/exercise
   function getLoadInfo(client, ex) {
-    const week = client.current_week
+    const week = settimana
     const currentKg = loads[`${client.id}_${ex.id}_${week}`]
     // Find most recent previous week with a load
     let prevWeek = null
@@ -344,7 +260,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   return (
     <div style={page}>
-      <TopBar title={turn.name} subtitle={phase ? `${cycle.name} · ${phase.label}` : cycle.name} onBack={goBack} />
+      <TopBar title={turn.name} subtitle={cycle.name} onBack={goBack} />
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
@@ -354,6 +270,26 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>GIORNO {d}</button>
         ))}
+      </div>
+
+      {/* Tutto quello che resta del pannello «avanza settimana»: un numero, in
+          chiaro, uguale per tutte. Non si tocca e non si può sbagliare. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '9px 16px', flexShrink: 0,
+        borderBottom: '1px solid var(--sup-alta)', background: 'var(--sup)',
+      }}>
+        <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1.5px', color: 'var(--testo-medio)', whiteSpace: 'nowrap' }}>
+          SETTIMANA <span style={{ color: 'var(--accento)', fontSize: '17px', fontWeight: '900' }}>{settimana}</span> DI 6
+        </span>
+        <span style={{ display: 'flex', gap: '3px', flex: 1 }} aria-hidden="true">
+          {[1, 2, 3, 4, 5, 6].map(n => (
+            <span key={n} style={{
+              flex: 1, height: '4px', borderRadius: '2px',
+              background: n <= settimana ? 'var(--accento)' : 'var(--sup-alta)',
+            }} />
+          ))}
+        </span>
       </div>
 
       <div style={scroll}>
@@ -415,37 +351,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'var(--acc-riempimento)' : 'var(--sup-alta)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map(client => {
-                    // "In ritardo" = indietro rispetto alla fase che il coach ha
-                    // scelto in home. Prima era fisso a `< 3`, quindi marcava con
-                    // ⚠ tutti gli atleti in settimana 1 o 2, cioè quelli
-                    // semplicemente all'inizio del ciclo.
-                    const isLate = phase ? client.current_week < phase.weekRange[0] : false
                     return (
-                      <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px', background: isLate ? 'rgba(232,160,48,0.05)' : 'transparent' }}>
+                      <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Clickable name → athlete profile */}
                             <button type="button" onClick={() => navigate('athlete-profile', { client })}
                               style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               {client.name} {client.surname}
-                              {isLate && <span style={{ color: '#E8A030', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>⚠ SETT.{client.current_week}</span>}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
                               ? <div style={{ color: 'var(--circuito)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
-                              : <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
-                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                    <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>SETT.</span>
-                                    <span style={{ color: 'var(--accento)', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '900' }}>{client.current_week}</span>
-                                  </div>
-                                  {/* In una superserie ogni esercizio ha le sue ripetizioni:
-                                      mostrarne una sola qui sarebbe falso, stanno nei badge sotto. */}
-                                  {group.exercises.length === 1 && <>
-                                    <div style={{ width: '1px', height: '16px', background: 'var(--bordo)' }} />
-                                    <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], client.current_week)}</span>
-                                  </>}
+                              // La settimana non si ripete più sotto ogni nome:
+                              // è la stessa per tutte, e sta scritta una volta
+                              // sola in cima alla schermata.
+                              : group.exercises.length === 1 && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], settimana)}</span>
                                 </div>
+                              )
                             }
                           </div>
                           <button onClick={() => setEditModal({ client, group })} style={{
@@ -478,7 +404,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                                     <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                      × {repsPerSettimana(ex, client.current_week)}
+                                      × {repsPerSettimana(ex, settimana)}
                                     </span>
                                     {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
                                       && currentKg >= record[`${client.id}_${ex.exercise_id}`] && currentKg > 0 && (
@@ -549,118 +475,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           )
         })}
 
-        {/* Advance week */}
-        {!loading && clients.length > 0 && exercises.length > 0 && (
-          <div style={{ marginTop: '16px', background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '6px', padding: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-              <div>
-                <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>AVANZA SETTIMANA</div>
-                {/* `cycles.start_date` c'era da sempre e non serviva a niente
-                    oltre che a comparire nella lista. Da lì si sa a che punto
-                    dovrebbe essere la scheda, invece di contare a mano. */}
-                {settimanaAttesa && (
-                  <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '3px' }}>
-                    Da calendario siamo alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaAttesa}</strong>
-                    {indietro.length > 0 && <> · <span style={{ color: '#E8A030' }}>{indietro.length} indietro</span></>}
-                  </div>
-                )}
-              </div>
-              {clients.some(c => c.current_week < 6) && (
-                <button onClick={() => setConfermaAvanza(true)} style={{
-                  flexShrink: 0, background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo-forte)',
-                  borderRadius: '4px', padding: '8px 12px', color: 'var(--accento)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
-                }}>+1 A TUTTE</button>
-              )}
-            </div>
-            {clients.map(client => (
-              <div key={client.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', marginBottom: '8px', borderBottom: '1px solid var(--sup)' }}>
-                <div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '0.5px' }}>{client.name} {client.surname}</div>
-                  <div style={{ color: 'var(--testo-fioco)', fontSize: '12px' }}>Sett. {client.current_week}/6</div>
-                </div>
-                <button onClick={() => advanceWeek(client)} disabled={client.current_week >= 6} style={{
-                  background: client.current_week >= 6 ? 'var(--sup)' : 'var(--accento)',
-                  border: 'none', borderRadius: '3px', padding: '6px 14px',
-                  color: client.current_week >= 6 ? 'var(--bordo-forte)' : '#fff',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px'
-                }}>
-                  {client.current_week >= 6 ? 'COMPLETO' : '+ AVANZA'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
         <div style={{ height: '20px' }} />
       </div>
 
       {timer && <Suspense fallback={null}><TimerCircuito group={timer} onClose={() => setTimer(null)} /></Suspense>}
-
-      {confermaAvanza && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
-          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>
-              {presenzeAttive ? 'CHI C’ERA OGGI?' : 'AVANZA TUTTE DI UNA SETTIMANA'}
-            </div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: presenzeAttive ? '16px' : '20px' }}>
-              {presenzeAttive
-                ? 'Tocca chi non si è presentato. Le altre passano alla settimana successiva.'
-                : `${clients.filter(c => c.current_week < 6).length} atlete passano alla settimana successiva. Chi è già alla 6 resta ferma.`}
-            </div>
-
-            {/* Assente per esclusione: chi non viene toccato avanza. Se il
-                coach ignora questa lista e preme il pulsante, succede
-                esattamente quello che succedeva prima. */}
-            {presenzeAttive && (
-              <div style={{ maxHeight: '46vh', overflowY: 'auto', marginBottom: '16px', marginLeft: '-4px', marginRight: '-4px' }}>
-                {clients.filter(c => c.current_week < 6).map(client => {
-                  const assente = assentiOggi.has(client.id)
-                  return (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={() => alternaPresenza(client.id)}
-                      style={{
-                        ...comePulsante,
-                        display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                        padding: '13px 12px', marginBottom: '6px', borderRadius: '8px',
-                        background: assente ? 'transparent' : 'var(--sup)',
-                        border: `1px solid ${assente ? 'var(--bordo)' : 'transparent'}`,
-                        textAlign: 'left', cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{
-                        flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: assente ? 'transparent' : 'var(--accento)',
-                        border: assente ? '1px solid var(--bordo-forte)' : 'none',
-                        color: '#fff', fontSize: '15px', lineHeight: 1,
-                      }}>{assente ? '' : '✓'}</span>
-                      <span style={{
-                        flex: 1, minWidth: 0,
-                        fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700',
-                        letterSpacing: '0.5px',
-                        color: assente ? 'var(--testo-fioco)' : '#fff',
-                      }}>{client.name} {client.surname}</span>
-                      <span style={{
-                        flexShrink: 0, fontSize: '12px', fontWeight: '700', letterSpacing: '1px',
-                        color: assente ? 'var(--testo-fioco)' : 'var(--testo-medio)',
-                      }}>{assente ? 'ASSENTE' : `SETT. ${client.current_week}`}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            <button onClick={avanzaTutte} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px', cursor: 'pointer' }}>
-              {presenzeAttive
-                ? `✓ AVANZA ${clients.filter(c => c.current_week < 6 && !assentiOggi.has(c.id)).length}`
-                : '✓ AVANZA TUTTE'}
-            </button>
-            <button onClick={() => setConfermaAvanza(false)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px', cursor: 'pointer' }}>Annulla</button>
-          </div>
-        </div>
-      )}
 
       {editModal && (
         <LoadModal
@@ -668,7 +486,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           group={editModal.group}
           loads={loads}
           notes={notes}
-          onSave={(updates) => saveLoads(editModal.client.id, editModal.client.current_week, updates)}
+          settimana={settimana}
+          onSave={(updates) => saveLoads(editModal.client.id, settimana, updates)}
           onClose={() => setEditModal(null)}
         />
       )}
@@ -678,8 +497,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
   )
 }
 
-function LoadModal({ client, group, loads, notes, onSave, onClose }) {
-  const week = client.current_week
+function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) {
+  const week = settimana
 
   const [kgMap, setKgMap] = useState(() => {
     const m = {}
