@@ -105,3 +105,15 @@ export function settimanaDaCalendario(scheda) {
   if (giorni < 0) return null
   return Math.min(6, Math.floor(giorni / 7) + 1)
 }
+
+/**
+ * La data di oggi come 'AAAA-MM-GG', nel fuso del telefono.
+ *
+ * Non toISOString(): quella converte in UTC, e in Italia fra mezzanotte e le
+ * due scriverebbe il giorno prima. Per gli ospiti del giorno vorrebbe dire
+ * un ospite che sparisce, o che resta un giorno di troppo.
+ */
+export function oggiLocale(d = new Date()) {
+  const due = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`
+}

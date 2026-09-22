@@ -25,6 +25,8 @@ export default function Turns({ navigate, goHome, session }) {
   const [editClient, setEditClient] = useState(null)
   const [editName, setEditName] = useState('')
   const [editSurname, setEditSurname] = useState('')
+  const [editSilver, setEditSilver] = useState(false)
+  const [silverAttivo, setSilverAttivo] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
   const [renameTurnModal, setRenameTurnModal] = useState(null)
@@ -107,7 +109,9 @@ export default function Turns({ navigate, goHome, session }) {
     setRenameTurnModal(null)
   }
 
-  useEffect(() => { capacita().then(c => setCondivisioneAttiva(c.condivisione)) }, [])
+  useEffect(() => {
+    capacita().then(c => { setCondivisioneAttiva(c.condivisione); setSilverAttivo(c.silver) })
+  }, [])
 
   /**
    * Apre la gestione del turno e, se la condivisione è disponibile, carica
@@ -193,18 +197,24 @@ export default function Turns({ navigate, goHome, session }) {
     setEditClient(client)
     setEditName(client.name)
     setEditSurname(client.surname)
+    setEditSilver(!!client.silver)
   }
 
   async function saveEditClient() {
     if (!editName.trim() || !editSurname.trim()) return
     setSaving(true)
+    const modifiche = { name: editName.trim(), surname: editSurname.trim() }
+    // Il campo si manda solo se il database lo conosce: prima della
+    // migrazione, una colonna sconosciuta farebbe fallire tutto il salvataggio,
+    // nome compreso.
+    if (silverAttivo) modifiche.silver = editSilver
     const { error } = await run(
-      supabase.from('clients').update({ name: editName.trim(), surname: editSurname.trim() }).eq('id', editClient.id),
+      supabase.from('clients').update(modifiche).eq('id', editClient.id),
       'Modifiche al cliente non salvate.'
     )
     setSaving(false)
     if (error) return
-    setClients(prev => prev.map(c => c.id === editClient.id ? { ...c, name: editName.trim(), surname: editSurname.trim() } : c))
+    setClients(prev => prev.map(c => c.id === editClient.id ? { ...c, ...modifiche } : c))
     setEditClient(null)
   }
 
@@ -247,6 +257,7 @@ export default function Turns({ navigate, goHome, session }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
+                {client.silver && <span style={distintivoSilver}>SILVER</span>}
               </div>
               {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Non attiva</div>}
             </div>
@@ -280,6 +291,38 @@ export default function Turns({ navigate, goHome, session }) {
             <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inp, marginBottom: '12px' }} />
             <div style={fieldLabel}>COGNOME</div>
             <input value={editSurname} onChange={e => setEditSurname(e.target.value)} placeholder="Cognome" style={{ ...inp, marginBottom: '20px' }} />
+
+            {/* Un interruttore solo, con scritto sotto cosa cambia: chi lo
+                accende deve sapere che effetto ha senza doverlo chiedere. */}
+            {silverAttivo && (
+              <button type="button" onClick={() => setEditSilver(v => !v)} style={{
+                ...comePulsante,
+                display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+                padding: '14px', marginBottom: '20px', borderRadius: '8px', cursor: 'pointer',
+                background: editSilver ? 'var(--acc-riempimento)' : 'var(--sup-alta)',
+                border: `1px solid ${editSilver ? 'var(--acc-bordo-forte)' : 'var(--bordo)'}`,
+                textAlign: 'left',
+              }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '800', letterSpacing: '1.5px', color: editSilver ? 'var(--accento)' : '#fff' }}>
+                    SILVER
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4, marginTop: '2px' }}>
+                    Può venire anche in un altro turno al posto del suo: lì si aggiunge fra gli ospiti, con la sua scheda.
+                  </span>
+                </span>
+                <span aria-hidden="true" style={{
+                  flexShrink: 0, width: '46px', height: '26px', borderRadius: '13px', position: 'relative',
+                  background: editSilver ? 'var(--accento)' : 'var(--bordo-forte)', transition: 'background .15s',
+                }}>
+                  <span style={{
+                    position: 'absolute', top: '3px', left: editSilver ? '23px' : '3px',
+                    width: '20px', height: '20px', borderRadius: '50%', background: '#fff', transition: 'left .15s',
+                  }} />
+                </span>
+              </button>
+            )}
+
             <button onClick={saveEditClient} disabled={saving || !editName.trim() || !editSurname.trim()}
               style={{ ...bigBtn, marginBottom: '10px', opacity: !editName.trim() || !editSurname.trim() ? 0.3 : 1 }}>
               {saving ? 'SALVATAGGIO...' : '✓ SALVA MODIFICHE'}
@@ -456,6 +499,11 @@ export default function Turns({ navigate, goHome, session }) {
 }
 
 const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+const distintivoSilver = {
+  marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
+  fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
+  color: 'var(--accento)', border: '1px solid var(--acc-bordo-forte)',
+}
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }
 const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }

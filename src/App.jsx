@@ -216,7 +216,11 @@ export default function App() {
 
   return (
     <>
-      <Page {...props} />
+      {/* La key è la profondità nella pila. Senza, aprire una pagina dello
+          stesso tipo sopra sé stessa — la scheda di un ospite dalla schermata
+          di allenamento — riusava la stessa istanza: giorno selezionato,
+          carichi e gruppi aperti restavano quelli della scheda di prima. */}
+      <Page key={stack.length} {...props} />
       <Notifier />
       <IndicatoreCoda userId={session.user.id} />
 

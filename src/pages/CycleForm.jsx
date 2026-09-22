@@ -2,8 +2,10 @@ import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
-import { raggruppaEsercizi } from '../lib/schede'
+import { raggruppaEsercizi, oggiLocale } from '../lib/schede'
 import { capacita } from '../lib/capacita'
+import { salvaAssegnazioni } from '../lib/assegnazioniDb'
+import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 // Con il parser CSV dietro: pesa solo per chi importa davvero.
 const ImportaCsv = lazy(() => import('../components/ImportaCsv'))
 import TopBar from '../components/TopBar'
@@ -19,7 +21,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const { turnId, cycleId, cloneFromId, readOnly } = params
   const [step, setStep] = useState('info')
   const [cycleName, setCycleName] = useState('')
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
+  // oggiLocale e non toISOString: quella è in UTC, e una scheda creata dopo
+  // mezzanotte partiva «ieri». Ora che la settimana si calcola da questa data,
+  // un giorno di scarto può spostare il cambio di settimana.
+  const [startDate, setStartDate] = useState(oggiLocale())
   const [day, setDay] = useState(1)
   const [exList, setExList] = useState({ 1: [], 2: [], 3: [] })
   const [allExercises, setAllExercises] = useState([])
@@ -34,7 +39,24 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [currentCycleId, setCurrentCycleId] = useState(cycleId || null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(!!cycleId)
-  useEffect(() => { capacita().then(c => setCategorieAttive(c.categorie)) }, [])
+  // A chi va la nuova scheda. null = tutto il turno, che resta la scelta di
+  // partenza: chi non tocca niente ottiene quello che otteneva prima.
+  const [atletiTurno, setAtletiTurno] = useState([])
+  const [scelte, setScelte] = useState(null)
+  useEffect(() => {
+    capacita().then(async c => {
+      setCategorieAttive(c.categorie)
+      // Solo creando: una scheda esistente si riassegna da MODIFICA nella
+      // lista schede, dove stanno già nome e data d'inizio.
+      if (!c.assegnazioni || cycleId || !turnId) return
+      const { data } = await run(
+        supabase.from('clients').select('id, name, surname')
+          .eq('turn_id', turnId).eq('is_active', true).order('surname'),
+        'Impossibile caricare le persone del turno.'
+      )
+      setAtletiTurno(data || [])
+    })
+  }, [cycleId, turnId])
   const [cloneInfo, setCloneInfo] = useState(null)
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
@@ -85,7 +107,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       supabase.from('cycles').select('*').eq('id', cycleId).single(),
       'Impossibile caricare la scheda.'
     )
-    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || new Date().toISOString().split('T')[0]) }
+    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()) }
     const { data: exData } = await run(
       supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
       'Impossibile caricare gli esercizi della scheda.'
@@ -136,6 +158,9 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     // Senza questo controllo data era null e `data.id` faceva schermata bianca.
     if (!data) { setSaving(false); return }
     setCurrentCycleId(data.id)
+    // Se non passa, la scheda resta valida per tutto il turno — il caso
+    // innocuo — e si può correggere da MODIFICA. Il messaggio lo dice run().
+    if (scelte !== null) await salvaAssegnazioni(data.id, scelte)
     if (cloneFromId) await cloneExercises(data.id, cloneFromId)
     setSaving(false)
     setStep('exercises')
@@ -532,8 +557,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="es. 4a Scheda Maggio 2026" style={inp} />
         <div style={{ ...fieldLabel, marginTop: '16px' }}>DATA DI INIZIO</div>
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} />
-        <button onClick={createCycle} disabled={!cycleName.trim() || saving}
-          style={{ ...bigBtn, marginTop: '28px', opacity: !cycleName.trim() ? 0.3 : 1 }}>
+        {atletiTurno.length > 0 && (
+          <div style={{ marginTop: '22px' }}>
+            <ScegliPersone atleti={atletiTurno} scelte={scelte} onChange={setScelte} />
+          </div>
+        )}
+        <button onClick={createCycle} disabled={!cycleName.trim() || saving || !sceltaValida(scelte, atletiTurno)}
+          style={{ ...bigBtn, marginTop: '28px', opacity: !cycleName.trim() || !sceltaValida(scelte, atletiTurno) ? 0.3 : 1 }}>
           {saving ? (cloneFromId ? 'CLONO...' : 'CREAZIONE...') : (cloneFromId ? '📋 CLONA E INIZIA' : 'AVANTI → INSERISCI ESERCIZI')}
         </button>
       </div>

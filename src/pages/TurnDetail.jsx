@@ -5,9 +5,13 @@ import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
+import { capacita } from '../lib/capacita'
+import { personeDellaScheda } from '../lib/assegnazioni'
+import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
+import OspitiDelGiorno from '../components/OspitiDelGiorno'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -15,8 +19,9 @@ import BottomNav from '../components/BottomNav'
 
 
 export default function TurnDetail({ navigate, goBack, goHome, params, session }) {
-  // `phase` è sparito con le fasi: nessuno lo passa più.
-  const { turn, cycle } = params
+  // `ospiti`: id delle persone Silver venute da un altro turno. Quando c'è,
+  // `cycle` è la LORO scheda e `turn` è il turno che le ospita.
+  const { turn, cycle, ospiti } = params
   const [day, setDay] = useState(1)
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
@@ -57,16 +62,28 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   async function loadData() {
     setLoading(true)
-    const [{ data: exData }, { data: cl }] = await Promise.all([
+    const perOspiti = ospiti?.length > 0
+    const [{ data: exData }, { data: tutti }, assegnazioni] = await Promise.all([
       run(supabase.from('cycle_exercises').select('*, exercises(name)')
         .eq('cycle_id', cycle.id).eq('day', day).order('sort_order'),
         'Impossibile caricare gli esercizi del giorno.'),
-      run(supabase.from('clients').select('*')
-        .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
-        'Impossibile caricare gli atleti del turno.'),
+      perOspiti
+        // Vengono da un altro turno: si prendono per nome, non per turno.
+        ? run(supabase.from('clients').select('*').in('id', ospiti).order('surname'),
+            'Impossibile caricare gli ospiti.')
+        : run(supabase.from('clients').select('*')
+            .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
+            'Impossibile caricare gli atleti del turno.'),
+      // Gli ospiti sono già scelti uno per uno: il filtro per scheda non serve.
+      perOspiti
+        ? {}
+        : capacita().then(c => c.assegnazioni ? caricaAssegnazioni([cycle.id]) : {}),
     ])
+    // Una scheda assegnata solo ad alcuni mostra solo loro; senza
+    // assegnazioni, tutto il turno — come prima.
+    const cl = personeDellaScheda(cycle, tutti || [], assegnazioni)
     setExercises(exData || [])
-    setClients(cl || [])
+    setClients(cl)
 
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
@@ -248,11 +265,16 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   const groups = raggruppaEsercizi(exercises)
 
+  // Un turno senza scheda può comunque ospitare un Silver: la persona porta
+  // la sua, non usa quella del turno.
   if (!cycle) return (
     <div style={page}>
       <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Nessuna scheda attiva.<br /><span style={{ fontSize: '13px' }}>Vai in Schede per crearne una.</span></div>
+      <div style={scroll}>
+        <div style={{ color: 'var(--testo-debole)', fontSize: '14px', textAlign: 'center', padding: '32px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
+          Nessuna scheda attiva.<br /><span style={{ fontSize: '13px' }}>Vai in Schede per crearne una.</span>
+        </div>
+        <OspitiDelGiorno turn={turn} navigate={navigate} />
       </div>
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
@@ -260,7 +282,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   return (
     <div style={page}>
-      <TopBar title={turn.name} subtitle={cycle.name} onBack={goBack} />
+      <TopBar title={turn.name} subtitle={ospiti ? `Ospite · ${cycle.name}` : cycle.name} onBack={goBack} />
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
@@ -475,6 +497,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           )
         })}
 
+        {/* Dentro la scheda di un ospite non si aggiungono altri ospiti: si è
+            già nella scheda di chi viene da fuori. */}
+        {!ospiti && <OspitiDelGiorno turn={turn} navigate={navigate} />}
         <div style={{ height: '20px' }} />
       </div>
 

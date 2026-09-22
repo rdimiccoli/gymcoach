@@ -52,11 +52,16 @@ export function capacita() {
     // avanzare di settimana, e la settimana adesso la dà il calendario.
     // La tabella nel database resta, vuota, se un giorno servissero come
     // registro delle assenze a sé stante.
-    const [condivisione, categorie] = await Promise.all([
+    const [condivisione, categorie, assegnazioni, colonnaSilver, ospiti] = await Promise.all([
       presente('turn_coaches', 'turn_id'),
       presente('exercises', 'muscle_group'),
+      presente('cycle_clients', 'cycle_id'),
+      presente('clients', 'silver'),
+      presente('client_visits', 'id'),
     ])
-    return { condivisione, categorie }
+    // Il Silver da solo non serve a niente: il segno esiste per poter essere
+    // ospiti. Si accende solo se ci sono entrambi i pezzi.
+    return { condivisione, categorie, assegnazioni, silver: colonnaSilver && ospiti }
   })()
   return richiesta
 }

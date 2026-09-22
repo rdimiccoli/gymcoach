@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { capacita } from '../lib/capacita'
+import { personeDellaScheda, senzaScheda } from '../lib/assegnazioni'
+import { caricaAssegnazioni } from '../lib/assegnazioniDb'
+import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
 import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
 import { ScheletroSchede } from '../components/Scheletro'
 import CardTurno from '../components/CardTurno'
@@ -19,13 +23,16 @@ const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Ve
  * arrivavano.
  *
  * Quello che le fasi dicevano, ora lo dice la card del turno: «settimana 4 di
- * 6, due indietro».
+ * 6». Sotto il turno compaiono anche gli ospiti Silver di oggi, ciascuno con
+ * la propria scheda.
  */
 export default function Home({ navigate, goHome, session }) {
   const [coach, setCoach] = useState(null)
   const [turni, setTurni] = useState([])
   const [schede, setSchede] = useState({})       // turnId → [scheda attive]
   const [atlete, setAtlete] = useState({})       // turnId → [{ id }], solo per contarle
+  const [assegnazioni, setAssegnazioni] = useState({})  // schedaId → Set(atletaId)
+  const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
   const [loading, setLoading] = useState(true)
 
   const oggi = new Date()
@@ -93,6 +100,16 @@ export default function Home({ navigate, goHome, session }) {
       ;(clienti || []).forEach(x => perTurnoAtlete[x.turn_id]?.push(x))
       setSchede(perTurnoSchede)
       setAtlete(perTurnoAtlete)
+
+      // Solo se il database le conosce: prima della migrazione Home resta
+      // identica, senza richieste che finirebbero in errore.
+      const caps = await capacita()
+      const [assegnate, diOggi] = await Promise.all([
+        caps.assegnazioni ? caricaAssegnazioni((cicli || []).map(c => c.id)) : {},
+        caps.silver ? caricaOspitiDiOggi(ids) : {},
+      ])
+      setAssegnazioni(assegnate)
+      setOspiti(diOggi)
     }
     setLoading(false)
   }
@@ -136,6 +153,10 @@ export default function Home({ navigate, goHome, session }) {
         {!loading && turni.map((turno, i) => {
           const attive = schede[turno.id] || []
           const gruppo = atlete[turno.id] || []
+          const fuori = senzaScheda(gruppo, attive, assegnazioni).length
+          // Un ospite senza scheda attiva non ha niente da aprire: resta
+          // visibile dentro il turno, fra gli ospiti di oggi, ma non qui.
+          const ospitiQui = (ospiti[turno.id] || []).filter(g => g.scheda)
           return (
             <div key={turno.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
               {(attive.length ? attive : [null]).map((scheda, k) => (
@@ -143,9 +164,26 @@ export default function Home({ navigate, goHome, session }) {
                   key={k}
                   turno={turno}
                   scheda={scheda}
-                  atlete={k === 0 ? gruppo : []}
+                  atlete={scheda ? personeDellaScheda(scheda, gruppo, assegnazioni) : gruppo}
                   mostraOrario={k === 0}
+                  // Sulle schede successive il conteggio sarebbe una ripetizione
+                  // — a meno che la scheda sia per poche persone: allora è
+                  // proprio l'informazione che distingue le due card.
+                  mostraConteggio={k === 0 || assegnazioni[scheda?.id]?.size > 0}
+                  senzaScheda={k === 0 ? fuori : 0}
                   onApri={() => navigate('turn', { turn: turno, cycle: scheda })}
+                />
+              ))}
+              {ospitiQui.map(g => (
+                <CardTurno
+                  key={`ospiti-${g.scheda.id}`}
+                  turno={turno}
+                  scheda={g.scheda}
+                  ospiti={g.persone.map(p => `${p.name} ${p.surname}`)}
+                  provenienza={turnoDOrigine(g.persone[0])}
+                  mostraOrario={false}
+                  mostraConteggio={false}
+                  onApri={() => navigate('turn', { turn: turno, cycle: g.scheda, ospiti: g.persone.map(p => p.id) })}
                 />
               ))}
             </div>

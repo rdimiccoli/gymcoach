@@ -12,8 +12,17 @@ import { comePulsante } from '../lib/stile'
  * L'avviso «⚠ N INDIETRO» non c'è più: segnalava che il contatore manuale di
  * qualcuno non stava al passo del calendario. Ora il calendario è l'unica
  * fonte, e non può essere in disaccordo con sé stesso.
+ *
+ * `ospiti`: nomi delle persone Silver venute da un altro turno. La card
+ * allora mostra loro come titolo e la LORO scheda, che non è quella del turno.
+ * `senzaScheda`: quante persone del turno non sono in nessuna scheda attiva —
+ * l'unico avviso rimasto, perché segnala qualcuno che in allenamento non
+ * comparirebbe da nessuna parte.
  */
-export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = true, onApri }) {
+export default function CardTurno({
+  turno, scheda, atlete = [], mostraOrario = true, mostraConteggio = mostraOrario,
+  ospiti = null, provenienza = '', senzaScheda = 0, onApri,
+}) {
   const settimana = settimanaDaCalendario(scheda)
 
   // L'orario è l'identificatore vero del turno: è così che le coach lo chiamano
@@ -36,10 +45,11 @@ export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = t
               </div>
             </>
           ) : (
-            // Secondo giro: stesso turno, altra scheda attiva. Senza questo
-            // segno sembrerebbero due turni diversi allo stesso orario.
-            <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px', paddingTop: '4px' }}>
-              ↳ ANCHE
+            // Secondo giro: stesso turno, altra scheda attiva — oppure qualcuno
+            // venuto da un altro turno. Senza questo segno sembrerebbero turni
+            // diversi allo stesso orario.
+            <div style={{ color: ospiti ? 'var(--accento)' : 'var(--testo-fioco)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: ospiti ? '800' : '400', letterSpacing: '1px', paddingTop: '4px' }}>
+              ↳ {ospiti ? (ospiti.length === 1 ? 'OSPITE' : 'OSPITI') : 'ANCHE'}
             </div>
           )}
         </div>
@@ -49,7 +59,14 @@ export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = t
         <div style={{ flex: 1, minWidth: 0 }}>
           {scheda ? (
             <>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {ospiti && (
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+                  {ospiti.join(', ')}
+                </div>
+              )}
+              <div style={ospiti
+                ? { color: 'var(--testo-medio)', fontSize: '14px', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                : { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {scheda.name}
               </div>
 
@@ -61,12 +78,20 @@ export default function CardTurno({ turno, scheda, atlete = [], mostraOrario = t
                     SETTIMANA {settimana} DI 6
                   </span>
                 )}
-                {mostraOrario && atlete.length > 0 && (
+                {provenienza && (
+                  <span style={{ color: 'var(--testo-debole)', fontSize: '13px' }}>dal turno {provenienza}</span>
+                )}
+                {mostraConteggio && atlete.length > 0 && (
                   <span style={{ color: 'var(--testo-debole)', fontSize: '13px' }}>
                     {atlete.length} {atlete.length === 1 ? 'atleta' : 'atlete'}
                   </span>
                 )}
               </div>
+              {senzaScheda > 0 && (
+                <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', marginTop: '6px' }}>
+                  ⚠ {senzaScheda} {senzaScheda === 1 ? 'PERSONA' : 'PERSONE'} SENZA SCHEDA
+                </div>
+              )}
             </>
           ) : (
             <div style={{ paddingTop: '3px' }}>

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { settimanaDaCalendario } from '../lib/schede'
+import { capacita } from '../lib/capacita'
+import { caricaAssegnazioni, salvaAssegnazioni } from '../lib/assegnazioniDb'
+import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -16,6 +19,13 @@ export default function CyclesList({ navigate, goHome }) {
   const [renameModal, setRenameModal] = useState(null)
   const [renameValue, setRenameValue] = useState('')
   const [dataInizio, setDataInizio] = useState('')
+  // A chi va ogni scheda: { idScheda: Set(idAtleta) }. Una scheda assente da
+  // qui vale per tutto il suo turno.
+  const [assegnazioni, setAssegnazioni] = useState({})
+  const [assegnazioniAttive, setAssegnazioniAttive] = useState(false)
+  // Nel riquadro MODIFICA: le persone del turno e la scelta in corso.
+  const [atletiTurno, setAtletiTurno] = useState([])
+  const [scelte, setScelte] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
   const [completedAlerts, setCompletedAlerts] = useState([])
   const [allCycles, setAllCycles] = useState([]) // all cycles across all turns
@@ -31,14 +41,18 @@ export default function CyclesList({ navigate, goHome }) {
     setTurns(t || [])
     if (t?.length) {
       const turnIds = t.map(x => x.id)
-      // Come in Home: erano 2 query per turno, ora 2 in tutto.
-      // La lista degli atleti serviva solo a sapere se avevano finito le sei
-      // settimane. Adesso lo dice il calendario, e questa query sparisce.
+      // Una query per tutte le schede, non una per turno. La lista degli atleti
+      // che c'era qui serviva solo a sapere se avevano finito le sei settimane:
+      // adesso lo dice il calendario, e quella query è sparita.
       const { data: tutteLeSchede } = await run(
         supabase.from('cycles').select('*').in('turn_id', turnIds)
           .order('created_at', { ascending: false }),
         'Impossibile caricare le schede.'
       )
+
+      const { assegnazioni: puoAssegnare } = await capacita()
+      setAssegnazioniAttive(puoAssegnare)
+      if (puoAssegnare) setAssegnazioni(await caricaAssegnazioni((tutteLeSchede || []).map(c => c.id)))
 
       const cycleMap = {}
       turnIds.forEach(id => { cycleMap[id] = [] })
@@ -119,14 +133,40 @@ export default function CyclesList({ navigate, goHome }) {
    * saltata — al posto dei sei contatori che si avanzavano a mano.
    */
   async function renameCycle(cycle) {
-    if (!renameValue.trim()) return
+    if (!renameValue.trim() || !sceltaValida(scelte, atletiTurno)) return
     const { error } = await run(
       supabase.from('cycles').update({ name: renameValue.trim(), start_date: dataInizio }).eq('id', cycle.id),
       'Modifiche alla scheda non salvate.'
     )
+    if (error) { setRenameModal(null); return }
+    // Solo se è cambiato qualcosa: salvare «tutto il turno» su una scheda che
+    // lo era già sarebbe una richiesta a vuoto a ogni cambio di nome.
+    const prima = assegnazioni[cycle.id]?.size ? assegnazioni[cycle.id] : null
+    const cambiata = (prima === null) !== (scelte === null)
+      || (scelte !== null && (scelte.size !== prima.size || [...scelte].some(id => !prima.has(id))))
+    if (assegnazioniAttive && cambiata) await salvaAssegnazioni(cycle.id, scelte)
     setRenameModal(null)
-    if (error) return
     await loadData()
+  }
+
+  /**
+   * Apre MODIFICA con la scelta attuale e le persone del turno. Le persone si
+   * caricano qui, all'apertura, e non con la lista: servono solo a chi
+   * modifica una scheda, non a chi la guarda.
+   */
+  async function apriModifica(cycle) {
+    setRenameModal(cycle)
+    setRenameValue(cycle.name)
+    setDataInizio(cycle.start_date || '')
+    setScelte(assegnazioni[cycle.id]?.size ? new Set(assegnazioni[cycle.id]) : null)
+    setAtletiTurno([])
+    if (!assegnazioniAttive) return
+    const { data } = await run(
+      supabase.from('clients').select('id, name, surname')
+        .eq('turn_id', cycle.turn_id).eq('is_active', true).order('surname'),
+      'Impossibile caricare le persone del turno.'
+    )
+    setAtletiTurno(data || [])
   }
 
   async function deleteCycle(cycle, turnId) {
@@ -203,6 +243,13 @@ export default function CyclesList({ navigate, goHome }) {
                       <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '2px' }}>
                         {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
                       </div>
+                      {/* Una scheda per pochi deve dirlo da fuori: senza questa riga
+                          sembrerebbe uguale a tutte le altre. */}
+                      {assegnazioni[cycle.id]?.size > 0 && (
+                        <div style={{ color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', fontFamily: 'Barlow Condensed, sans-serif', marginTop: '3px' }}>
+                          SOLO PER {assegnazioni[cycle.id].size} {assegnazioni[cycle.id].size === 1 ? 'PERSONA' : 'PERSONE'}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       {cycle.is_active ? (
@@ -225,7 +272,7 @@ export default function CyclesList({ navigate, goHome }) {
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <button onClick={() => navigate('cycle-share', { cycleId: cycle.id, cycleName: cycle.name })}
                       style={actionBtn}>📤 CONDIVIDI</button>
-                    <button onClick={() => { setRenameModal(cycle); setRenameValue(cycle.name); setDataInizio(cycle.start_date || '') }}
+                    <button onClick={() => apriModifica(cycle)}
                       style={actionBtn}>✏️ MODIFICA</button>
                     <button onClick={() => esportaCsv(cycle)} style={actionBtn}>⬇ CSV</button>
                     {cycle.is_active && (
@@ -324,8 +371,14 @@ export default function CyclesList({ navigate, goHome }) {
                 : <> Scegli una data non futura per vedere la settimana.</>}
             </div>
 
-            <button onClick={() => renameCycle(renameModal)} disabled={!renameValue.trim()}
-              style={{ ...sheetBtnOrange, opacity: !renameValue.trim() ? 0.3 : 1 }}>
+            {atletiTurno.length > 0 && (
+              <div style={{ marginBottom: '18px' }}>
+                <ScegliPersone atleti={atletiTurno} scelte={scelte} onChange={setScelte} />
+              </div>
+            )}
+
+            <button onClick={() => renameCycle(renameModal)} disabled={!renameValue.trim() || !sceltaValida(scelte, atletiTurno)}
+              style={{ ...sheetBtnOrange, opacity: !renameValue.trim() || !sceltaValida(scelte, atletiTurno) ? 0.3 : 1 }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accento)', letterSpacing: '1px' }}>✓ SALVA</div>
             </button>
             <button onClick={() => setRenameModal(null)} style={cancelBtn}>Annulla</button>
@@ -362,7 +415,9 @@ const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight
 const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
 const actionBtn = { background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '7px 12px', color: 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
-const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%' }
+// maxHeight + scroll: con nome, data e l'elenco delle persone, su un telefono
+// piccolo il pulsante SALVA finirebbe sotto il bordo dello schermo.
+const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxHeight: '92dvh', overflowY: 'auto', boxSizing: 'border-box' }
 const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }
 const sheetSub = { color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '20px' }
 const sheetBtnOrange = { width: '100%', background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', textAlign: 'left', cursor: 'pointer' }
