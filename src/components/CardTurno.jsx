@@ -21,7 +21,7 @@ import { comePulsante } from '../lib/stile'
  */
 export default function CardTurno({
   turno, scheda, atlete = [], mostraOrario = true, mostraConteggio = mostraOrario,
-  ospiti = null, provenienza = '', senzaScheda = 0, onApri,
+  ospiti = null, provenienza = '', senzaScheda = 0, altreSchede = [], onApri,
 }) {
   const settimana = settimanaDaCalendario(scheda)
 
@@ -70,12 +70,26 @@ export default function CardTurno({
                 {scheda.name}
               </div>
 
-              {settimana && <BarraSettimane settimana={settimana} />}
+              {/* Il turno ha più schede attive e si apre per atleta: la barra
+                  delle settimane mostrerebbe quella di una sola, e le altre
+                  sarebbero a un punto diverso. Meglio dire quante sono. */}
+              {altreSchede.length > 0 && (
+                <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  + {altreSchede.join(' · ')}
+                </div>
+              )}
+
+              {settimana && altreSchede.length === 0 && <BarraSettimane settimana={settimana} />}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
-                {settimana && (
+                {settimana && altreSchede.length === 0 && (
                   <span style={{ color: 'var(--testo-forte)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>
                     SETTIMANA {settimana} DI 6
+                  </span>
+                )}
+                {altreSchede.length > 0 && (
+                  <span style={{ color: 'var(--testo-forte)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>
+                    {altreSchede.length + 1} SCHEDE ATTIVE
                   </span>
                 )}
                 {provenienza && (

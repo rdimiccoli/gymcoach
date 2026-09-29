@@ -19,10 +19,14 @@ import BottomNav from '../components/BottomNav'
 
 
 export default function TurnDetail({ navigate, goBack, goHome, params, session }) {
-  // `ospiti`: id delle persone Silver venute da un altro turno. Quando c'è,
-  // `cycle` è la LORO scheda e `turn` è il turno che le ospita.
-  const { turn, cycle, ospiti } = params
-  const [day, setDay] = useState(1)
+  // `soloAtleti`: id delle persone da mostrare, invece di tutto il turno.
+  // Serve in due casi — gli ospiti Silver venuti da un altro turno (e allora
+  // `cycle` è la LORO scheda, `turn` è il turno che li ospita) e la singola
+  // persona aperta dall'elenco, quando il coach apre i turni per atleta.
+  const { turn, cycle, soloAtleti, sottotitolo } = params
+  // Il giorno può arrivare da chi ci manda qui: sceglierlo sull'elenco del
+  // turno e ritrovare il Giorno 1 aprendo una persona sarebbe un tocco perso.
+  const [day, setDay] = useState(params.giorno || 1)
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
   // loads[clientId_exId_week] = kg
@@ -62,19 +66,19 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   async function loadData() {
     setLoading(true)
-    const perOspiti = ospiti?.length > 0
+    const perOspiti = soloAtleti?.length > 0
     const [{ data: exData }, { data: tutti }, assegnazioni] = await Promise.all([
       run(supabase.from('cycle_exercises').select('*, exercises(name)')
         .eq('cycle_id', cycle.id).eq('day', day).order('sort_order'),
         'Impossibile caricare gli esercizi del giorno.'),
       perOspiti
         // Vengono da un altro turno: si prendono per nome, non per turno.
-        ? run(supabase.from('clients').select('*').in('id', ospiti).order('surname'),
-            'Impossibile caricare gli ospiti.')
+        ? run(supabase.from('clients').select('*').in('id', soloAtleti).order('surname'),
+            'Impossibile caricare le persone.')
         : run(supabase.from('clients').select('*')
             .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
             'Impossibile caricare gli atleti del turno.'),
-      // Gli ospiti sono già scelti uno per uno: il filtro per scheda non serve.
+      // Le persone sono già scelte una per una: il filtro per scheda non serve.
       perOspiti
         ? {}
         : capacita().then(c => c.assegnazioni ? caricaAssegnazioni([cycle.id]) : {}),
@@ -282,7 +286,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
   return (
     <div style={page}>
-      <TopBar title={turn.name} subtitle={ospiti ? `Ospite · ${cycle.name}` : cycle.name} onBack={goBack} />
+      <TopBar title={turn.name} subtitle={sottotitolo || cycle.name} onBack={goBack} />
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
@@ -324,7 +328,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
 
         {groups.map((group, gi) => {
           const groupKey = group.type === 'superset' ? group.label : group.exercises[0].id
-          const isExpanded = expanded[groupKey]
+          // Aperta una persona sola, i gruppi partono già aperti: sono i SUOI
+          // esercizi, e richiuderli uno per uno per poterli aprire sarebbe un
+          // tocco a vuoto. Con tutto il turno restano chiusi, altrimenti
+          // servirebbe mezzo metro di scorrimento per arrivare in fondo.
+          const isExpanded = expanded[groupKey] ?? (soloAtleti?.length === 1)
           return (
             <div key={gi} style={{ marginBottom: '8px' }}>
               {/* Il contenitore resta un <div>: dentro c'è il pulsante TIMER, e
@@ -497,9 +505,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
           )
         })}
 
-        {/* Dentro la scheda di un ospite non si aggiungono altri ospiti: si è
-            già nella scheda di chi viene da fuori. */}
-        {!ospiti && <OspitiDelGiorno turn={turn} navigate={navigate} />}
+        {/* Dentro la scheda di una singola persona non si aggiungono ospiti:
+            si è già dentro a qualcuno. */}
+        {!soloAtleti && <OspitiDelGiorno turn={turn} navigate={navigate} />}
         <div style={{ height: '20px' }} />
       </div>
 

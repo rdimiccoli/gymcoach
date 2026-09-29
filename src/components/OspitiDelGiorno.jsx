@@ -15,7 +15,7 @@ import { caricaOspitiDiOggi, silverDisponibili, segnaOspite, turnoDOrigine } fro
  * ha la spunta, e toccarlo di nuovo lo toglie. È l'annulla, senza un pulsante
  * in più da cercare.
  */
-export default function OspitiDelGiorno({ turn, navigate }) {
+export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, onCambiato }) {
   const [attivo, setAttivo] = useState(false)
   const [gruppi, setGruppi] = useState([])
   const [elencoAperto, setElencoAperto] = useState(false)
@@ -41,6 +41,9 @@ export default function OspitiDelGiorno({ turn, navigate }) {
   async function chiudiElenco() {
     setElencoAperto(false)
     await carica()
+    // Nella vista per atleta gli ospiti finiscono nell'elenco delle persone,
+    // che sta fuori di qui: va ricaricato anche quello.
+    onCambiato?.()
   }
 
   // La spunta si muove subito e torna indietro se il server rifiuta: toccare
@@ -62,9 +65,9 @@ export default function OspitiDelGiorno({ turn, navigate }) {
 
   return (
     <div style={{ marginTop: '18px' }}>
-      <div style={etichetta}>OSPITI DI OGGI</div>
+      {mostraElenco && <div style={etichetta}>OSPITI DI OGGI</div>}
 
-      {gruppi.map((g, i) => {
+      {mostraElenco && gruppi.map((g, i) => {
         const nomi = g.persone.map(p => `${p.name} ${p.surname}`).join(', ')
         const settimana = settimanaDaCalendario(g.scheda)
         const contenuto = (
@@ -84,7 +87,11 @@ export default function OspitiDelGiorno({ turn, navigate }) {
         // la persona c'è, ma non finge di essere un pulsante.
         return g.scheda ? (
           <button key={i} type="button" style={riga}
-            onClick={() => navigate('turn', { turn, cycle: g.scheda, ospiti: g.persone.map(p => p.id) })}>
+            onClick={() => navigate('turn', {
+              turn, cycle: g.scheda,
+              soloAtleti: g.persone.map(p => p.id),
+              sottotitolo: `Ospite · ${g.scheda.name}`,
+            })}>
             <div style={{ flex: 1, minWidth: 0 }}>{contenuto}</div>
             <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
           </button>

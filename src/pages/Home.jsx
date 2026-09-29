@@ -5,6 +5,7 @@ import { capacita } from '../lib/capacita'
 import { personeDellaScheda, senzaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
+import { vistaTurni, PER_ATLETA } from '../lib/vista'
 import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
 import { ScheletroSchede } from '../components/Scheletro'
 import CardTurno from '../components/CardTurno'
@@ -34,6 +35,9 @@ export default function Home({ navigate, goHome, session }) {
   const [assegnazioni, setAssegnazioni] = useState({})  // schedaId → Set(atletaId)
   const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
   const [loading, setLoading] = useState(true)
+  // Preferenza del singolo coach, dalle impostazioni. Chi non l'ha mai toccata
+  // trova la Home identica a com'era.
+  const perAtleta = vistaTurni(session.user.id) === PER_ATLETA
 
   const oggi = new Date()
   const giorno = GIORNI[oggi.getDay()]
@@ -156,6 +160,22 @@ export default function Home({ navigate, goHome, session }) {
           // Un ospite senza scheda attiva non ha niente da aprire: resta
           // visibile dentro il turno, fra gli ospiti di oggi, ma non qui.
           const ospitiQui = (ospiti[turno.id] || []).filter(g => g.scheda)
+          // Vista per atleta: una card sola per turno, e dentro l'elenco delle
+          // persone. Niente card «↳ ANCHE» né «↳ OSPITE»: schede e ospiti
+          // stanno tutti in quell'elenco.
+          if (perAtleta) return (
+            <div key={turno.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
+              <CardTurno
+                turno={turno}
+                scheda={attive[0] || null}
+                altreSchede={attive.slice(1).map(s => s.name)}
+                atlete={gruppo}
+                senzaScheda={fuori}
+                onApri={() => navigate('turn-atleti', { turn: turno })}
+              />
+            </div>
+          )
+
           return (
             <div key={turno.id} className={`fadeUp-${Math.min(i + 1, 3)}`}>
               {(attive.length ? attive : [null]).map((scheda, k) => (
@@ -182,7 +202,11 @@ export default function Home({ navigate, goHome, session }) {
                   provenienza={turnoDOrigine(g.persone[0])}
                   mostraOrario={false}
                   mostraConteggio={false}
-                  onApri={() => navigate('turn', { turn: turno, cycle: g.scheda, ospiti: g.persone.map(p => p.id) })}
+                  onApri={() => navigate('turn', {
+                    turn: turno, cycle: g.scheda,
+                    soloAtleti: g.persone.map(p => p.id),
+                    sottotitolo: `Ospite · ${g.scheda.name}`,
+                  })}
                 />
               ))}
             </div>

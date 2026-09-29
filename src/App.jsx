@@ -3,6 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import TurnDetail from './pages/TurnDetail'
+import TurnAtleti from './pages/TurnAtleti'
 import CyclesList from './pages/CyclesList'
 import CycleForm from './pages/CycleForm'
 import CycleShare from './pages/CycleShare'
@@ -203,6 +204,7 @@ export default function App() {
   const pages = {
     home: Home,
     turn: TurnDetail,
+    'turn-atleti': TurnAtleti,
     cycles: CyclesList,
     'cycle-form': CycleForm,
     'cycle-share': CycleShare,

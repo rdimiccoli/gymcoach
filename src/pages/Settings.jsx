@@ -3,6 +3,7 @@ import { IconaOcchio } from '../components/Icone'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { biometriaDisponibile, bloccoAttivo, attivaBlocco, disattivaBlocco, MINUTI_RIBLOCCO } from '../lib/biometria'
+import { vistaTurni, impostaVistaTurni, PER_ATLETA, PER_ESERCIZIO } from '../lib/vista'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -11,6 +12,15 @@ export default function Settings({ navigate, goHome, session }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState('')
+  const [vista, setVista] = useState(() => vistaTurni(session.user.id))
+
+  function cambiaVista(valore) {
+    impostaVistaTurni(session.user.id, valore)
+    setVista(valore)
+    notifyOk(valore === PER_ATLETA
+      ? 'I turni si apriranno con l\'elenco delle persone'
+      : 'I turni si apriranno per esercizio')
+  }
   const [saving, setSaving] = useState(false)
 
   // Password change
@@ -231,6 +241,38 @@ export default function Settings({ navigate, goHome, session }) {
             </div>
           </div>
         )}
+
+        {/* Come si aprono i turni. Non c'è una scelta giusta per tutti: con
+            una scheda sola per turno conviene la vista per esercizio, con più
+            schede nello stesso turno conviene quella per atleta. */}
+        <div style={{ background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px' }}>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
+            COME SI APRONO I TURNI
+          </div>
+          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', marginBottom: '12px', lineHeight: 1.4 }}>
+            {vista === PER_ATLETA
+              ? 'Tocchi il turno e vedi l\'elenco delle persone. Tocchi una persona e si apre la sua scheda. Comodo se nello stesso turno seguono schede diverse.'
+              : 'Tocchi il turno e vedi un esercizio alla volta, con sotto tutte le persone che lo fanno. Comodo se seguono tutti la stessa scheda.'}
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[[PER_ESERCIZIO, 'PER ESERCIZIO'], [PER_ATLETA, 'PER ATLETA']].map(([valore, etichetta]) => {
+              const attiva = vista === valore
+              return (
+                <button key={valore} type="button" onClick={() => cambiaVista(valore)} style={{
+                  flex: 1, padding: '12px 8px', borderRadius: '6px', cursor: 'pointer',
+                  background: attiva ? 'var(--accento)' : 'var(--sup-alta)',
+                  border: `1px solid ${attiva ? 'var(--accento)' : 'var(--bordo)'}`,
+                  color: attiva ? '#fff' : 'var(--testo-medio)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+                  fontWeight: '800', letterSpacing: '1px',
+                }}>{etichetta}</button>
+              )
+            })}
+          </div>
+          <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '8px', lineHeight: 1.35 }}>
+            Vale solo per te, e solo su questo dispositivo.
+          </div>
+        </div>
 
         {/* Change password */}
         <button onClick={() => setView('changePassword')}
