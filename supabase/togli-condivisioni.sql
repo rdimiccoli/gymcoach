@@ -57,9 +57,13 @@ from coaches c;
 --  matita del turno si leggevano DUE Sandro. È molto probabilmente il motivo
 --  per cui quel turno è finito condiviso con tutti e due.
 --
---  ⚠️ Le righe qui sotto CANCELLANO quel profilo e, a cascata, i suoi 3 turni
---     dimostrativi con i relativi atleti e carichi finti. Non toccano nulla di
---     Manu e di Sandro vero. Se vuoi farlo, togli i due trattini iniziali.
+--  ➜ NON usare le righe qui sotto: si affidano alle cancellazioni a catena del
+--    database, che non abbiamo mai verificato. Al loro posto c'è uno script
+--    dedicato, che cancella pezzo per pezzo e fa prima vedere cosa sparirà:
+--
+--        supabase/togli-coach-dimostrativo.sql
+--
+--    Queste due righe restano solo come traccia di com'era nato il problema.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- select t.name as turno_che_sparirebbe,

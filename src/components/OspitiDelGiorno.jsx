@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { capacita } from '../lib/capacita'
 import { comePulsante } from '../lib/stile'
 import { tocco } from '../lib/aptico'
@@ -106,7 +107,28 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
         + OSPITE SILVER
       </button>
 
-      {elencoAperto && (
+      {/* Il pannello esce dalla pagina e va attaccato al fondo del documento.
+          ── Perché ───────────────────────────────────────────────────────────
+          Questo componente sta dentro l'area che scorre della schermata del
+          turno, e prima il pannello nasceva lì dentro. Sul telefono di Sandro
+          il pulsante FATTO non si riusciva a toccare: la barra in fondo —
+          SCHEDE, TURNI, ATLETI, IMPOST. — veniva disegnata sopra.
+
+          Un pannello a tutto schermo (position: fixed) dentro un contenitore
+          che scorre col dito viene agganciato dal telefono allo strato dello
+          scorrimento, e quello strato sta sotto a quello della barra. Il
+          numero di z-index non c'entra e non serve alzarlo: conta lo strato,
+          e la barra vince comunque.
+
+          Tutti gli altri pannelli dell'app — elimina turno, elimina scheda,
+          importa CSV — nascono già al livello della pagina, fuori dall'area
+          che scorre, ed è per questo che il difetto si vedeva solo qui.
+          Con il portale il pannello nasce direttamente sotto <body>, come
+          loro, e nessuna barra gli può finire sopra.
+
+          Da computer il difetto non si riproduce: è una decisione che prende
+          la scheda grafica del telefono. */}
+      {elencoAperto && createPortal((
         <div style={sfondo} onClick={chiudiElenco}>
           <div style={foglio} onClick={e => e.stopPropagation()}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }}>
@@ -162,7 +184,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
             <button type="button" onClick={chiudiElenco} style={pulsanteFatto}>FATTO</button>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   )
 }
