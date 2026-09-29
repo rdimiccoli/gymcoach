@@ -44,16 +44,23 @@ let richiesta = null
 
 /**
  * Le capacità disponibili. La prima chiamata interroga il database, le
- * successive riusano la stessa promessa: tre richieste in tutto, per sessione.
+ * successive riusano la stessa promessa: quattro richieste in tutto, per
+ * sessione.
+ *
+ * Due funzioni sono uscite da questo elenco, e vale la pena ricordare perché.
+ *
+ * Le PRESENZE servivano a decidere chi far avanzare di settimana; la settimana
+ * adesso la dà il calendario. La tabella resta, vuota, se un giorno servisse
+ * come registro delle assenze a sé stante.
+ *
+ * La CONDIVISIONE dei turni fra coach è stata tolta il 29/9/2026, dopo che due
+ * coach si sono ritrovati i turni a vicenda. Bastava toccare un nome nella
+ * matita del turno — nessuna conferma, dentro la schermata del rinomina — per
+ * dare a un collega atlete, schede e carichi. Nessuno l'aveva chiesta.
  */
 export function capacita() {
   richiesta ||= (async () => {
-    // Le presenze non sono più fra queste: servivano a decidere chi far
-    // avanzare di settimana, e la settimana adesso la dà il calendario.
-    // La tabella nel database resta, vuota, se un giorno servissero come
-    // registro delle assenze a sé stante.
-    const [condivisione, categorie, assegnazioni, colonnaSilver, ospiti] = await Promise.all([
-      presente('turn_coaches', 'turn_id'),
+    const [categorie, assegnazioni, colonnaSilver, ospiti] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -61,7 +68,7 @@ export function capacita() {
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
     // ospiti. Si accende solo se ci sono entrambi i pezzi.
-    return { condivisione, categorie, assegnazioni, silver: colonnaSilver && ospiti }
+    return { categorie, assegnazioni, silver: colonnaSilver && ospiti }
   })()
   return richiesta
 }

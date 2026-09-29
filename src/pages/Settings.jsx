@@ -48,8 +48,8 @@ export default function Settings({ navigate, goHome, session }) {
     const [{ data: c }, { data: t }] = await Promise.all([
       run(supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
         'Impossibile caricare il profilo coach.'),
-      // Filtro a carico della policy del database.
-      run(supabase.from('turns').select('*').order('time'),
+      // Filtro qui E regola nel database: due barriere.
+      run(supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
         'Impossibile caricare i turni.'),
     ])
     if (c) { setCoach(c); setCoachName(c.name) }

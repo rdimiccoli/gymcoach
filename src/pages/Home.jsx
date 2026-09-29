@@ -72,10 +72,9 @@ export default function Home({ navigate, goHome, session }) {
     setCoach(c)
 
     const { data: t } = await run(
-      // Niente filtro sul coach: decide la policy del database, che è l'unico
-      // posto dove quella regola può stare senza poter essere aggirata.
-      // Filtrare anche qui escluderebbe i turni che un collega ha condiviso.
-      supabase.from('turns').select('*').order('time'),
+      // Filtro qui E regola nel database: due barriere. Quella del database
+      // protegge davvero, questa fa sì che un errore là non finisca a schermo.
+      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
       'Impossibile caricare i turni.'
     )
     setTurni(t || [])

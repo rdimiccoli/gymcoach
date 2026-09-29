@@ -31,19 +31,16 @@ export default function Turns({ navigate, goHome, session }) {
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
   const [renameTurnModal, setRenameTurnModal] = useState(null)
   const [renameTurnValue, setRenameTurnValue] = useState('')
-  // Condivisione. Se un coach è malato, fino ad oggi i suoi turni non li
-  // apriva nessuno: le atlete si allenavano e i carichi non venivano segnati.
-  const [condivisioneAttiva, setCondivisioneAttiva] = useState(false)
-  const [colleghi, setColleghi] = useState([])
-  const [condivisoCon, setCondivisoCon] = useState(new Set())
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     const { data: t } = await run(
-      // Il filtro sul coach lo fa la policy del database: qui escluderebbe
-      // anche i turni condivisi da un collega.
-      supabase.from('turns').select('*').order('time'),
+      // Due barriere invece di una. La regola del database resta quella che
+      // protegge davvero — un filtro nel browser si aggira — ma il 29/9/2026
+      // due coach si sono ritrovati i turni a vicenda, e con una barriera sola
+      // non c'era niente dietro. Da qui ogni coach chiede solo i propri.
+      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])
@@ -109,62 +106,7 @@ export default function Turns({ navigate, goHome, session }) {
     setRenameTurnModal(null)
   }
 
-  useEffect(() => {
-    capacita().then(c => { setCondivisioneAttiva(c.condivisione); setSilverAttivo(c.silver) })
-  }, [])
-
-  /**
-   * Apre la gestione del turno e, se la condivisione è disponibile, carica
-   * insieme i colleghi e chi ha già accesso.
-   *
-   * `colleghi()` è una funzione del database, non una select: la tabella dei
-   * coach resta chiusa, e di lì esce solo il nome. L'email di un collega non
-   * arriva mai al browser.
-   */
-  async function apriGestioneTurno(turn) {
-    setRenameTurnModal(turn)
-    setRenameTurnValue(turn.name)
-    setCondivisoCon(new Set())
-    if (!condivisioneAttiva) return
-
-    const [{ data: elenco }, { data: giaCondiviso }] = await Promise.all([
-      // Senza run(): se la funzione `colleghi()` non è stata ancora creata sul
-      // database, la sezione semplicemente non compare. Un avviso rosso a chi
-      // ha aperto la matita solo per rinominare un turno sarebbe rumore.
-      supabase.rpc('colleghi'),
-      run(supabase.from('turn_coaches').select('coach_id').eq('turn_id', turn.id),
-        'Impossibile sapere con chi è già condiviso.'),
-    ])
-    setColleghi(elenco || [])
-    setCondivisoCon(new Set((giaCondiviso || []).map(r => r.coach_id)))
-  }
-
-  /**
-   * Dà o toglie l'accesso, subito, senza un pulsante «salva».
-   * Lo stato locale si muove prima della risposta del server e torna indietro
-   * se la scrittura fallisce: toccare un nome e non vedere niente per mezzo
-   * secondo fa toccare due volte.
-   */
-  async function alternaCondivisione(turnId, coachId) {
-    const aveva = condivisoCon.has(coachId)
-    setCondivisoCon(prev => {
-      const next = new Set(prev)
-      if (aveva) next.delete(coachId); else next.add(coachId)
-      return next
-    })
-    const { error } = aveva
-      ? await run(supabase.from('turn_coaches').delete().eq('turn_id', turnId).eq('coach_id', coachId),
-          'Accesso non revocato.')
-      : await run(supabase.from('turn_coaches').insert({ turn_id: turnId, coach_id: coachId }),
-          'Accesso non concesso.')
-    if (error) {
-      setCondivisoCon(prev => {
-        const next = new Set(prev)
-        if (aveva) next.add(coachId); else next.delete(coachId)
-        return next
-      })
-    }
-  }
+  useEffect(() => { capacita().then(c => setSilverAttivo(c.silver)) }, [])
 
   async function executeDeleteTurn() {
     const turnId = deleteTurnConfirm
@@ -393,27 +335,21 @@ export default function Turns({ navigate, goHome, session }) {
       <div style={scroll}>
         <div style={sectionLabel}>I MIEI TURNI</div>
         {loading && <ScheletroElenco righe={4} />}
-        {turns.map(turn => {
-          // Un turno di un collega arriva qui solo se me l'ha passato lui.
-          // Va detto: rinominarlo o eliminarlo non è affar mio, e infatti il
-          // database me lo rifiuterebbe — meglio non offrire il pulsante.
-          const mio = turn.coach_id === session?.user?.id
-          return (
+        {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
             <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {turn.name}
-                {!mio && <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: '800', letterSpacing: '1px', color: 'var(--accento)', verticalAlign: 'middle' }}>DI UN COLLEGA</span>}
               </div>
               <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Tocca per gestire clienti</div>
             </button>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</button>
-              {mio && <button onClick={() => apriGestioneTurno(turn)} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>}
-              {mio && <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '16px', padding: '4px' }}>✕</button>}
+              <button onClick={() => { setRenameTurnModal(turn); setRenameTurnValue(turn.name) }} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>
+              <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '16px', padding: '4px' }}>✕</button>
             </div>
           </div>
-        )})}
+        ))}
         {!loading && turns.length === 0 && <div style={emptyText}>Nessun turno ancora.</div>}
         {/* spazio perché l'ultima riga non finisca sotto il pulsante flottante */}
         <div style={{ height: '76px' }} />
@@ -421,61 +357,13 @@ export default function Turns({ navigate, goHome, session }) {
       {renameTurnModal && (
         <div style={overlay}>
           <div style={sheet}>
-            <div style={sheetTitle}>{condivisioneAttiva ? 'GESTISCI TURNO' : 'RINOMINA TURNO'}</div>
+            <div style={sheetTitle}>RINOMINA TURNO</div>
             <input value={renameTurnValue} onChange={e => setRenameTurnValue(e.target.value)} autoFocus
               style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
 
-            {condivisioneAttiva && colleghi.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--bordo)', paddingTop: '16px', marginBottom: '18px' }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '800', color: '#fff', letterSpacing: '1.5px', marginBottom: '5px' }}>
-                  CHI PUÒ APRIRLO OLTRE A TE
-                </div>
-                <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
-                  Serve quando sei assente. Chi aggiungi vede atlete, schede e carichi di
-                  questo turno, ma non può rinominarlo né eliminarlo.
-                </div>
-                <div style={{ maxHeight: '34vh', overflowY: 'auto' }}>
-                  {colleghi.map(c => {
-                    const dentro = condivisoCon.has(c.id)
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => alternaCondivisione(renameTurnModal.id, c.id)}
-                        style={{
-                          ...comePulsante,
-                          display: 'flex', alignItems: 'center', gap: '11px', width: '100%',
-                          padding: '12px', marginBottom: '6px', borderRadius: '8px',
-                          background: dentro ? 'var(--acc-riempimento)' : 'var(--sup)',
-                          border: `1px solid ${dentro ? 'var(--acc-bordo-forte)' : 'transparent'}`,
-                          textAlign: 'left', cursor: 'pointer',
-                        }}
-                      >
-                        <span style={{
-                          flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: dentro ? 'var(--accento)' : 'transparent',
-                          border: dentro ? 'none' : '1px solid var(--bordo-forte)',
-                          color: '#fff', fontSize: '14px', lineHeight: 1,
-                        }}>{dentro ? '✓' : ''}</span>
-                        <span style={{
-                          flex: 1, minWidth: 0,
-                          fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px',
-                          fontWeight: '700', letterSpacing: '0.5px',
-                          color: dentro ? 'var(--accento)' : 'var(--testo-forte)',
-                        }}>{c.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
             <button onClick={saveRenameTurn} disabled={!renameTurnValue.trim()}
               style={{ ...bigBtn, marginBottom: '10px', opacity: !renameTurnValue.trim() ? 0.3 : 1 }}>✓ SALVA</button>
-            <button onClick={() => setRenameTurnModal(null)} style={cancelBtn}>
-              {condivisioneAttiva ? 'Chiudi' : 'Annulla'}
-            </button>
+            <button onClick={() => setRenameTurnModal(null)} style={cancelBtn}>Annulla</button>
           </div>
         </div>
       )}
