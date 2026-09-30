@@ -73,10 +73,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
         'Impossibile caricare gli esercizi del giorno.'),
       perOspiti
         // Vengono da un altro turno: si prendono per nome, non per turno.
-        ? run(supabase.from('clients').select('*').in('id', soloAtleti).order('surname'),
+        // A parità di cognome decide il nome: due Rossi non si scambiano di
+        // posto a ogni apertura della schermata.
+        ? run(supabase.from('clients').select('*').in('id', soloAtleti)
+            .order('surname').order('name'),
             'Impossibile caricare le persone.')
         : run(supabase.from('clients').select('*')
-            .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
+            .eq('turn_id', turn.id).eq('is_active', true)
+            .order('surname').order('name'),
             'Impossibile caricare gli atleti del turno.'),
       // Le persone sono già scelte una per una: il filtro per scheda non serve.
       perOspiti
@@ -385,10 +389,17 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
                       <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {/* Clickable name → athlete profile */}
+                            {/* Il nome si tocca e porta alla scheda della persona.
+                                Prima si leggeva «Vincenzo Bailon». L'elenco è
+                                ordinato per cognome — come ovunque nell'app — ma
+                                scritto così l'occhio leggeva V, A, P, R, F e
+                                sembrava messo a caso. Scritto «Bailon Vincenzo»
+                                l'ordine si vede, ed è lo stesso modo in cui i nomi
+                                compaiono in TURNI, ATLETI e in tutte le altre
+                                schermate. */}
                             <button type="button" onClick={() => navigate('athlete-profile', { client })}
                               style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                              {client.name} {client.surname}
+                              {client.surname} {client.name}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
                             {/* Reps bigger + side by side */}
@@ -583,7 +594,10 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
   return (
     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
-        {client?.name?.toUpperCase()} {client?.surname?.toUpperCase()}
+        {/* Cognome prima, come nell'elenco da cui si arriva qui: toccare
+            «Bailon Vincenzo» e ritrovarsi «VINCENZO BAILON» in testa fa
+            dubitare di aver aperto la persona giusta. */}
+        {client?.surname?.toUpperCase()} {client?.name?.toUpperCase()}
       </div>
       <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'

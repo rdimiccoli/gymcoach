@@ -59,11 +59,21 @@ export function IconaAtleti({ size = 23 }) {
   )
 }
 
+/**
+ * Ingranaggio delle impostazioni.
+ *
+ * Prima era un cerchietto con otto raggi: sullo schermo si leggeva come un
+ * sole, cioè come la luminosità, non come le impostazioni.
+ *
+ * Sei denti e non otto: a 23px, che è la misura vera nella barra, gli otto
+ * denti si impastano e restano una macchia tonda. Con sei i denti hanno lo
+ * spazio per vedersi anche in grigio, quando la voce è spenta.
+ */
 export function IconaImpostazioni({ size = 23 }) {
   return (
     <svg {...base} width={size} height={size}>
-      <circle cx="12" cy="12" r="3.2" />
-      <path d="M12 2.6v3M12 18.4v3M21.4 12h-3M5.6 12h-3M18.6 5.4l-2.1 2.1M7.5 16.5l-2.1 2.1M18.6 18.6l-2.1-2.1M7.5 7.5 5.4 5.4" />
+      <path d="M21.74 9.75L21.74 14.25L18.48 14.36L17.29 16.44L18.82 19.31L14.92 21.56L13.2 18.8L10.8 18.8L9.08 21.56L5.18 19.31L6.71 16.44L5.52 14.36L2.26 14.25L2.26 9.75L5.52 9.64L6.71 7.56L5.18 4.69L9.08 2.44L10.8 5.2L13.2 5.2L14.92 2.44L18.82 4.69L17.29 7.56L18.48 9.64Z" />
+      <circle cx="12" cy="12" r="2.9" />
     </svg>
   )
 }
