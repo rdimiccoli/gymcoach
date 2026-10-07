@@ -12,7 +12,7 @@ import BottomNav from '../components/BottomNav'
  * senza ricerca: con decine di atlete, trovarne una senza ricordare il suo
  * turno voleva dire scorrere.
  */
-export default function Athletes({ navigate, goHome, session }) {
+export default function Athletes({ navigate, goHome, coach }) {
   const [atlete, setAtlete] = useState([])
   const [cerca, setCerca] = useState('')
   const [mostraArchiviate, setMostraArchiviate] = useState(false)
@@ -22,8 +22,9 @@ export default function Athletes({ navigate, goHome, session }) {
 
   async function loadData() {
     const { data: turni } = await run(
-      // Filtro qui E regola nel database: due barriere.
-      supabase.from('turns').select('id, name').eq('coach_id', session.user.id),
+      // Dalla credenziale unica in poi questo filtro e l'unica cosa che
+      // tiene separati i due coach: il database lascia passare tutto.
+      supabase.from('turns').select('id, name').eq('coach_id', coach.id),
       'Impossibile caricare i turni.'
     )
     if (!turni?.length) { setAtlete([]); setLoading(false); return }

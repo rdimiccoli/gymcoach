@@ -1,8 +1,44 @@
-# Stato del database — verificato il 4 settembre 2026
+# Stato del database
+
+> ## ⚠️ AGGIORNAMENTO DEL 7 OTTOBRE 2026 — LEGGI PRIMA DEL RESTO
+>
+> **Da `supabase/migrazione-credenziale-unica.sql` in poi, il database non
+> separa più i due coach.** Tutto quello che si legge più sotto sulle RLS che
+> legano ogni riga al suo coach descrive com'era *prima* di quella migrazione.
+>
+> **Cosa è cambiato.** Sandro e Manu hanno chiesto una credenziale sola, con la
+> scelta del profilo dentro l'app e la possibilità di guardare i turni
+> dell'altro quando serve. Con un account solo la vecchia regola
+> `coach_id = auth.uid()` non poteva più funzionare: l'account è uno, i profili
+> due. Ora la regola è **«chi è entrato vede e scrive tutto»**.
+>
+> **Dov'è finita la separazione.** Solo dentro l'app: nella scelta «chi sei?»
+> e nei filtri `.eq('coach_id', coach.id)` delle cinque query che caricano i
+> turni. È una comodità per sapere con chi si sta lavorando, **non** una
+> barriera di riservatezza. Chi ha la password passa da un profilo all'altro
+> quando vuole — ed è esattamente quello che i due coach hanno chiesto.
+>
+> **Cosa regge adesso tutta la riservatezza.** Una cosa sola: **la
+> registrazione pubblica deve restare SPENTA** (punto 5 del riepilogo in
+> fondo). Prima era importante; adesso è l'unica cosa che impedisce a chiunque
+> dal sito di crearsi un account e leggere turni, atlete e carichi della
+> palestra. Se quella voce torna accesa, il database è aperto a tutti.
+>
+> **Cosa resta uguale.** Nessun dato è stato cancellato o spostato: la
+> migrazione tocca solo policy e funzioni. I tre profili coach, i turni, le
+> schede, le atlete e i carichi sono rimasti dov'erano, con gli stessi
+> identificativi.
+
+---
+
+## Stato verificato il 4 settembre 2026
 
 Audit eseguito sul progetto `zutadrqmowzbecwdtlyp` (org *rdimiccoli's Org*)
 interrogando i cataloghi di Postgres. Questo documento riporta **quello che c'è**,
 non quello che si sospettava.
+
+⚠️ Da qui in poi la fotografia è quella di settembre: per la separazione fra
+coach vale il riquadro qui sopra.
 
 ---
 
@@ -159,7 +195,7 @@ severo del database.
 | 2 | Vincolo unico su `client_loads` | — | ✅ già a posto |
 | 3 | Cascate sulle foreign key | — | ✅ già a posto |
 | 4 | Recupero password | codice | ✅ corretto (Blocco 2) |
-| 5 | **Registrazione pubblica OFF** | Authentication | ☐ **da fare** |
+| 5 | **Registrazione pubblica OFF** | Authentication | 🔴 **da fare — ora è l'unica barriera rimasta** |
 | 6 | Indici sulle foreign key | SQL Editor | ☐ da fare |
 | 7 | Policy `TO authenticated` | SQL Editor | ☐ facoltativo, senza fretta |
 | 8 | Decidere cosa fare di `client_notes` | — | ☐ da decidere |

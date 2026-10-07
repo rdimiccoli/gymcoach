@@ -7,15 +7,16 @@ import { vistaTurni, impostaVistaTurni, PER_ATLETA, PER_ESERCIZIO } from '../lib
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function Settings({ navigate, goHome, session }) {
-  const [coach, setCoach] = useState(null)
+export default function Settings({ navigate, goHome, session, coach, cambiaCoach, aggiornaCoach }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [view, setView] = useState('main')
-  const [coachName, setCoachName] = useState('')
-  const [vista, setVista] = useState(() => vistaTurni(session.user.id))
+  const [coachName, setCoachName] = useState(coach.name || '')
+  // La vista e del PROFILO: Sandro la vuole per atleta, Manu no, e dalla
+  // credenziale unica in poi i due condividono l'accesso ma non questa scelta.
+  const [vista, setVista] = useState(() => vistaTurni(coach.id))
 
   function cambiaVista(valore) {
-    impostaVistaTurni(session.user.id, valore)
+    impostaVistaTurni(coach.id, valore)
     setVista(valore)
     notifyOk(valore === PER_ATLETA
       ? 'I turni si apriranno con l\'elenco delle persone'
@@ -36,7 +37,7 @@ export default function Settings({ navigate, goHome, session }) {
   const [bioAttivo, setBioAttivo] = useState(() => bloccoAttivo(session.user.id))
   const [bioInCorso, setBioInCorso] = useState(false)
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [coach.id])
   useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
 
   async function toggleBiometria() {
@@ -55,14 +56,10 @@ export default function Settings({ navigate, goHome, session }) {
   }
 
   async function loadData() {
-    const [{ data: c }, { data: t }] = await Promise.all([
-      run(supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
-        'Impossibile caricare il profilo coach.'),
-      // Filtro qui E regola nel database: due barriere.
-      run(supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
-        'Impossibile caricare i turni.'),
-    ])
-    if (c) { setCoach(c); setCoachName(c.name) }
+    // Il profilo arriva gia scelto da App: qui restano solo i conteggi.
+    const { data: t } = await run(
+      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
+      'Impossibile caricare i turni.')
 
     const allC = []
     if (t?.length) {
@@ -84,12 +81,14 @@ export default function Settings({ navigate, goHome, session }) {
     if (!coachName.trim()) return
     setSaving(true)
     const { error } = await run(
-      supabase.from('coaches').update({ name: coachName.trim() }).eq('id', session.user.id),
+      supabase.from('coaches').update({ name: coachName.trim() }).eq('id', coach.id),
       'Nome non salvato.'
     )
     setSaving(false)
     if (error) return
-    setCoach(c => ({ ...c, name: coachName.trim() }))
+    // Il nome vive in App, che lo passa a tutte le schermate: va aggiornato
+    // li, o la Home continuerebbe a salutare col nome vecchio.
+    aggiornaCoach({ name: coachName.trim() })
     setView('main')
   }
 
@@ -204,6 +203,30 @@ export default function Settings({ navigate, goHome, session }) {
             </button>
           </div>
         </div>
+
+        {/* Cambia coach — compare solo se i profili sono più di uno.
+            Sta qui e non in un posto più comodo apposta: dal 29/9/2026
+            sappiamo cosa succede quando un'azione che riguarda i dati di un
+            altro coach sta a portata di dito distratto. Chi tocca qui lo sta
+            facendo apposta, e deve comunque confermare. */}
+        {cambiaCoach && (
+          <button onClick={cambiaCoach} style={{
+            width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)',
+            borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
+            display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
+                CAMBIA COACH
+              </div>
+              <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
+                Adesso stai lavorando come <span style={{ color: 'var(--accento)', fontWeight: '700' }}>{coach?.name}</span>.
+                Da qui passi all'altro coach e vedi i suoi turni.
+              </div>
+            </div>
+            <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
+          </button>
+        )}
 
         {/* Sblocco biometrico */}
         {bioDisponibile && (

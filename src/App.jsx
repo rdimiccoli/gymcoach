@@ -13,8 +13,11 @@ import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
 import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
+import ScegliCoach, { ConfermaCambio } from './components/ScegliCoach'
 import Notifier from './components/Notifier'
 import IndicatoreCoda from './components/IndicatoreCoda'
+import { run } from './lib/notify'
+import { coachScelto, scegliCoach, decidiCoach } from './lib/coachAttivo'
 // Caricati solo quando servono davvero: il blocco biometrico riguarda chi
 // l'ha attivato, e finiva nel pacchetto di tutti.
 const BloccoBiometrico = lazy(() => import('./components/BloccoBiometrico'))
@@ -77,6 +80,13 @@ export default function App() {
   const [showExitModal, setShowExitModal] = useState(false)
   const [sbloccato, setSbloccato] = useState(false)
   const [intro, setIntro] = useState(introDaMostrare)
+  // I profili coach. `null` vuol dire «non ancora chiesti al database», che è
+  // diverso da «non ce n'è nessuno»: il primo è un'attesa, il secondo un
+  // problema da dire a schermo.
+  const [coaches, setCoaches] = useState(null)
+  const [coachId, setCoachId] = useState(null)
+  const [cambioAperto, setCambioAperto] = useState(false)
+  const [daConfermare, setDaConfermare] = useState(null)
   const stackRef = useRef(stack)
   const nascostaDa = useRef(null)
 
@@ -112,6 +122,8 @@ export default function App() {
         setStack(HOME)
         setIsRecovery(false)
         setSbloccato(false) // al prossimo accesso il lucchetto torna attivo
+        setCoaches(null)    // i profili si richiedono a chi rientra
+        setCoachId(null)
       }
     })
     return () => subscription.unsubscribe()
@@ -154,7 +166,34 @@ export default function App() {
 
   // I carichi rimasti in coda partono da soli: al ritorno della rete, alla
   // riapertura dell'app e comunque ogni minuto.
-  useEffect(() => avviaSincronizzazioneAutomatica(session?.user?.id), [session?.user?.id])
+  useEffect(() => avviaSincronizzazioneAutomatica(!!session?.user?.id), [session?.user?.id])
+
+  // ── I profili coach ───────────────────────────────────────────────────────
+  // Da ottobre 2026 l'account non dice più per chi si lavora: la credenziale è
+  // una sola e i profili sono due. Si chiedono al database una volta per
+  // accesso, e si guarda cosa si ricorda questo telefono.
+  //
+  // Entrando ancora con una delle vecchie credenziali il database continua a
+  // far vedere un profilo solo, `decidiCoach` lo prende senza chiedere niente,
+  // e l'app si comporta esattamente come prima. È questo che permette di
+  // pubblicare l'app prima o dopo la migrazione, senza un istante in cui è
+  // rotta.
+  useEffect(() => {
+    const account = session?.user?.id
+    if (!account) return
+    let vivo = true
+    ;(async () => {
+      const { data } = await run(
+        supabase.from('coaches').select('*').order('name'),
+        'Impossibile caricare i profili coach.'
+      )
+      if (!vivo) return
+      const elenco = data || []
+      setCoaches(elenco)
+      setCoachId(decidiCoach(elenco, coachScelto(account)).coach?.id || null)
+    })()
+    return () => { vivo = false }
+  }, [session?.user?.id])
 
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
@@ -195,11 +234,68 @@ export default function App() {
     )
   }
 
+  // ── Chi sei? ──────────────────────────────────────────────────────────────
+  // Sta dopo il lucchetto — che riguarda il telefono, non il profilo — e prima
+  // dell'introduzione, così quella può salutare per nome.
+  const visibili = (coaches || []).filter(c => c.nascosto !== true)
+  const coach = visibili.find(c => c.id === coachId) || null
+
+  // Ancora in attesa della risposta del database: meglio il logo che un lampo
+  // della schermata «chi sei?» a ogni avvio.
+  if (coaches === null) return <><Splash /><Notifier /></>
+
+  function prendiProfilo(scelto) {
+    scegliCoach(session.user.id, scelto.id)
+    setCoachId(scelto.id)
+    setDaConfermare(null)
+    setCambioAperto(false)
+    // Si riparte dalla Home: restare dentro il turno di un altro coach
+    // vorrebbe dire guardare una schermata che non esiste più per noi.
+    dimenticaNavigazione()
+    setStack(HOME)
+  }
+
+  if (!coach) {
+    return (
+      <>
+        <ScegliCoach coaches={visibili} onScelto={prendiProfilo} />
+        <Notifier />
+      </>
+    )
+  }
+
+  if (cambioAperto) {
+    return (
+      <>
+        <ScegliCoach
+          coaches={visibili} attuale={coach.id} cambio
+          onScelto={scelto => scelto.id === coach.id ? setCambioAperto(false) : setDaConfermare(scelto)}
+          onAnnulla={() => setCambioAperto(false)}
+        />
+        {daConfermare && (
+          <ConfermaCambio
+            coach={daConfermare}
+            onConferma={() => prendiProfilo(daConfermare)}
+            onAnnulla={() => setDaConfermare(null)}
+          />
+        )}
+        <Notifier />
+      </>
+    )
+  }
+
   // Dopo il lucchetto e prima di tutto il resto: se non l'ha mai vista.
-  if (intro) return <><PrimoAccesso nome={session.user.email?.split('@')[0]} onChiudi={() => setIntro(false)} /><Notifier /></>
+  if (intro) return <><PrimoAccesso nome={coach.name} onChiudi={() => setIntro(false)} /><Notifier /></>
 
   const current = stack[stack.length - 1]
-  const props = { navigate, goBack, goHome, params: current.params, session }
+  const props = {
+    navigate, goBack, goHome, params: current.params, session,
+    coach, cambiaCoach: visibili.length > 1 ? () => setCambioAperto(true) : null,
+    // Il nome del profilo si cambia dalle impostazioni: vive qui, e da qui
+    // deve aggiornarsi, altrimenti la Home continua a salutare col vecchio.
+    aggiornaCoach: patch =>
+      setCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, ...patch } : c)),
+  }
 
   const pages = {
     home: Home,
@@ -224,7 +320,7 @@ export default function App() {
           carichi e gruppi aperti restavano quelli della scheda di prima. */}
       <Page key={stack.length} {...props} />
       <Notifier />
-      <IndicatoreCoda userId={session.user.id} />
+      <IndicatoreCoda />
 
       {/* PWA update banner */}
       {needRefresh && (

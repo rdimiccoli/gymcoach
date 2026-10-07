@@ -18,7 +18,7 @@ import BottomNav from '../components/BottomNav'
 
 
 
-export default function TurnDetail({ navigate, goBack, goHome, params, session }) {
+export default function TurnDetail({ navigate, goBack, goHome, params }) {
   // `soloAtleti`: id delle persone da mostrare, invece di tutto il turno.
   // Serve in due casi — gli ospiti Silver venuti da un altro turno (e allora
   // `cycle` è la LORO scheda, `turn` è il turno che li ospita) e la singola
@@ -147,7 +147,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     }))
     // Passa dalla coda: se manca il segnale il carico non si perde, resta sul
     // telefono e parte da solo. Fallisce solo se è il server a rifiutare.
-    const { differito, errore } = await salvaCarichi(session.user.id, righe)
+    const { differito, errore } = await salvaCarichi(righe)
     if (errore) {
       notifyError('Carichi rifiutati dal server. Riprova.')
       // La modale resta aperta con i valori digitati: si può ritentare senza
@@ -252,7 +252,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, session }
     // eslint-disable-next-line no-unused-vars
     const { __client, __ex, ...daSpedire } = riga
     clearTimeout(timerCarichi.current[chiave])
-    const { errore } = await salvaCarichi(session.user.id, [daSpedire])
+    const { errore } = await salvaCarichi([daSpedire])
     if (!errore) controllaRecord(riga.__client, riga.__ex, riga.kg)
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }

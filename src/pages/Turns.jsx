@@ -8,7 +8,7 @@ import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function Turns({ navigate, goHome, session }) {
+export default function Turns({ navigate, goHome, coach }) {
   const [turns, setTurns] = useState([])
   const [clients, setClients] = useState([])
   const [selectedTurn, setSelectedTurn] = useState(null)
@@ -40,7 +40,7 @@ export default function Turns({ navigate, goHome, session }) {
       // protegge davvero — un filtro nel browser si aggira — ma il 29/9/2026
       // due coach si sono ritrovati i turni a vicenda, e con una barriera sola
       // non c'era niente dietro. Da qui ogni coach chiede solo i propri.
-      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])
@@ -62,7 +62,7 @@ export default function Turns({ navigate, goHome, session }) {
     setSaving(true)
     const { error } = await run(
       supabase.from('turns').insert({
-        coach_id: session.user.id,
+        coach_id: coach.id,
         name: `${turnTime} — ${turnType}`,
         time: turnTime, type: turnType
       }),

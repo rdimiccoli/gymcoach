@@ -9,7 +9,7 @@ import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function CyclesList({ navigate, goHome, session }) {
+export default function CyclesList({ navigate, goHome, coach }) {
   const [turns, setTurns] = useState([])
   const [cyclesByTurn, setCyclesByTurn] = useState({})
   const [loading, setLoading] = useState(true)
@@ -33,8 +33,9 @@ export default function CyclesList({ navigate, goHome, session }) {
 
   async function loadData() {
     const { data: t } = await run(
-      // Filtro qui E regola nel database: due barriere.
-      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      // Dalla credenziale unica in poi questo filtro e l'unica cosa che
+      // tiene separati i due coach: il database lascia passare tutto.
+      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])

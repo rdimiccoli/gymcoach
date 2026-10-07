@@ -37,8 +37,25 @@ export function subscribeCoda(fn) {
   return () => ascoltatori.delete(fn)
 }
 
-export function inAttesa(userId) {
-  return leggiCoda().filter(e => !userId || e.userId === userId).length
+/**
+ * Quanti carichi aspettano di partire da questo telefono.
+ *
+ * Fino a ottobre 2026 la coda era divisa per account: ogni voce portava lo
+ * `userId` di chi l'aveva messa, e partivano solo le proprie. Serviva finché
+ * ogni coach aveva la sua credenziale.
+ *
+ * Con la credenziale unica quella divisione fa solo danno: i carichi messi in
+ * coda con le vecchie credenziali resterebbero lì per sempre, senza che
+ * nessuno li veda partire, finché non scadono dopo quattordici giorni. E un
+ * carico perso in silenzio è esattamente ciò che questa coda esiste per
+ * evitare.
+ *
+ * Ora la coda è del telefono: qualunque coach sia collegato la svuota. Può
+ * farlo perché dopo questa modifica il database lascia scrivere i carichi di
+ * chiunque a chi è entrato.
+ */
+export function inAttesa() {
+  return leggiCoda().length
 }
 
 // ── decidere se accodare o segnalare ────────────────────────────────────────
@@ -62,11 +79,11 @@ function eProblemaDiRete(errore) {
  *  - differito true  → in coda, partirà da solo
  *  - errore         → il server ha rifiutato, non è un problema di rete
  */
-export async function salvaCarichi(userId, righe) {
+export async function salvaCarichi(righe) {
   if (!righe?.length) return { differito: false, errore: null }
 
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    accoda(userId, righe)
+    accoda(righe)
     return { differito: true, errore: null }
   }
 
@@ -77,7 +94,7 @@ export async function salvaCarichi(userId, righe) {
   if (!error) return { differito: false, errore: null }
 
   if (eProblemaDiRete(error)) {
-    accoda(userId, righe)
+    accoda(righe)
     return { differito: true, errore: null }
   }
   console.error('carichi rifiutati dal server', error)
@@ -88,14 +105,14 @@ function chiave(r) {
   return `${r.client_id}_${r.cycle_exercise_id}_${r.week}`
 }
 
-function accoda(userId, righe) {
+function accoda(righe) {
   const coda = leggiCoda()
   righe.forEach(r => {
     const k = chiave(r)
     // Ripesare lo stesso esercizio sostituisce il valore in attesa invece di
     // accodarne un secondo: conta l'ultimo, non la sequenza.
-    const esistente = coda.findIndex(e => e.k === k && e.userId === userId)
-    const voce = { k, userId, ts: Date.now(), ...r }
+    const esistente = coda.findIndex(e => e.k === k)
+    const voce = { k, ts: Date.now(), ...r }
     if (esistente >= 0) coda[esistente] = voce
     else coda.push(voce)
   })
@@ -103,15 +120,14 @@ function accoda(userId, righe) {
 }
 
 /** Prova a svuotare la coda. Ritorna quanti elementi restano. */
-export async function sincronizza(userId) {
+export async function sincronizza() {
   const limite = Date.now() - GIORNI_VALIDI * 24 * 60 * 60 * 1000
-  let coda = leggiCoda().filter(e => e.ts > limite)
+  const coda = leggiCoda().filter(e => e.ts > limite)
 
-  const miei = coda.filter(e => e.userId === userId)
-  if (!miei.length) { scriviCoda(coda); return coda.length }
+  if (!coda.length) { scriviCoda(coda); return 0 }
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return coda.length
 
-  const righe = miei.map(({ client_id, cycle_exercise_id, kg, week }) =>
+  const righe = coda.map(({ client_id, cycle_exercise_id, kg, week }) =>
     ({ client_id, cycle_exercise_id, kg, week }))
 
   const { error } = await supabase
@@ -123,21 +139,22 @@ export async function sincronizza(userId) {
     // Rifiutati dal server: tenerli in coda significherebbe ritentare per
     // sempre. Meglio toglierli e dirlo, così la coach può reinserirli.
     console.error('carichi in coda rifiutati', error)
-    notifyError(`${miei.length} carichi in attesa non sono stati accettati dal server. Vanno reinseriti.`)
-    coda = coda.filter(e => e.userId !== userId)
-    scriviCoda(coda)
-    return coda.length
+    notifyError(`${coda.length} carichi in attesa non sono stati accettati dal server. Vanno reinseriti.`)
+    scriviCoda([])
+    return 0
   }
 
-  coda = coda.filter(e => e.userId !== userId)
-  scriviCoda(coda)
-  return coda.length
+  scriviCoda([])
+  return 0
 }
 
-/** Riprova da sola quando torna la rete o quando si riapre l'app. */
-export function avviaSincronizzazioneAutomatica(userId) {
-  if (!userId) return () => {}
-  const prova = () => { sincronizza(userId) }
+/**
+ * Riprova da sola quando torna la rete o quando si riapre l'app.
+ * `collegato` dice solo se c'è qualcuno dentro: senza accesso non si scrive.
+ */
+export function avviaSincronizzazioneAutomatica(collegato) {
+  if (!collegato) return () => {}
+  const prova = () => { sincronizza() }
 
   window.addEventListener('online', prova)
   document.addEventListener('visibilitychange', () => {

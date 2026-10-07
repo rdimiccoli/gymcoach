@@ -27,8 +27,7 @@ const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Ve
  * 6». Sotto il turno compaiono anche gli ospiti Silver di oggi, ciascuno con
  * la propria scheda.
  */
-export default function Home({ navigate, goHome, session }) {
-  const [coach, setCoach] = useState(null)
+export default function Home({ navigate, goHome, session, coach }) {
   const [turni, setTurni] = useState([])
   const [schede, setSchede] = useState({})       // turnId → [scheda attive]
   const [atlete, setAtlete] = useState({})       // turnId → [{ id }], solo per contarle
@@ -36,8 +35,10 @@ export default function Home({ navigate, goHome, session }) {
   const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
   const [loading, setLoading] = useState(true)
   // Preferenza del singolo coach, dalle impostazioni. Chi non l'ha mai toccata
-  // trova la Home identica a com'era.
-  const perAtleta = vistaTurni(session.user.id) === PER_ATLETA
+  // trova la Home identica a com'era. È del PROFILO, non dell'account: con la
+  // credenziale unica Sandro e Manu condividono l'accesso ma non il modo di
+  // aprire i turni.
+  const perAtleta = vistaTurni(coach.id) === PER_ATLETA
 
   const oggi = new Date()
   const giorno = GIORNI[oggi.getDay()]
@@ -51,34 +52,18 @@ export default function Home({ navigate, goHome, session }) {
     biometriaDisponibile().then(setInvitoBio)
   }, [])
 
-  useEffect(() => { loadData() }, [])
+  // Il profilo arriva già scelto da App: cambiandolo questa schermata si
+  // ricarica da capo con i turni dell'altro coach.
+  useEffect(() => { loadData() }, [coach.id])
 
   async function loadData() {
-    // .single() dava errore quando la riga non esisteva ancora (primo accesso):
-    // .maybeSingle() restituisce null, che è il caso previsto.
-    let { data: c } = await run(
-      supabase.from('coaches').select('*').eq('id', session.user.id).maybeSingle(),
-      'Impossibile caricare il profilo coach.'
-    )
-    if (!c) {
-      // La riga viene creata al primo accesso con id = auth.uid(), quindi
-      // nessuno può crearne una per conto di altri. Tiene però solo se su
-      // Supabase la registrazione pubblica è disattivata — vedi SICUREZZA.md.
-      const nome = session.user.email.split('@')[0]
-      const { data: nuovo } = await run(
-        supabase.from('coaches')
-          .insert({ id: session.user.id, email: session.user.email, name: nome })
-          .select().single(),
-        'Profilo coach non creato. Contatta l\'amministratore.'
-      )
-      c = nuovo
-    }
-    setCoach(c)
-
+    setLoading(true)
     const { data: t } = await run(
-      // Filtro qui E regola nel database: due barriere. Quella del database
-      // protegge davvero, questa fa sì che un errore là non finisca a schermo.
-      supabase.from('turns').select('*').eq('coach_id', session.user.id).order('time'),
+      // Il filtro per coach qui è diventato l'UNICA cosa che tiene separati i
+      // due coach: dalla credenziale unica in poi il database lascia passare
+      // tutto a chi è entrato, perché è quello che i coach hanno chiesto.
+      // Prima erano due barriere, ora è una sola — e sta qui.
+      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
       'Impossibile caricare i turni.'
     )
     setTurni(t || [])
@@ -126,10 +111,12 @@ export default function Home({ navigate, goHome, session }) {
           <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
             {giorno.toUpperCase()} · {data}
           </div>
+          {/* Niente scheletro di caricamento: il profilo è già scelto prima di
+              arrivare qui, e il nome di chi si è è la cosa che deve comparire
+              per prima. Con una credenziale per due coach, sapere con quale
+              dei due si sta lavorando viene prima dei turni. */}
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '32px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1, color: '#fff' }}>
-            {loading
-              ? <span className="osso" style={{ display: 'inline-block', width: '58%', height: '30px', borderRadius: '3px' }} />
-              : <>COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span></>}
+            COACH <span style={{ color: 'var(--accento)' }}>{coach?.name?.toUpperCase()}</span>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { subscribeCoda, sincronizza } from '../lib/coda'
  * coach che i carichi non sono persi, e darle un modo di forzare l'invio invece
  * di restare a chiedersi se sia successo qualcosa.
  */
-export default function IndicatoreCoda({ userId }) {
+export default function IndicatoreCoda() {
   const [quanti, setQuanti] = useState(0)
   const [inCorso, setInCorso] = useState(false)
 
@@ -17,7 +17,7 @@ export default function IndicatoreCoda({ userId }) {
 
   async function forza() {
     setInCorso(true)
-    await sincronizza(userId)
+    await sincronizza()
     setInCorso(false)
   }
 
