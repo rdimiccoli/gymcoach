@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { comePulsante } from '../lib/stile'
 import { tocco } from '../lib/aptico'
+import AvatarCoach from './AvatarCoach'
 
 /**
  * «Chi sei?» — la scelta del profilo, dopo l'accesso.
@@ -49,6 +50,7 @@ export default function ScegliCoach({ coaches, attuale, onScelto, onAnnulla, cam
               <button key={c.id} type="button"
                 onClick={() => { tocco(); onScelto(c) }}
                 style={{ ...riga, ...(sei ? rigaAttuale : null) }}>
+                <AvatarCoach coach={c} size={52} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={nome}>{(c.name || c.email || '—').toUpperCase()}</span>
                   {sei && <span style={etichettaSei}>SEI TU ADESSO</span>}
@@ -86,8 +88,13 @@ export function ConfermaCambio({ coach, onConferma, onAnnulla }) {
   return (
     <div style={sfondo} onClick={onAnnulla}>
       <div style={foglio} onClick={e => e.stopPropagation()}>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '21px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>
-          LAVORARE COME {(coach.name || coach.email || '').toUpperCase()}?
+        {/* Anche qui il segno di chi si sta per diventare: la conferma deve
+            far vedere la stessa cosa che si è appena toccata. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+          <AvatarCoach coach={coach} size={42} />
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '21px', fontWeight: '900', color: '#fff', letterSpacing: '1px', lineHeight: 1.1 }}>
+            LAVORARE COME {(coach.name || coach.email || '').toUpperCase()}?
+          </div>
         </div>
         <div style={{ color: 'var(--testo-medio)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
           Da adesso vedrai i turni, le schede e le atlete di {coach.name || coach.email}.
@@ -123,8 +130,8 @@ const sottotitolo = {
 
 const riga = {
   ...comePulsante,
-  display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
-  padding: '22px 18px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
+  display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
+  padding: '18px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
   background: 'var(--sup)', border: '1px solid var(--sup-alta)',
   borderLeft: '3px solid var(--accento)',
 }

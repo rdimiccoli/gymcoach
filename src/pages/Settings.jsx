@@ -4,6 +4,9 @@ import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { biometriaDisponibile, bloccoAttivo, attivaBlocco, disattivaBlocco, MINUTI_RIBLOCCO } from '../lib/biometria'
 import { vistaTurni, impostaVistaTurni, PER_ATLETA, PER_ESERCIZIO } from '../lib/vista'
+import { capacita } from '../lib/capacita'
+import { EMOJI_COACH } from '../lib/avatarCoach'
+import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
@@ -14,6 +17,10 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   // La vista e del PROFILO: Sandro la vuole per atleta, Manu no, e dalla
   // credenziale unica in poi i due condividono l'accesso ma non questa scelta.
   const [vista, setVista] = useState(() => vistaTurni(coach.id))
+  // La scelta dell'emoji compare solo se la colonna esiste davvero: prima
+  // della migrazione resta nascosta e ognuno vede la propria iniziale.
+  const [emojiDisponibile, setEmojiDisponibile] = useState(false)
+  const [salvoEmoji, setSalvoEmoji] = useState(false)
 
   function cambiaVista(valore) {
     impostaVistaTurni(coach.id, valore)
@@ -39,6 +46,20 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
 
   useEffect(() => { loadData() }, [coach.id])
   useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
+  useEffect(() => { capacita().then(c => setEmojiDisponibile(!!c.emojiCoach)) }, [])
+
+  /** Tocca la stessa emoji per toglierla: niente pulsante in piu da cercare. */
+  async function scegliEmoji(emoji) {
+    const nuova = coach.emoji === emoji ? null : emoji
+    setSalvoEmoji(true)
+    const { error } = await run(
+      supabase.from('coaches').update({ emoji: nuova }).eq('id', coach.id),
+      'Immagine non salvata.')
+    setSalvoEmoji(false)
+    if (error) return
+    aggiornaCoach({ emoji: nuova })
+    notifyOk(nuova ? 'Immagine aggiornata' : 'Sei tornato alla tua iniziale')
+  }
 
   async function toggleBiometria() {
     if (bioAttivo) {
@@ -178,9 +199,12 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
         {/* Profile card */}
         <div style={{ background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '6px', padding: '18px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{coach?.name?.toUpperCase()}</div>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{session.user.email}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <AvatarCoach coach={coach} size={46} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff', letterSpacing: '1px' }}>{coach?.name?.toUpperCase()}</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.user.email}</div>
+              </div>
             </div>
             <button onClick={() => setView('editName')} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '7px 12px', borderRadius: '3px' }}>
               MODIFICA
@@ -203,6 +227,38 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
             </button>
           </div>
         </div>
+
+        {/* La tua immagine — compare solo dopo la migrazione che aggiunge la
+            colonna. Prima resta nascosta e nel cerchio c'è l'iniziale, che è
+            già una risposta sensata e non un buco da riempire. */}
+        {emojiDisponibile && (
+          <div style={{ background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
+              LA TUA IMMAGINE
+            </div>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', marginBottom: '12px', lineHeight: 1.4 }}>
+              Compare accanto al tuo nome quando si sceglie il coach.
+              Tocca quella che hai già per toglierla e tornare alla tua iniziale.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {EMOJI_COACH.map(e => {
+                const scelta = coach.emoji === e
+                return (
+                  <button key={e} type="button" disabled={salvoEmoji}
+                    onClick={() => scegliEmoji(e)}
+                    aria-label={scelta ? `${e}, scelta` : e}
+                    style={{
+                      width: '46px', height: '46px', borderRadius: '50%', fontSize: '24px', lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: scelta ? 'var(--acc-riempimento-forte)' : 'var(--sup-alta)',
+                      border: `1px solid ${scelta ? 'var(--accento)' : 'transparent'}`,
+                      opacity: salvoEmoji ? 0.5 : 1, cursor: 'pointer', padding: 0,
+                    }}>{e}</button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Cambia coach — compare solo se i profili sono più di uno.
             Sta qui e non in un posto più comodo apposta: dal 29/9/2026

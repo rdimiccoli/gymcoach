@@ -57,18 +57,24 @@ let richiesta = null
  * coach si sono ritrovati i turni a vicenda. Bastava toccare un nome nella
  * matita del turno — nessuna conferma, dentro la schermata del rinomina — per
  * dare a un collega atlete, schede e carichi. Nessuno l'aveva chiesta.
+ *
+ * `emojiCoach` è l'ultima arrivata: dice se la colonna `coaches.emoji` c'è.
+ * Finché manca, nelle impostazioni non compare la scelta dell'emoji e ogni
+ * coach vede la propria iniziale nel cerchio — che è già una risposta
+ * sensata, non un buco.
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
       presente('client_visits', 'id'),
+      presente('coaches', 'emoji'),
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
     // ospiti. Si accende solo se ci sono entrambi i pezzi.
-    return { categorie, assegnazioni, silver: colonnaSilver && ospiti }
+    return { categorie, assegnazioni, silver: colonnaSilver && ospiti, emojiCoach }
   })()
   return richiesta
 }
