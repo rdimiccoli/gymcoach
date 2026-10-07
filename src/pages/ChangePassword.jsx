@@ -24,7 +24,7 @@ export default function ChangePassword({ onDone }) {
 
   return (
     <div style={{
-      minHeight: '100dvh', background: 'var(--fondo)',
+      minHeight: 'var(--schermo)', background: 'var(--fondo)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 28px',

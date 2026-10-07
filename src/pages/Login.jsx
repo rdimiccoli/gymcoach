@@ -47,7 +47,7 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: '100dvh',
+      minHeight: 'var(--schermo)',
       background: 'var(--fondo)',
       display: 'flex',
       flexDirection: 'column',

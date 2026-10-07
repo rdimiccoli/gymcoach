@@ -45,7 +45,7 @@ export default function PrimoAccesso({ nome, onChiudi }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 2600, background: 'var(--fondo)',
+      position: 'fixed', inset: 0, zIndex: 2600, background: 'var(--fondo)', maxWidth: 'var(--colonna)', marginInline: 'auto',
       display: 'flex', flexDirection: 'column', padding: '30px 24px 26px', overflowY: 'auto',
     }}>
       <img src="/logo_OAD.png" alt="OAD" style={{ height: '30px', mixBlendMode: 'screen', marginBottom: '18px', alignSelf: 'flex-start' }} />

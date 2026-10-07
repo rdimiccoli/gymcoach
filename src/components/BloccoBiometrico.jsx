@@ -33,7 +33,7 @@ export default function BloccoBiometrico({ nomeCoach, onSbloccato, onEsci }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 3000,
+      position: 'fixed', inset: 0, zIndex: 3000, maxWidth: 'var(--colonna)', marginInline: 'auto',
       background: 'var(--fondo)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',

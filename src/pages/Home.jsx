@@ -237,7 +237,7 @@ function InvitoImpronta({ onAttiva, onNo }) {
   )
 }
 
-const pagina = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden' }
+const pagina = { display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden' }
 const scorrimento = { flex: 1, overflowY: 'auto', padding: '18px 16px', WebkitOverflowScrolling: 'touch' }
 const testata = { paddingBottom: '18px', borderBottom: '1px solid var(--sup)', marginBottom: '20px' }
 const etichetta = { color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginBottom: '11px' }

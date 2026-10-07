@@ -409,15 +409,15 @@ export default function CyclesList({ navigate, goHome, coach }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+const page = { display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
 const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
 const actionBtn = { background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '7px 12px', color: 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
-const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }
+const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 // maxHeight + scroll: con nome, data e l'elenco delle persone, su un telefono
 // piccolo il pulsante SALVA finirebbe sotto il bordo dello schermo.
-const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxHeight: '92dvh', overflowY: 'auto', boxSizing: 'border-box' }
+const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)', maxHeight: '92dvh', overflowY: 'auto', boxSizing: 'border-box' }
 const sheetTitle = { fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }
 const sheetSub = { color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '20px' }
 const sheetBtnOrange = { width: '100%', background: 'var(--acc-fondo)', border: '1px solid var(--acc-bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', textAlign: 'left', cursor: 'pointer' }

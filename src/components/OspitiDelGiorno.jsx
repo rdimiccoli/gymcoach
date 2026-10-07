@@ -212,12 +212,12 @@ const pulsanteAggiungi = {
 
 const sfondo = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 60,
-  display: 'flex', alignItems: 'flex-end',
+  display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
 }
 
 const foglio = {
   background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)',
-  borderRadius: '16px 16px 0 0', padding: '24px 16px 30px', width: '100%',
+  borderRadius: '16px 16px 0 0', padding: '24px 16px 30px', width: '100%', maxWidth: 'var(--colonna)',
   maxHeight: '88dvh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box',
 }
 

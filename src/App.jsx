@@ -213,7 +213,7 @@ export default function App() {
   if (!sbloccato && bloccoAttivo(session.user.id)) {
     return (
       <>
-        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: 'var(--fondo)' }} />}>
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: 'var(--fondo)', maxWidth: 'var(--colonna)', marginInline: 'auto' }} />}>
         <BloccoBiometrico
           nomeCoach={session.user.email}
           onSbloccato={() => setSbloccato(true)}
@@ -381,7 +381,7 @@ export default function App() {
 
 function Splash() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--fondo)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'var(--schermo)', background: 'var(--fondo)' }}>
       <img src="/icon-512.png" alt="GymCoach" style={{ width: '160px', borderRadius: '28px' }} />
     </div>
   )

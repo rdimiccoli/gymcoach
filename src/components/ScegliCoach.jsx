@@ -115,7 +115,7 @@ export function ConfermaCambio({ coach, onConferma, onAnnulla }) {
 }
 
 const pagina = {
-  position: 'fixed', inset: 0, zIndex: 2600, background: 'var(--fondo)',
+  position: 'fixed', inset: 0, zIndex: 2600, background: 'var(--fondo)', maxWidth: 'var(--colonna)', marginInline: 'auto',
   display: 'flex', flexDirection: 'column', padding: '30px 24px 26px', overflowY: 'auto',
 }
 
@@ -170,12 +170,12 @@ const nota = {
 
 const sfondo = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2700,
-  display: 'flex', alignItems: 'flex-end',
+  display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
 }
 
 const foglio = {
   background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)',
-  borderRadius: '16px 16px 0 0', padding: '24px 16px 30px', width: '100%',
+  borderRadius: '16px 16px 0 0', padding: '24px 16px 30px', width: '100%', maxWidth: 'var(--colonna)',
   boxSizing: 'border-box',
 }
 

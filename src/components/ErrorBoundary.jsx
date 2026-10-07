@@ -7,7 +7,7 @@ export default class ErrorBoundary extends Component {
   render() {
     if (!this.state.hasError) return this.props.children
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--fondo)', padding: '32px', textAlign: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'var(--schermo)', background: 'var(--fondo)', padding: '32px', textAlign: 'center' }}>
         <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '22px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>QUALCOSA È ANDATO STORTO</div>
         <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: '8px' }}>{this.state.error?.message}</div>

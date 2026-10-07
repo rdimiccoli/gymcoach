@@ -116,7 +116,7 @@ export default function TimerCircuito({ group, onClose }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 2500, background: 'var(--fondo)',
+      position: 'fixed', inset: 0, zIndex: 2500, background: 'var(--fondo)', maxWidth: 'var(--colonna)', marginInline: 'auto',
       display: 'flex', flexDirection: 'column', padding: '20px', textAlign: 'center',
     }}>
       {/* barra di avanzamento del tempo */}
