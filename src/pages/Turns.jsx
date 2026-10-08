@@ -30,7 +30,18 @@ export default function Turns({ navigate, goHome, coach }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
   const [renameTurnModal, setRenameTurnModal] = useState(null)
-  const [renameTurnValue, setRenameTurnValue] = useState('')
+  // Si rinomina l'ORARIO e il TIPO, non il nome scritto a mano.
+  //
+  // Prima questa schermata cambiava solo `turns.name`, e sembrava funzionare:
+  // la riga qui in TURNI mostra proprio quello. Ma la card della HOME mostra
+  // `turns.time`, che restava com'era. Sandro scriveva «17.30 pei» per
+  // sbaglio, lo correggeva da qui, lo vedeva giusto in TURNI, tornava in Home
+  // e ritrovava «17.30 pei». Una correzione che non correggeva.
+  //
+  // Ora si modificano gli stessi due campi che si riempiono quando il turno
+  // si crea, e `name` viene ricostruito da quelli: tutto resta allineato.
+  const [renameTime, setRenameTime] = useState('')
+  const [renameType, setRenameType] = useState('Misto')
 
   useEffect(() => { loadData() }, [])
 
@@ -94,15 +105,26 @@ export default function Turns({ navigate, goHome, coach }) {
     setDeleteTurnConfirm(id)
   }
 
+  /** I turni vecchi hanno solo `name`: l'orario e il tipo si ricavano da lì. */
+  function apriRinomina(turn) {
+    setRenameTurnModal(turn)
+    setRenameTime(turn.time || turn.name?.split('—')[0]?.trim() || '')
+    const tipo = turn.type || turn.name?.split('—')[1]?.trim() || ''
+    setRenameType(['Maschile', 'Femminile', 'Misto'].find(x => x.toLowerCase() === tipo.toLowerCase()) || 'Misto')
+  }
+
   async function saveRenameTurn() {
-    if (!renameTurnValue.trim()) return
-    const newName = renameTurnValue.trim()
+    const time = renameTime.trim()
+    if (!time) return
+    // `name` si ricostruisce dai due campi invece di restare per conto suo:
+    // è la stessa riga che scrive `saveTurn` quando il turno nasce.
+    const modifiche = { name: `${time} — ${renameType}`, time, type: renameType }
     const { error } = await run(
-      supabase.from('turns').update({ name: newName }).eq('id', renameTurnModal.id),
-      'Nome del turno non salvato.'
+      supabase.from('turns').update(modifiche).eq('id', renameTurnModal.id),
+      'Turno non salvato.'
     )
     if (error) return
-    setTurns(prev => prev.map(t => t.id === renameTurnModal.id ? { ...t, name: newName } : t))
+    setTurns(prev => prev.map(t => t.id === renameTurnModal.id ? { ...t, ...modifiche } : t))
     setRenameTurnModal(null)
   }
 
@@ -345,7 +367,7 @@ export default function Turns({ navigate, goHome, coach }) {
             </button>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</button>
-              <button onClick={() => { setRenameTurnModal(turn); setRenameTurnValue(turn.name) }} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>
+              <button onClick={() => apriRinomina(turn)} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>
               <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '16px', padding: '4px' }}>✕</button>
             </div>
           </div>
@@ -357,12 +379,24 @@ export default function Turns({ navigate, goHome, coach }) {
       {renameTurnModal && (
         <div style={overlay}>
           <div style={sheet}>
-            <div style={sheetTitle}>RINOMINA TURNO</div>
-            <input value={renameTurnValue} onChange={e => setRenameTurnValue(e.target.value)} autoFocus
-              style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }} />
+            <div style={sheetTitle}>MODIFICA TURNO</div>
+            <div style={fieldLabel}>ORARIO</div>
+            <input value={renameTime} onChange={e => setRenameTime(e.target.value)} autoFocus
+              placeholder="es. 13:30" style={inp} />
+            <div style={{ ...fieldLabel, marginTop: '16px' }}>TIPO</div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              {['Maschile', 'Femminile', 'Misto'].map(x => (
+                <button key={x} onClick={() => setRenameType(x)} style={{
+                  flex: 1, padding: '11px 6px', borderRadius: '4px', border: 'none',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '0.5px',
+                  background: renameType === x ? 'var(--accento)' : 'var(--sup-alta)',
+                  color: renameType === x ? '#fff' : 'var(--testo-debole)',
+                }}>{x.toUpperCase()}</button>
+              ))}
+            </div>
 
-            <button onClick={saveRenameTurn} disabled={!renameTurnValue.trim()}
-              style={{ ...bigBtn, marginBottom: '10px', opacity: !renameTurnValue.trim() ? 0.3 : 1 }}>✓ SALVA</button>
+            <button onClick={saveRenameTurn} disabled={!renameTime.trim()}
+              style={{ ...bigBtn, marginBottom: '10px', opacity: !renameTime.trim() ? 0.3 : 1 }}>✓ SALVA</button>
             <button onClick={() => setRenameTurnModal(null)} style={cancelBtn}>Annulla</button>
           </div>
         </div>

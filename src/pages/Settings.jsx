@@ -16,14 +16,26 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   const [coachName, setCoachName] = useState(coach.name || '')
   // La vista e del PROFILO: Sandro la vuole per atleta, Manu no, e dalla
   // credenziale unica in poi i due condividono l'accesso ma non questa scelta.
-  const [vista, setVista] = useState(() => vistaTurni(coach.id))
+  const [vista, setVista] = useState(() => vistaTurni(coach))
   // La scelta dell'emoji compare solo se la colonna esiste davvero: prima
   // della migrazione resta nascosta e ognuno vede la propria iniziale.
   const [emojiDisponibile, setEmojiDisponibile] = useState(false)
   const [salvoEmoji, setSalvoEmoji] = useState(false)
+  const [vistaSuProfilo, setVistaSuProfilo] = useState(false)
 
-  function cambiaVista(valore) {
-    impostaVistaTurni(coach.id, valore)
+  async function cambiaVista(valore) {
+    // Sul profilo quando si puo: cosi la scelta segue il coach su telefono,
+    // tablet e computer invece di doverla riaccendere su ognuno. Finche la
+    // colonna non c'e, resta nel telefono come prima.
+    if (vistaSuProfilo) {
+      const { error } = await run(
+        supabase.from('coaches').update({ vista: valore }).eq('id', coach.id),
+        'Scelta non salvata.')
+      if (error) return
+      aggiornaCoach({ vista: valore })
+    } else {
+      impostaVistaTurni(coach.id, valore)
+    }
     setVista(valore)
     notifyOk(valore === PER_ATLETA
       ? 'I turni si apriranno con l\'elenco delle persone'
@@ -45,8 +57,12 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   const [bioInCorso, setBioInCorso] = useState(false)
 
   useEffect(() => { loadData() }, [coach.id])
+  // Cambiando profilo cambia anche la sua vista.
+  useEffect(() => { setVista(vistaTurni(coach)) }, [coach])
   useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
-  useEffect(() => { capacita().then(c => setEmojiDisponibile(!!c.emojiCoach)) }, [])
+  useEffect(() => {
+    capacita().then(c => { setEmojiDisponibile(!!c.emojiCoach); setVistaSuProfilo(!!c.vistaCoach) })
+  }, [])
 
   /** Tocca la stessa emoji per toglierla: niente pulsante in piu da cercare. */
   async function scegliEmoji(emoji) {

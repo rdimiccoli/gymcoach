@@ -38,7 +38,7 @@ export default function Home({ navigate, goHome, session, coach }) {
   // trova la Home identica a com'era. È del PROFILO, non dell'account: con la
   // credenziale unica Sandro e Manu condividono l'accesso ma non il modo di
   // aprire i turni.
-  const perAtleta = vistaTurni(coach.id) === PER_ATLETA
+  const perAtleta = vistaTurni(coach) === PER_ATLETA
 
   const oggi = new Date()
   const giorno = GIORNI[oggi.getDay()]
