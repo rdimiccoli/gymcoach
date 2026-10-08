@@ -105,8 +105,15 @@
   --colonna: 520px;
 }
 
+/* ── Perché anche l'altezza ─────────────────────────────────────────────
+   Il primo tentativo guardava solo la larghezza, e su un tablet SDRAIATO
+   faceva il danno: 1180x820 con ingrandimento 1,6 lasciava 513px di altezza
+   utile — meno di un telefono — buttando via 350px ai lati. Un tablet in
+   orizzontale è largo ma basso, e ingrandire lì toglie righe invece di
+   darne. Si ingrandisce solo quando c'è anche altezza da spendere. */
+
 /* Tablet in verticale: iPad mini 744, iPad 820, Galaxy Tab 800. */
-@media (min-width: 700px) {
+@media (min-width: 700px) and (min-height: 700px) {
   :root {
     --ingrandimento: 1.3;
     --schermo: calc(100dvh / 1.3);
@@ -114,8 +121,8 @@
   }
 }
 
-/* Computer e tablet in orizzontale. */
-@media (min-width: 1100px) {
+/* Computer veri: larghi E alti. Un tablet sdraiato non arriva qui. */
+@media (min-width: 1100px) and (min-height: 900px) {
   :root {
     --ingrandimento: 1.6;
     --schermo: calc(100dvh / 1.6);
