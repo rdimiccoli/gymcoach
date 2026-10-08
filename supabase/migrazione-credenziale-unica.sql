@@ -50,13 +50,16 @@
 
 -- ═══ PASSO 1 · FOTOGRAFIA DI COM'È ADESSO ═════════════════════════════════
 -- Solo lettura. Segnati questi numeri: alla fine devono essere identici.
-select 'profili coach' as cosa, count(*)::text as quanti from coaches
-union all select 'turni',    count(*)::text from turns
-union all select 'schede',   count(*)::text from cycles
-union all select 'atlete',   count(*)::text from clients
-union all select 'carichi',  count(*)::text from client_loads
-union all select 'note',     count(*)::text from client_notes
-union all select 'turni di ' || coalesce(c.name, c.email),
+--
+-- La colonna «momento» dice PRIMA: serve a non confondere questa tabella con
+-- quella della VERIFICA in fondo, che è uguale in tutto il resto.
+select 'PRIMA' as momento, 'profili coach' as cosa, count(*)::text as quanti from coaches
+union all select 'PRIMA', 'turni',    count(*)::text from turns
+union all select 'PRIMA', 'schede',   count(*)::text from cycles
+union all select 'PRIMA', 'atlete',   count(*)::text from clients
+union all select 'PRIMA', 'carichi',  count(*)::text from client_loads
+union all select 'PRIMA', 'note',     count(*)::text from client_notes
+union all select 'PRIMA', 'turni di ' || coalesce(c.name, c.email),
                  (select count(*) from turns t where t.coach_id = c.id)::text
           from coaches c;
 
@@ -170,13 +173,13 @@ update coaches set nascosto = true where email = 'sandro@esempio.it';
 -- ═══ VERIFICA ═════════════════════════════════════════════════════════════
 -- Gli stessi numeri del PASSO 1. Devono essere IDENTICI: se uno è cambiato,
 -- fermati e ripristina il backup.
-select 'profili coach' as cosa, count(*)::text as quanti from coaches
-union all select 'turni',    count(*)::text from turns
-union all select 'schede',   count(*)::text from cycles
-union all select 'atlete',   count(*)::text from clients
-union all select 'carichi',  count(*)::text from client_loads
-union all select 'note',     count(*)::text from client_notes
-union all select 'turni di ' || coalesce(c.name, c.email),
+select 'DOPO' as momento, 'profili coach' as cosa, count(*)::text as quanti from coaches
+union all select 'DOPO', 'turni',    count(*)::text from turns
+union all select 'DOPO', 'schede',   count(*)::text from cycles
+union all select 'DOPO', 'atlete',   count(*)::text from clients
+union all select 'DOPO', 'carichi',  count(*)::text from client_loads
+union all select 'DOPO', 'note',     count(*)::text from client_notes
+union all select 'DOPO', 'turni di ' || coalesce(c.name, c.email),
                  (select count(*) from turns t where t.coach_id = c.id)::text
           from coaches c;
 
