@@ -198,3 +198,89 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .osso { animation: none; opacity: .6 }
 }
+
+/* ═══ IL MENU ═════════════════════════════════════════════════════════════
+   Su un telefono sta in basso, dove arriva il pollice. Su uno schermo largo
+   e basso — il tablet sdraiato della palestra — diventa una colonna a
+   sinistra: la barra in basso si mangiava 88px degli 820 disponibili mentre
+   ai lati ne restavano cinquecento vuoti.
+
+   Essendo fissa al bordo sinistro esce dal flusso, e il contenuto si riprende
+   quell'altezza senza che nessuna pagina debba cambiare: sta nello spazio che
+   avanza accanto alla colonna centrata. */
+
+.barra-navigazione {
+  background: rgba(10,10,10,0.98);
+  border-top: 1px solid var(--sup-alta);
+  padding: 10px 0 28px;
+  display: flex;
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+
+.voce-navigazione {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Il segno della voce aperta: una linguetta sopra l'icona. */
+.segno-attivo {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  background: var(--accento);
+  border-radius: 0 0 3px 3px;
+}
+
+/* 1000px: ci arriva un tablet sdraiato (1180 o 1280) e qualsiasi computer.
+   Un tablet in piedi (820) resta con la barra in basso, dove l'altezza non
+   manca e il pollice ci arriva meglio. */
+@media (min-width: 1000px) {
+  /* Il menu è fisso al bordo e non occupa spazio nel flusso: senza questo
+     margine la colonna resterebbe centrata sullo schermo intero, e accanto
+     alla barra sembrerebbe spostata a destra. Così si centra in quello che
+     resta. */
+  body { padding-left: 94px; }
+
+  .barra-navigazione {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 94px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+    border-top: none;
+    border-right: 1px solid var(--sup-alta);
+    z-index: 30;
+  }
+
+  .voce-navigazione {
+    flex: none;
+    padding: 14px 6px;
+    gap: 7px;
+  }
+
+  /* In colonna la linguetta va a sinistra, altrimenti segnerebbe il soffitto
+     della voce invece della voce stessa. */
+  .segno-attivo {
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 28px;
+    border-radius: 0 3px 3px 0;
+  }
+}

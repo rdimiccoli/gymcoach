@@ -1,4 +1,22 @@
 import { IconaHome, IconaSchede, IconaTurni, IconaAtleti, IconaImpostazioni } from './Icone'
+
+/**
+ * Il menu dell'app.
+ *
+ * Su un telefono sta in basso, dove arriva il pollice senza cambiare presa.
+ * Su un tablet SDRAIATO — che è come lo tengono in palestra — quella
+ * posizione costa cara: lo schermo è già basso di suo (820px), la barra se ne
+ * mangia 88, e intanto ai lati restano cinquecento pixel vuoti. Lì diventa
+ * una colonna di sinistra: ridà al contenuto l'altezza che gli serve e occupa
+ * spazio che era sprecato.
+ *
+ * Il passaggio avviene in `index.css`, con una media query sulle classi qui
+ * sotto: è l'unico modo di cambiare impaginazione a seconda dello schermo,
+ * perché gli stili scritti dentro il JSX non sanno quanto è largo.
+ *
+ * Il nome del file resta BottomNav perché è richiamato in dieci pagine e
+ * rinominarlo sarebbe un diff enorme per zero sostanza.
+ */
 export default function BottomNav({ active, navigate, goHome }) {
   const items = [
     { id: 'home',     Icona: IconaHome,          label: 'HOME',    action: goHome },
@@ -8,26 +26,10 @@ export default function BottomNav({ active, navigate, goHome }) {
     { id: 'settings', Icona: IconaImpostazioni,  label: 'IMPOST.', action: () => navigate('settings') },
   ]
   return (
-    <div style={{
-      background: 'rgba(10,10,10,0.98)',
-      borderTop: '1px solid var(--sup-alta)',
-      padding: '10px 0 28px',
-      display: 'flex',
-      justifyContent: 'space-around',
-      flexShrink: 0,
-    }}>
+    <div className="barra-navigazione">
       {items.map(item => (
-        <div key={item.id} onClick={item.action} style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          gap: '5px', padding: '4px 8px', cursor: 'pointer', position: 'relative',
-          flex: 1, minWidth: 0,
-        }}>
-          {active === item.id && (
-            <div style={{
-              position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-              width: '28px', height: '3px', background: 'var(--accento)', borderRadius: '0 0 3px 3px'
-            }} />
-          )}
+        <div key={item.id} onClick={item.action} className="voce-navigazione">
+          {active === item.id && <div className="segno-attivo" />}
           <div style={{ color: active === item.id ? 'var(--accento)' : '#4a4643', display: 'flex', lineHeight: 1 }}>
             <item.Icona />
           </div>
