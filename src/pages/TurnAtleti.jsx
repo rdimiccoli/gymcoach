@@ -7,7 +7,9 @@ import { capacita } from '../lib/capacita'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
+import { useSchermoLargo } from '../lib/schermo'
 import { ScheletroElenco } from '../components/Scheletro'
+import TurnDetail from './TurnDetail'
 import OspitiDelGiorno from '../components/OspitiDelGiorno'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -33,6 +35,11 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   const [righe, setRighe] = useState([])
   const [schede, setSchede] = useState([])
   const [loading, setLoading] = useState(true)
+  // Sul tablet sdraiato le due cose stanno una accanto all'altra invece che
+  // una dentro l'altra: si tocca un nome a sinistra e a destra compare la sua
+  // seduta, senza perdere di vista l'elenco e senza scorrere su e giù.
+  const affiancato = useSchermoLargo()
+  const [aperta, setAperta] = useState(null)
 
   useEffect(() => { carica() }, [turn.id])
 
@@ -67,11 +74,16 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
       g.persone.forEach(persona => elenco.push({ persona, scheda: g.scheda, ospite: true }))
     }
     setRighe(elenco)
+    // Se la persona aperta a destra non c'è più — turno cambiato, ospite
+    // tolto — il pannello va chiuso, o mostrerebbe una seduta di nessuno.
+    setAperta(prec => prec && elenco.find(r =>
+      r.persona.id === prec.persona.id && r.scheda?.id === prec.scheda?.id) || null)
     setLoading(false)
   }
 
   function apri(riga) {
     if (!riga.scheda) return
+    if (affiancato) { setAperta(riga); return }
     navigate('turn', {
       turn,
       cycle: riga.scheda,
@@ -86,7 +98,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   const piuDiUnaScheda = schede.length > 1
 
   return (
-    <div style={page}>
+    <div style={affiancato ? { ...page, maxWidth: 'var(--colonna-larga)' } : page}>
       <TopBar title={turn.name} subtitle={`${righe.length} ${righe.length === 1 ? 'persona' : 'persone'}`} onBack={goBack} />
 
       {/* Il giorno si sceglie qui, sul turno: in un corso di gruppo è lo
@@ -102,7 +114,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
         ))}
       </div>
 
-      <div style={scroll}>
+      <div style={affiancato ? affiancamento : { display: 'contents' }}>
+      <div style={affiancato ? colonnaElenco : scroll}>
         {loading && <ScheletroElenco righe={6} />}
 
         {!loading && righe.length === 0 && (
@@ -119,7 +132,21 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
               key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}
               type="button"
               onClick={() => apri(riga)}
-              style={{ ...rigaPersona, cursor: apribile ? 'pointer' : 'default', opacity: apribile ? 1 : 0.6 }}
+              style={{
+                ...rigaPersona,
+                cursor: apribile ? 'pointer' : 'default',
+                opacity: apribile ? 1 : 0.6,
+                // Affiancato, la riga aperta a destra resta accesa a sinistra:
+                // è l'unico modo di sapere di chi sono i carichi che si stanno
+                // segnando senza rileggere il nome ogni volta.
+                // Il bordo si accende con un'ombra interna invece di
+                // riscrivere `border`: mescolare la forma breve e quella
+                // lunga della stessa proprieta fa inciampare React a ogni
+                // ridisegno, e lo dice nei messaggi.
+                ...(aperta && aperta.persona.id === riga.persona.id && aperta.scheda?.id === riga.scheda?.id
+                  ? { background: 'var(--acc-riempimento)', boxShadow: 'inset 0 0 0 1px var(--acc-bordo-forte)' }
+                  : null),
+              }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
@@ -168,13 +195,58 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
         <div style={{ height: '20px' }} />
       </div>
 
+      {/* Il pannello di destra. La `key` è la persona: senza, aprendo un'altra
+          riga React riuserebbe la stessa schermata e si vedrebbero i carichi
+          di prima finché i nuovi non arrivano. */}
+      {affiancato && (
+        <div style={colonnaScheda}>
+          {aperta ? (
+            <TurnDetail
+              key={`${aperta.persona.id}-${aperta.scheda.id}`}
+              incorporato
+              navigate={navigate} goBack={() => setAperta(null)} goHome={goHome}
+              params={{ turn, cycle: aperta.scheda, soloAtleti: [aperta.persona.id], giorno: day }}
+            />
+          ) : (
+            <div style={invito}>
+              Tocca una persona a sinistra<br />
+              <span style={{ fontSize: '14px', color: 'var(--testo-debole)' }}>
+                qui compare la sua seduta di oggi
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      </div>
+
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
     </div>
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
+
+// ── Affiancato ────────────────────────────────────────────────────────────
+// Due colonne che si dividono l'altezza rimasta. `minHeight: 0` su entrambe,
+// altrimenti un figlio che scorre fa crescere la colonna invece di scorrere
+// dentro di sé, e la pagina diventa più alta dello schermo.
+const affiancamento = { flex: 1, display: 'flex', minHeight: 0 }
+
+const colonnaElenco = {
+  width: '38%', minWidth: '260px', maxWidth: '360px', flexShrink: 0,
+  overflowY: 'auto', padding: '10px 14px', minHeight: 0,
+  borderRight: '1px solid var(--sup-alta)',
+  WebkitOverflowScrolling: 'touch', touchAction: 'pan-y',
+}
+
+const colonnaScheda = { flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }
+
+const invito = {
+  margin: 'auto', textAlign: 'center', color: 'var(--testo-forte)',
+  fontSize: '17px', lineHeight: 1.6, padding: '24px',
+  fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px',
+}
 
 const rigaPersona = {
   ...comePulsante,

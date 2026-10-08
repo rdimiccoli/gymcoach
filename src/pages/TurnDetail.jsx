@@ -18,7 +18,14 @@ import BottomNav from '../components/BottomNav'
 
 
 
-export default function TurnDetail({ navigate, goBack, goHome, params }) {
+/**
+ * `incorporato`: la schermata sta dentro il pannello di destra di un'altra
+ * pagina invece di essere la pagina. In quel caso non disegna la propria
+ * barra del titolo né il proprio menu — ce li ha già la pagina che la
+ * contiene — e il giorno glielo detta lei, perché è una scelta del turno e
+ * non della singola persona.
+ */
+export default function TurnDetail({ navigate, goBack, goHome, params, incorporato = false }) {
   // `soloAtleti`: id delle persone da mostrare, invece di tutto il turno.
   // Serve in due casi — gli ospiti Silver venuti da un altro turno (e allora
   // `cycle` è la LORO scheda, `turn` è il turno che li ospita) e la singola
@@ -27,6 +34,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
   // Il giorno può arrivare da chi ci manda qui: sceglierlo sull'elenco del
   // turno e ritrovare il Giorno 1 aprendo una persona sarebbe un tocco perso.
   const [day, setDay] = useState(params.giorno || 1)
+  // Incorporata, il giorno lo sceglie il turno: seguirlo invece di tenerne
+  // uno proprio, o toccare GIORNO 2 nell'elenco non cambierebbe il pannello.
+  useEffect(() => { if (incorporato && params.giorno) setDay(params.giorno) }, [incorporato, params.giorno])
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
   // loads[clientId_exId_week] = kg
@@ -273,24 +283,47 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
 
   const groups = raggruppaEsercizi(exercises)
 
+  // Incorporata su una persona sola, il pannello parla già di lei: ripeterne
+  // il nome sotto ognuno dei sei esercizi è la stessa riga scritta sei volte.
+  // Si dice una volta in cima, e lì resta anche scorrendo.
+  const unaPersona = incorporato && soloAtleti?.length === 1 && clients.length === 1 ? clients[0] : null
+
   // Un turno senza scheda può comunque ospitare un Silver: la persona porta
   // la sua, non usa quella del turno.
   if (!cycle) return (
-    <div style={page}>
-      <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />
+    <div style={incorporato ? pannello : page}>
+      {!incorporato && <TopBar title={turn.name} subtitle="Nessuna scheda attiva" onBack={goBack} />}
       <div style={scroll}>
         <div style={{ color: 'var(--testo-debole)', fontSize: '14px', textAlign: 'center', padding: '32px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
           Nessuna scheda attiva.<br /><span style={{ fontSize: '13px' }}>Vai in Schede per crearne una.</span>
         </div>
-        <OspitiDelGiorno turn={turn} navigate={navigate} />
+        {!incorporato && <OspitiDelGiorno turn={turn} navigate={navigate} />}
       </div>
-      <BottomNav active="home" navigate={navigate} goHome={goHome} />
+      {!incorporato && <BottomNav active="home" navigate={navigate} goHome={goHome} />}
     </div>
   )
 
   return (
-    <div style={page}>
-      <TopBar title={turn.name} subtitle={sottotitolo || cycle.name} onBack={goBack} />
+    <div style={incorporato ? pannello : page}>
+      {!incorporato && <TopBar title={turn.name} subtitle={sottotitolo || cycle.name} onBack={goBack} />}
+      {/* I giorni e la settimana stanno già in cima all'elenco di sinistra:
+          ripeterli qui accanto sarebbe la stessa cosa scritta due volte. */}
+      {unaPersona && (
+        <button type="button" onClick={() => navigate('athlete-profile', { client: unaPersona })}
+          style={testataPersona}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
+              {unaPersona.surname} {unaPersona.name}
+            </span>
+            <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
+              {cycle.name} · settimana {settimana} di 6
+            </span>
+          </span>
+          <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
+        </button>
+      )}
+
+      {!incorporato && (<>
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[1,2,3].map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
@@ -321,6 +354,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
           ))}
         </span>
       </div>
+      </>)}
 
       <div style={scroll}>
         {loading && <ScheletroElenco righe={4} />}
@@ -389,6 +423,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                       <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
+                            {/* Con una persona sola il nome sta già in cima al
+                                pannello: qui sarebbe la sesta ripetizione. */}
+                            {!unaPersona && (<>
                             {/* Il nome si tocca e porta alla scheda della persona.
                                 Prima si leggeva «Vincenzo Bailon». L'elenco è
                                 ordinato per cognome — come ovunque nell'app — ma
@@ -402,6 +439,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params }) {
                               {client.surname} {client.name}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
+                            </>)}
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
                               ? <div style={{ color: 'var(--circuito)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginTop: '3px' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</div>
@@ -686,7 +724,18 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+// Incorporata: riempie il riquadro che le danno, senza decidere da sé quanto
+// è alta o larga. `relative` resta, perché il pannello dei carichi si
+// posiziona rispetto a lei.
+const testataPersona = {
+  ...comePulsante,
+  display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+  padding: '12px 16px', flexShrink: 0, textAlign: 'left', cursor: 'pointer',
+  background: 'var(--acc-fondo)', borderBottom: '1px solid var(--acc-riempimento)',
+}
+
+const pannello = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
 const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }

@@ -103,6 +103,9 @@
      Su un telefono e su un tablet non si sente: lo spazio disponibile,
      già diviso per l'ingrandimento, resta sotto questa soglia. */
   --colonna: 520px;
+  /* Il turno affiancato ha due colonne vere da riempire, non righe da
+     stirare: lì il limite stretto sarebbe uno spreco. Lo usa solo lui. */
+  --colonna-larga: 1100px;
 }
 
 /* ── Perché anche l'altezza ─────────────────────────────────────────────
@@ -139,12 +142,10 @@ html {
   background: #0a0a0a;
 }
 
-#root {
-  height: var(--schermo);
-  background: #0a0a0a;
-  max-width: var(--colonna);
-  margin-inline: auto;
-}
+/* Il limite di larghezza NON sta qui ma su ogni pagina: così una schermata
+   che ha davvero qualcosa da fare con lo spazio — il turno affiancato — può
+   essere più larga delle altre senza che la radice gliela tagli. */
+#root { height: var(--schermo); background: #0a0a0a; }
 
 body {
   font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;

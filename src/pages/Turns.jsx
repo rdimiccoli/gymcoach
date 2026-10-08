@@ -420,7 +420,7 @@ export default function Turns({ navigate, goHome, coach }) {
   )
 }
 
-const page = { display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
+const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const distintivoSilver = {
   marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
   fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
