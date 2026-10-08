@@ -118,20 +118,42 @@ direttamente `resetPasswordForEmail`, che non rivela se l'indirizzo esiste.
 
 ## ⚠️ Cosa resta da fare
 
-### 1. Chiudere le registrazioni pubbliche ← **il più importante**
+### 1. Chiudere le registrazioni pubbliche — ✅ VERIFICATO SPENTO l'8/10/2026
 
-Non è SQL, è un interruttore, e non è verificabile dai cataloghi: devi guardarlo
-tu. L'app crea automaticamente una riga in `coaches` per qualsiasi utente
-autenticato che non ne abbia una. Con le RLS attuali un estraneo **non** vedrebbe
-le atlete di nessuno, ma avrebbe comunque un account dentro l'app e accesso in
-scrittura al catalogo esercizi condiviso.
+Non è SQL, è un interruttore, e non è verificabile dai cataloghi: va guardato a
+mano. Sta in **Authentication → Sign In / Providers**, in cima alla pagina,
+SOPRA l'elenco dei provider — non dentro la scheda Email, dove lo cercavamo.
 
-Supabase → **Authentication → Sign In / Providers → Email**:
-
-- **Allow new users to sign up** → **OFF**
+- **Allow new users to sign up** → **OFF** ✅ controllato da Ruggiero l'8/10/2026
 - **Confirm email** → **ON**
 
 I nuovi coach si creano da **Authentication → Users → Add user**.
+
+⚠️ **Da ricontrollare ogni volta che si tocca la configurazione di Auth.**
+Dalla credenziale unica in poi questo interruttore non è più «il più
+importante»: è l'**unico**. Prima, con le RLS che legavano ogni riga al suo
+coach, un estraneo che si registrava non vedeva le atlete di nessuno. Adesso la
+regola è «chi è entrato vede tutto», quindi chiunque riesca a crearsi un
+account legge turni, atlete e carichi della palestra.
+
+Se un giorno c'è il dubbio che sia stato riacceso, la prova che non mente è
+chiedere al server di creare un utente:
+
+```
+curl -X POST 'https://<progetto>.supabase.co/auth/v1/signup' \
+  -H "apikey: <chiave anon>" -H "Content-Type: application/json" \
+  -d '{"email":"prova@example.com","password":"unaPasswordLunga123"}'
+```
+
+Deve rispondere **«Signups not allowed for this instance»**. Se invece crea
+l'utente, le registrazioni sono aperte: va chiuso l'interruttore e cancellato
+quell'utente da Authentication → Users.
+
+### 1b. La lunghezza minima della password — ☐ da decidere
+
+È a **6 caratteri**. Con una credenziale sola condivisa fra i due coach sono
+pochi: 10 o 12 sarebbe più sensato. Alzarla non tocca le password esistenti,
+vale solo da quando si cambia.
 
 ### 2. Indici sulle foreign key
 
@@ -195,7 +217,8 @@ severo del database.
 | 2 | Vincolo unico su `client_loads` | — | ✅ già a posto |
 | 3 | Cascate sulle foreign key | — | ✅ già a posto |
 | 4 | Recupero password | codice | ✅ corretto (Blocco 2) |
-| 5 | **Registrazione pubblica OFF** | Authentication | 🔴 **da fare — ora è l'unica barriera rimasta** |
+| 5 | **Registrazione pubblica OFF** | Authentication | ✅ verificato spento 8/10/2026 — **l'unica barriera rimasta, ricontrollare a ogni modifica di Auth** |
+| 5b | Lunghezza minima password (ora 6) | Authentication | ☐ da decidere |
 | 6 | Indici sulle foreign key | SQL Editor | ☐ da fare |
 | 7 | Policy `TO authenticated` | SQL Editor | ☐ facoltativo, senza fretta |
 | 8 | Decidere cosa fare di `client_notes` | — | ☐ da decidere |
