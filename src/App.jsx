@@ -178,20 +178,28 @@ export default function App() {
   // e l'app si comporta esattamente come prima. È questo che permette di
   // pubblicare l'app prima o dopo la migrazione, senza un istante in cui è
   // rotta.
+  // Rileggere i profili serve anche dopo che un coach ne ha aggiunto uno
+  // dalle impostazioni: lo passiamo giù alle pagine come `ricaricaProfili`.
+  async function caricaProfili(account) {
+    const { data } = await run(
+      supabase.from('coaches').select('*').order('name'),
+      'Impossibile caricare i profili coach.'
+    )
+    const elenco = data || []
+    setCoaches(elenco)
+    // La scelta già fatta non si tocca: aggiungere un collega non deve
+    // spostare di profilo chi sta lavorando.
+    setCoachId(prec => prec && elenco.some(c => c.id === prec)
+      ? prec
+      : decidiCoach(elenco, coachScelto(account)).coach?.id || null)
+    return elenco
+  }
+
   useEffect(() => {
     const account = session?.user?.id
     if (!account) return
     let vivo = true
-    ;(async () => {
-      const { data } = await run(
-        supabase.from('coaches').select('*').order('name'),
-        'Impossibile caricare i profili coach.'
-      )
-      if (!vivo) return
-      const elenco = data || []
-      setCoaches(elenco)
-      setCoachId(decidiCoach(elenco, coachScelto(account)).coach?.id || null)
-    })()
+    ;(async () => { const e = await caricaProfili(account); if (!vivo) return e })()
     return () => { vivo = false }
   }, [session?.user?.id])
 
@@ -295,6 +303,7 @@ export default function App() {
     // deve aggiornarsi, altrimenti la Home continua a salutare col vecchio.
     aggiornaCoach: patch =>
       setCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, ...patch } : c)),
+    ricaricaProfili: () => caricaProfili(session.user.id),
   }
 
   const pages = {

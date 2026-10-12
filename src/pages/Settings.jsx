@@ -10,7 +10,7 @@ import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function Settings({ navigate, goHome, session, coach, cambiaCoach, aggiornaCoach }) {
+export default function Settings({ navigate, goHome, session, coach, cambiaCoach, aggiornaCoach, ricaricaProfili }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState(coach.name || '')
@@ -22,6 +22,8 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   const [emojiDisponibile, setEmojiDisponibile] = useState(false)
   const [salvoEmoji, setSalvoEmoji] = useState(false)
   const [vistaSuProfilo, setVistaSuProfilo] = useState(false)
+  const [nuovoCoach, setNuovoCoach] = useState('')
+  const [coachAggiunto, setCoachAggiunto] = useState('')
 
   async function cambiaVista(valore) {
     // Sul profilo quando si puo: cosi la scelta segue il coach su telefono,
@@ -129,6 +131,33 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
     setView('main')
   }
 
+  /**
+   * Aggiunge un COLLEGA, cioè un profilo — non un accesso.
+   *
+   * La credenziale resta una sola: il coach nuovo entra con quella e tocca il
+   * suo nome in CHI SEI?. Prima un profilo si creava solo dal pannello di
+   * Supabase, e ogni collega nuovo passava da chi gestisce l'app.
+   *
+   * L'identificativo lo genera il database. L'email non si chiede: con un
+   * accesso solo non vuole più dire niente, e chiederla sarebbe una domanda
+   * senza risposta giusta.
+   */
+  async function salvaNuovoCoach() {
+    const nome = nuovoCoach.trim()
+    if (!nome) return
+    setSaving(true)
+    const { data, error } = await run(
+      supabase.from('coaches').insert({ name: nome }).select().single(),
+      'Profilo non creato. Se il problema resta, va lanciata la migrazione «aggiungi coach».'
+    )
+    setSaving(false)
+    if (error || !data) return
+    await ricaricaProfili?.()
+    setNuovoCoach('')
+    setCoachAggiunto(nome)
+    notifyOk(`${nome} può entrare: trova il suo nome all'accesso`)
+  }
+
   async function savePassword() {
     setPwdError('')
     if (newPwd.length < 6) { setPwdError('La password deve essere di almeno 6 caratteri.'); return }
@@ -161,6 +190,46 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
         <button onClick={saveCoachName} disabled={saving || !coachName.trim()} style={{ ...bigBtn, marginTop: '20px' }}>
           {saving ? 'SALVATAGGIO...' : '✓ SALVA'}
         </button>
+      </div>
+      <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+    </div>
+  )
+
+  // ── AGGIUNGI COACH ────────────────────────────────────────────────────────
+  if (view === 'addCoach') return (
+    <div style={page}>
+      <TopBar title="AGGIUNGI COACH" onBack={() => { setView('main'); setCoachAggiunto(''); setNuovoCoach('') }} />
+      <div style={scroll}>
+        <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
+          Il coach nuovo entra con <strong>la stessa password</strong> che usate voi,
+          e all'accesso tocca il suo nome. Non serve creargli niente altro.
+        </div>
+
+        <div style={fieldLabel}>NOME DEL COACH</div>
+        <input value={nuovoCoach} onChange={e => setNuovoCoach(e.target.value)}
+          placeholder="es. Giulia" style={inp} autoFocus />
+        <button onClick={salvaNuovoCoach} disabled={saving || !nuovoCoach.trim()}
+          style={{ ...bigBtn, marginTop: '20px', opacity: !nuovoCoach.trim() ? 0.3 : 1 }}>
+          {saving ? 'CREO IL PROFILO...' : '✓ AGGIUNGI'}
+        </button>
+
+        {coachAggiunto && (
+          <div style={{ marginTop: '20px', padding: '16px', borderRadius: '8px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', color: 'var(--accento)', letterSpacing: '1px', marginBottom: '6px' }}>
+              ORA {coachAggiunto.toUpperCase()} PUÒ ENTRARE
+            </div>
+            <div style={{ color: 'var(--testo-forte)', fontSize: '14px', lineHeight: 1.5 }}>
+              Basta che apra l'app, entri con la password della palestra e tocchi
+              il suo nome. Parte senza turni: li crea da TURNI.
+            </div>
+          </div>
+        )}
+
+        <div style={{ color: 'var(--testo-debole)', fontSize: '13px', lineHeight: 1.5, marginTop: '22px' }}>
+          Un nome sbagliato si corregge entrando in quel profilo e usando MODIFICA.
+          Un profilo non si può eliminare da qui: dietro ci sono turni e atlete,
+          e non deve poterli staccare un tocco di troppo.
+        </div>
       </div>
       <BottomNav active="settings" navigate={navigate} goHome={goHome} />
     </div>
@@ -275,6 +344,26 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
             </div>
           </div>
         )}
+
+        {/* Aggiungi coach. Sta accanto al cambio profilo perché sono la
+            stessa famiglia di cose: chi c'è, e con chi sto lavorando. Prima un
+            collega nuovo lo creava a mano chi gestisce l'app, dal pannello di
+            Supabase: adesso i coach fanno da soli. */}
+        <button onClick={() => setView('addCoach')} style={{
+          width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)',
+          borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
+          display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
+              AGGIUNGI COACH
+            </div>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
+              Entra con la stessa password e all'accesso tocca il suo nome.
+            </div>
+          </div>
+          <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
+        </button>
 
         {/* Cambia coach — compare solo se i profili sono più di uno.
             Sta qui e non in un posto più comodo apposta: dal 29/9/2026
