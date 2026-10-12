@@ -5,8 +5,8 @@
  * devono poter riconoscere il proprio al volo, anche senza leggere. Un segno
  * colorato si vede prima di una parola.
  *
- * Chi sceglie un'emoji vede quella; chi non sceglie niente vede la propria
- * iniziale. Così funziona dal primo istante, senza che nessuno debba fare
+ * Chi carica una foto vede quella; chi sceglie un'emoji vede l'emoji; chi non
+ * fa niente vede la propria iniziale. Così funziona dal primo istante, senza che nessuno debba fare
  * niente, e diventa personale quando ne hanno voglia.
  *
  * Perché non le icone disegnate come quelle della barra: lì le emoji erano
@@ -29,6 +29,10 @@ export const EMOJI_COACH = ['💪', '🏋️', '🥊', '🔥', '⭐', '🎯', '�
  * si cade sull'iniziale, che è esattamente il comportamento voluto.
  */
 export function avatarDi(coach) {
+  // La foto vince su tutto: è la cosa che si riconosce più in fretta.
+  const foto = (coach?.foto || '').trim()
+  if (foto) return { tipo: 'foto', valore: foto }
+
   const emoji = (coach?.emoji || '').trim()
   if (emoji) return { tipo: 'emoji', valore: emoji }
 

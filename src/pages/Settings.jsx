@@ -6,6 +6,7 @@ import { biometriaDisponibile, bloccoAttivo, attivaBlocco, disattivaBlocco, MINU
 import { vistaTurni, impostaVistaTurni, PER_ATLETA, PER_ESERCIZIO } from '../lib/vista'
 import { capacita } from '../lib/capacita'
 import { EMOJI_COACH } from '../lib/avatarCoach'
+import { caricaFoto, togliFoto } from '../lib/foto'
 import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -22,6 +23,8 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   const [emojiDisponibile, setEmojiDisponibile] = useState(false)
   const [salvoEmoji, setSalvoEmoji] = useState(false)
   const [vistaSuProfilo, setVistaSuProfilo] = useState(false)
+  const [fotoDisponibile, setFotoDisponibile] = useState(false)
+  const [salvoFoto, setSalvoFoto] = useState(false)
   const [nuovoCoach, setNuovoCoach] = useState('')
   const [coachAggiunto, setCoachAggiunto] = useState('')
 
@@ -63,7 +66,11 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   useEffect(() => { setVista(vistaTurni(coach)) }, [coach])
   useEffect(() => { biometriaDisponibile().then(setBioDisponibile) }, [])
   useEffect(() => {
-    capacita().then(c => { setEmojiDisponibile(!!c.emojiCoach); setVistaSuProfilo(!!c.vistaCoach) })
+    capacita().then(c => {
+      setEmojiDisponibile(!!c.emojiCoach)
+      setVistaSuProfilo(!!c.vistaCoach)
+      setFotoDisponibile(!!c.fotoCoach)
+    })
   }, [])
 
   /** Tocca la stessa emoji per toglierla: niente pulsante in piu da cercare. */
@@ -142,6 +149,33 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
    * accesso solo non vuole più dire niente, e chiederla sarebbe una domanda
    * senza risposta giusta.
    */
+  async function scegliFoto(file) {
+    if (!file) return
+    setSalvoFoto(true)
+    const { percorso, errore } = await caricaFoto(file, coach.id, coach.foto)
+    if (errore) { setSalvoFoto(false); notifyError(errore); return }
+    const { error } = await run(
+      supabase.from('coaches').update({ foto: percorso }).eq('id', coach.id),
+      'Foto caricata ma non collegata al profilo.')
+    setSalvoFoto(false)
+    if (error) return
+    aggiornaCoach({ foto: percorso })
+    notifyOk('Foto aggiornata')
+  }
+
+  async function rimuoviFoto() {
+    setSalvoFoto(true)
+    const { errore } = await togliFoto(coach.foto)
+    if (errore) { setSalvoFoto(false); notifyError(errore); return }
+    const { error } = await run(
+      supabase.from('coaches').update({ foto: null }).eq('id', coach.id),
+      'Foto tolta ma il profilo non si è aggiornato.')
+    setSalvoFoto(false)
+    if (error) return
+    aggiornaCoach({ foto: null })
+    notifyOk('Foto tolta')
+  }
+
   async function salvaNuovoCoach() {
     const nome = nuovoCoach.trim()
     if (!nome) return
@@ -190,6 +224,112 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
         <button onClick={saveCoachName} disabled={saving || !coachName.trim()} style={{ ...bigBtn, marginTop: '20px' }}>
           {saving ? 'SALVATAGGIO...' : '✓ SALVA'}
         </button>
+      </div>
+      <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+    </div>
+  )
+
+  // ── LA TUA IMMAGINE ───────────────────────────────────────────────────────
+  // Foto ed emoji stanno insieme perché sono la stessa domanda — «cosa si
+  // vede accanto al mio nome» — e tenerle in due posti diversi obbligherebbe
+  // a ricordare dove sta quale.
+  if (view === 'immagine') return (
+    <div style={page}>
+      <TopBar title="LA TUA IMMAGINE" onBack={() => setView('main')} />
+      <div style={scroll}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+          <AvatarCoach coach={coach} size={110} />
+          <div style={{ color: 'var(--testo-debole)', fontSize: '13px' }}>
+            Compare accanto al tuo nome quando si sceglie il coach.
+          </div>
+        </div>
+
+        {fotoDisponibile && (
+          <>
+            <div style={fieldLabel}>UNA TUA FOTO</div>
+            <label style={{ ...bigBtn, display: 'block', textAlign: 'center', opacity: salvoFoto ? 0.5 : 1, marginBottom: '10px' }}>
+              {salvoFoto ? 'CARICO...' : coach.foto ? '📷 CAMBIA LA FOTO' : '📷 SCEGLI UNA FOTO'}
+              <input type="file" accept="image/*" disabled={salvoFoto}
+                onChange={e => { scegliFoto(e.target.files?.[0]); e.target.value = '' }}
+                style={{ display: 'none' }} />
+            </label>
+            {coach.foto && (
+              <button onClick={rimuoviFoto} disabled={salvoFoto} style={{
+                width: '100%', background: 'transparent', border: '1px solid var(--bordo)',
+                borderRadius: '4px', padding: '13px', color: 'var(--testo-medio)',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
+                fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
+              }}>TOGLI LA FOTO</button>
+            )}
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', lineHeight: 1.4, marginTop: '8px' }}>
+              La foto viene rimpicciolita sul telefono prima di partire: resta leggera
+              anche col wifi della palestra.
+            </div>
+          </>
+        )}
+
+        {emojiDisponibile && (
+          <>
+            <div style={{ ...fieldLabel, marginTop: '26px' }}>
+              {coach.foto ? 'OPPURE UN\'EMOJI, SE TOGLI LA FOTO' : 'OPPURE UN\'EMOJI'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {EMOJI_COACH.map(e => {
+                const scelta = coach.emoji === e
+                return (
+                  <button key={e} type="button" disabled={salvoEmoji}
+                    onClick={() => scegliEmoji(e)}
+                    aria-label={scelta ? `${e}, scelta` : e}
+                    style={{
+                      width: '46px', height: '46px', borderRadius: '50%', fontSize: '24px', lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: scelta ? 'var(--acc-riempimento-forte)' : 'var(--sup-alta)',
+                      border: `1px solid ${scelta ? 'var(--accento)' : 'transparent'}`,
+                      opacity: salvoEmoji ? 0.5 : 1, cursor: 'pointer', padding: 0,
+                    }}>{e}</button>
+                )
+              })}
+            </div>
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', lineHeight: 1.4, marginTop: '10px' }}>
+              Tocca quella che hai già per toglierla e tornare alla tua iniziale.
+            </div>
+          </>
+        )}
+      </div>
+      <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+    </div>
+  )
+
+  // ── COME SI APRONO I TURNI ────────────────────────────────────────────────
+  if (view === 'vista') return (
+    <div style={page}>
+      <TopBar title="COME SI APRONO I TURNI" onBack={() => setView('main')} />
+      <div style={scroll}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          {[[PER_ESERCIZIO, 'PER ESERCIZIO'], [PER_ATLETA, 'PER ATLETA']].map(([valore, etichetta]) => {
+            const attiva = vista === valore
+            return (
+              <button key={valore} type="button" onClick={() => cambiaVista(valore)} style={{
+                flex: 1, padding: '14px 8px', borderRadius: '6px', cursor: 'pointer',
+                background: attiva ? 'var(--accento)' : 'var(--sup-alta)',
+                border: `1px solid ${attiva ? 'var(--accento)' : 'var(--bordo)'}`,
+                color: attiva ? '#fff' : 'var(--testo-medio)',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px',
+                fontWeight: '800', letterSpacing: '1px',
+              }}>{etichetta}</button>
+            )
+          })}
+        </div>
+        <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.55 }}>
+          {vista === PER_ATLETA
+            ? 'Tocchi il turno e vedi l\'elenco delle persone. Tocchi una persona e si apre la sua scheda. Comodo se nello stesso turno seguono schede diverse.'
+            : 'Tocchi il turno e vedi un esercizio alla volta, con sotto tutte le persone che lo fanno. Comodo se seguono tutti la stessa scheda.'}
+        </div>
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', lineHeight: 1.45, marginTop: '16px' }}>
+          {vistaSuProfilo
+            ? 'Vale solo per te, su tutti i tuoi dispositivi.'
+            : 'Vale solo per te, e solo su questo dispositivo.'}
+        </div>
       </div>
       <BottomNav active="settings" navigate={navigate} goHome={goHome} />
     </div>
@@ -313,98 +453,44 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
           </div>
         </div>
 
-        {/* La tua immagine — compare solo dopo la migrazione che aggiunge la
-            colonna. Prima resta nascosta e nel cerchio c'è l'iniziale, che è
-            già una risposta sensata e non un buco da riempire. */}
-        {emojiDisponibile && (
-          <div style={{ background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
-              LA TUA IMMAGINE
-            </div>
-            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', marginBottom: '12px', lineHeight: 1.4 }}>
-              Compare accanto al tuo nome quando si sceglie il coach.
-              Tocca quella che hai già per toglierla e tornare alla tua iniziale.
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {EMOJI_COACH.map(e => {
-                const scelta = coach.emoji === e
-                return (
-                  <button key={e} type="button" disabled={salvoEmoji}
-                    onClick={() => scegliEmoji(e)}
-                    aria-label={scelta ? `${e}, scelta` : e}
-                    style={{
-                      width: '46px', height: '46px', borderRadius: '50%', fontSize: '24px', lineHeight: 1,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: scelta ? 'var(--acc-riempimento-forte)' : 'var(--sup-alta)',
-                      border: `1px solid ${scelta ? 'var(--accento)' : 'transparent'}`,
-                      opacity: salvoEmoji ? 0.5 : 1, cursor: 'pointer', padding: 0,
-                    }}>{e}</button>
-                )
-              })}
-            </div>
-          </div>
+        {/* ── Le righe ─────────────────────────────────────────────────
+            Prima qui c'era una pila di scatole, una per funzione, ognuna con
+            il suo titolo, la sua spiegazione e i suoi pulsanti: cresciuta
+            aggiungendone una alla volta, era diventata illeggibile.
+
+            Adesso sono righe tutte uguali sotto tre titoletti, e ogni riga
+            dice a destra come sta messa adesso. Le cose ingombranti — la
+            griglia delle emoji, la scelta della vista — sono andate ognuna
+            nella sua schermata, dove hanno lo spazio per spiegarsi. */}
+
+        <div style={titoloSezione}>IL TUO PROFILO</div>
+        {(emojiDisponibile || fotoDisponibile) && (
+          <Riga etichetta="La tua immagine"
+            valore={coach.foto ? 'Foto' : coach.emoji ? coach.emoji : 'Iniziale'}
+            onClick={() => setView('immagine')} />
         )}
+        <Riga etichetta="Nome visualizzato" valore={coach.name}
+          onClick={() => setView('editName')} />
+        <Riga etichetta="Come si aprono i turni"
+          valore={vista === PER_ATLETA ? 'Per atleta' : 'Per esercizio'}
+          onClick={() => setView('vista')} />
 
-        {/* Aggiungi coach. Sta accanto al cambio profilo perché sono la
-            stessa famiglia di cose: chi c'è, e con chi sto lavorando. Prima un
-            collega nuovo lo creava a mano chi gestisce l'app, dal pannello di
-            Supabase: adesso i coach fanno da soli. */}
-        <button onClick={() => setView('addCoach')} style={{
-          width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)',
-          borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
-          display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer',
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
-              AGGIUNGI COACH
-            </div>
-            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
-              Entra con la stessa password e all'accesso tocca il suo nome.
-            </div>
-          </div>
-          <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
-        </button>
-
-        {/* Cambia coach — compare solo se i profili sono più di uno.
-            Sta qui e non in un posto più comodo apposta: dal 29/9/2026
-            sappiamo cosa succede quando un'azione che riguarda i dati di un
-            altro coach sta a portata di dito distratto. Chi tocca qui lo sta
-            facendo apposta, e deve comunque confermare. */}
+        <div style={titoloSezione}>LA PALESTRA</div>
         {cambiaCoach && (
-          <button onClick={cambiaCoach} style={{
-            width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)',
-            borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
-            display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
-                CAMBIA COACH
-              </div>
-              <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
-                Adesso stai lavorando come <span style={{ color: 'var(--accento)', fontWeight: '700' }}>{coach?.name}</span>.
-                Da qui passi all'altro coach e vedi i suoi turni.
-              </div>
-            </div>
-            <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
-          </button>
+          <Riga etichetta="Cambia coach" valore={coach.name} onClick={cambiaCoach} />
         )}
+        <Riga etichetta="Aggiungi coach" onClick={() => setView('addCoach')} />
 
-        {/* Sblocco biometrico */}
         {bioDisponibile && (
-          <div style={{
-            background: bioAttivo ? 'rgba(34,197,94,0.06)' : 'var(--sup)',
-            border: `1px solid ${bioAttivo ? 'rgba(34,197,94,0.3)' : 'var(--bordo)'}`,
-            borderRadius: '6px', padding: '14px 16px', marginBottom: '10px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
-                  👆 SBLOCCO BIOMETRICO
-                </div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', lineHeight: 1.4 }}>
+          <>
+            <div style={titoloSezione}>QUESTO DISPOSITIVO</div>
+            <div style={{ ...riga, cursor: 'default' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={etichettaRiga}>Sblocco con l'impronta</div>
+                <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '3px', lineHeight: 1.35 }}>
                   {bioAttivo
-                    ? `Attivo su questo dispositivo. L'app si riblocca dopo ${MINUTI_RIBLOCCO} minuti in secondo piano.`
-                    : 'Chiedi impronta, volto o PIN all\'apertura. Senza, chi prende in mano il dispositivo entra direttamente.'}
+                    ? `Si riblocca dopo ${MINUTI_RIBLOCCO} minuti in secondo piano.`
+                    : 'Vale solo qui: va attivato su ogni telefono che usi.'}
                 </div>
               </div>
               <button onClick={toggleBiometria} disabled={bioInCorso} style={{
@@ -420,50 +506,11 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
                 {bioInCorso ? '...' : bioAttivo ? 'DISATTIVA' : 'ATTIVA'}
               </button>
             </div>
-            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '8px', lineHeight: 1.35 }}>
-              L'impostazione vale solo su questo dispositivo: va attivata su ogni telefono o computer che usi.
-            </div>
-          </div>
+          </>
         )}
 
-        {/* Come si aprono i turni. Non c'è una scelta giusta per tutti: con
-            una scheda sola per turno conviene la vista per esercizio, con più
-            schede nello stesso turno conviene quella per atleta. */}
-        <div style={{ background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px' }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>
-            COME SI APRONO I TURNI
-          </div>
-          <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px', marginBottom: '12px', lineHeight: 1.4 }}>
-            {vista === PER_ATLETA
-              ? 'Tocchi il turno e vedi l\'elenco delle persone. Tocchi una persona e si apre la sua scheda. Comodo se nello stesso turno seguono schede diverse.'
-              : 'Tocchi il turno e vedi un esercizio alla volta, con sotto tutte le persone che lo fanno. Comodo se seguono tutti la stessa scheda.'}
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[[PER_ESERCIZIO, 'PER ESERCIZIO'], [PER_ATLETA, 'PER ATLETA']].map(([valore, etichetta]) => {
-              const attiva = vista === valore
-              return (
-                <button key={valore} type="button" onClick={() => cambiaVista(valore)} style={{
-                  flex: 1, padding: '12px 8px', borderRadius: '6px', cursor: 'pointer',
-                  background: attiva ? 'var(--accento)' : 'var(--sup-alta)',
-                  border: `1px solid ${attiva ? 'var(--accento)' : 'var(--bordo)'}`,
-                  color: attiva ? '#fff' : 'var(--testo-medio)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
-                  fontWeight: '800', letterSpacing: '1px',
-                }}>{etichetta}</button>
-              )
-            })}
-          </div>
-          <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '8px', lineHeight: 1.35 }}>
-            Vale solo per te, e solo su questo dispositivo.
-          </div>
-        </div>
-
-        {/* Change password */}
-        <button onClick={() => setView('changePassword')}
-          style={{ width: '100%', background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '14px 16px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-forte)', letterSpacing: '1px' }}>🔒 MODIFICA PASSWORD</div>
-          <div style={{ color: 'var(--testo-fioco)', fontSize: '16px' }}>›</div>
-        </button>
+        <div style={titoloSezione}>ACCOUNT</div>
+        <Riga etichetta="Modifica password" onClick={() => setView('changePassword')} />
 
         {/* Logout */}
         <button onClick={signOut} style={{ ...bigBtn, background: 'transparent', border: '1px solid var(--acc-bordo)', color: 'var(--acc-testo-tenue)', marginTop: '8px' }}>
@@ -474,6 +521,38 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
       <BottomNav active="settings" navigate={navigate} goHome={goHome} />
     </div>
   )
+}
+
+/** Una riga delle impostazioni: cosa è, com'è messa adesso, e si apre. */
+function Riga({ etichetta, valore, onClick }) {
+  return (
+    <button type="button" onClick={onClick} style={riga}>
+      <span style={{ ...etichettaRiga, flex: 1, minWidth: 0 }}>{etichetta}</span>
+      {valore && (
+        <span style={{
+          color: 'var(--testo-medio)', fontSize: '14px', flexShrink: 0,
+          maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{valore}</span>
+      )}
+      <span style={{ color: 'var(--testo-fioco)', fontSize: '17px', flexShrink: 0 }}>›</span>
+    </button>
+  )
+}
+
+const titoloSezione = {
+  color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px',
+  fontFamily: 'Barlow Condensed, sans-serif', margin: '22px 0 8px 2px',
+}
+
+const riga = {
+  width: '100%', background: 'var(--sup)', border: '1px solid var(--sup-alta)',
+  borderRadius: '8px', padding: '15px 16px', marginBottom: '7px',
+  display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left', cursor: 'pointer',
+}
+
+const etichettaRiga = {
+  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700',
+  color: '#fff', letterSpacing: '0.5px',
 }
 
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden' }
