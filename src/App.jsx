@@ -304,6 +304,8 @@ export default function App() {
     aggiornaCoach: patch =>
       setCoaches(prev => prev.map(c => c.id === coach.id ? { ...c, ...patch } : c)),
     ricaricaProfili: () => caricaProfili(session.user.id),
+    // L'elenco intero serve alla schermata che archivia un collega.
+    coaches: visibili,
   }
 
   const pages = {

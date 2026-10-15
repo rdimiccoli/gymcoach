@@ -11,7 +11,7 @@ import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-export default function Settings({ navigate, goHome, session, coach, cambiaCoach, aggiornaCoach, ricaricaProfili }) {
+export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState(coach.name || '')
@@ -27,6 +27,10 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
   const [salvoFoto, setSalvoFoto] = useState(false)
   const [nuovoCoach, setNuovoCoach] = useState('')
   const [coachAggiunto, setCoachAggiunto] = useState('')
+  // Archiviazione: chi si toglie, quanti turni ha, e a chi passano.
+  const [daArchiviare, setDaArchiviare] = useState(null)
+  const [turniSuoi, setTurniSuoi] = useState(null)
+  const [erede, setErede] = useState(null)
 
   async function cambiaVista(valore) {
     // Sul profilo quando si puo: cosi la scelta segue il coach su telefono,
@@ -174,6 +178,59 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
     if (error) return
     aggiornaCoach({ foto: null })
     notifyOk('Foto tolta')
+  }
+
+  /**
+   * Archiviare, non eliminare.
+   *
+   * Dietro un profilo ci sono turni, atlete e carichi. Non sappiamo — e non
+   * vogliamo scoprirlo con un pulsante in mano a qualcuno in sala pesi — cosa
+   * si porterebbe dietro una cancellazione vera. Qui il profilo esce
+   * dall'elenco e basta: i dati restano, e si torna indietro.
+   *
+   * Il pezzo che conta davvero è il passaggio dei turni. Archiviare e basta
+   * lascerebbe i suoi turni appesi a nessuno: non comparirebbero più a
+   * nessuno, perché quel profilo non si può più scegliere. Nella vita vera,
+   * quando un coach se ne va, i suoi turni passano a un collega.
+   */
+  async function apriArchiviazione(altro) {
+    setDaArchiviare(altro)
+    setErede(null)
+    setTurniSuoi(null)
+    const { data } = await run(
+      supabase.from('turns').select('id').eq('coach_id', altro.id),
+      'Impossibile contare i turni di questo coach.')
+    setTurniSuoi(data?.length ?? 0)
+  }
+
+  async function archivia() {
+    if (!daArchiviare) return
+    if (turniSuoi > 0 && !erede) return
+    setSaving(true)
+
+    // Prima i turni, poi l'archiviazione: se si archiviasse per primo e il
+    // passaggio fallisse, i turni resterebbero appesi a un profilo sparito
+    // dall'elenco, cioè invisibili a tutti.
+    if (turniSuoi > 0) {
+      const { error } = await run(
+        supabase.from('turns').update({ coach_id: erede.id }).eq('coach_id', daArchiviare.id),
+        'Turni non passati. Non ho archiviato niente.')
+      if (error) { setSaving(false); return }
+    }
+
+    const { error } = await run(
+      supabase.from('coaches').update({ nascosto: true }).eq('id', daArchiviare.id),
+      'Profilo non archiviato.')
+    setSaving(false)
+    if (error) return
+
+    const nome = daArchiviare.name
+    await ricaricaProfili?.()
+    setDaArchiviare(null)
+    setView('main')
+    notifyOk(turniSuoi > 0
+      ? `${nome} archiviato. I suoi turni sono di ${erede.name}`
+      : `${nome} archiviato`)
   }
 
   async function salvaNuovoCoach() {
@@ -335,6 +392,98 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
     </div>
   )
 
+  // ── ARCHIVIA COACH ────────────────────────────────────────────────────────
+  if (view === 'archivia') {
+    // Sé stessi non ci si archivia: resteresti dentro un profilo che non
+    // esiste più nell'elenco. E restano fuori quelli già archiviati.
+    const altri = coaches.filter(c => c.id !== coach.id && c.nascosto !== true)
+    const eredi = coaches.filter(c => c.nascosto !== true && c.id !== daArchiviare?.id)
+
+    return (
+      <div style={page}>
+        <TopBar title="ARCHIVIA COACH"
+          onBack={() => { daArchiviare ? setDaArchiviare(null) : setView('main') }} />
+        <div style={scroll}>
+
+          {!daArchiviare && (<>
+            <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
+              Il coach sparisce dall'elenco all'accesso. <strong>Non si cancella niente:</strong>
+              {' '}turni, atlete e carichi restano, e si può rimettere quando si vuole.
+            </div>
+            {altri.length === 0 && (
+              <div style={{ color: 'var(--testo-debole)', fontSize: '14px', padding: '20px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
+                Non c'è nessun altro profilo da archiviare.
+              </div>
+            )}
+            {altri.map(c => (
+              <button key={c.id} type="button" onClick={() => apriArchiviazione(c)} style={riga}>
+                <AvatarCoach coach={c} size={38} />
+                <span style={{ ...etichettaRiga, flex: 1, minWidth: 0 }}>{c.name}</span>
+                <span style={{ color: 'var(--testo-fioco)', fontSize: '17px' }}>›</span>
+              </button>
+            ))}
+          </>)}
+
+          {daArchiviare && (<>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+              <AvatarCoach coach={daArchiviare} size={52} />
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '24px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
+                {daArchiviare.name.toUpperCase()}
+              </div>
+            </div>
+
+            {turniSuoi === null && (
+              <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Conto i suoi turni…</div>
+            )}
+
+            {turniSuoi === 0 && (
+              <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
+                Non ha nessun turno: si archivia e basta.
+              </div>
+            )}
+
+            {turniSuoi > 0 && (<>
+              <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '16px' }}>
+                Ha <strong>{turniSuoi} {turniSuoi === 1 ? 'turno' : 'turni'}</strong> con le loro atlete.
+                Archiviarlo senza passarli a qualcuno li renderebbe invisibili a tutti.
+              </div>
+              <div style={fieldLabel}>A CHI PASSANO I SUOI TURNI</div>
+              {eredi.map(c => {
+                const scelto = erede?.id === c.id
+                return (
+                  <button key={c.id} type="button" onClick={() => setErede(c)} style={{
+                    ...riga,
+                    background: scelto ? 'var(--acc-riempimento)' : 'var(--sup)',
+                    boxShadow: scelto ? 'inset 0 0 0 1px var(--acc-bordo-forte)' : 'none',
+                  }}>
+                    <AvatarCoach coach={c} size={38} />
+                    <span style={{ ...etichettaRiga, flex: 1, minWidth: 0 }}>{c.name}</span>
+                    {scelto && <span style={{ color: 'var(--accento)', fontSize: '18px' }}>✓</span>}
+                  </button>
+                )
+              })}
+            </>)}
+
+            {turniSuoi !== null && (
+              <button onClick={archivia} disabled={saving || (turniSuoi > 0 && !erede)}
+                style={{ ...bigBtn, marginTop: '20px', opacity: (turniSuoi > 0 && !erede) ? 0.3 : 1 }}>
+                {saving ? 'ARCHIVIO...' : turniSuoi > 0
+                  ? `ARCHIVIA E PASSA I TURNI${erede ? ` A ${erede.name.toUpperCase()}` : ''}`
+                  : 'ARCHIVIA'}
+              </button>
+            )}
+
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', lineHeight: 1.45, marginTop: '14px' }}>
+              Per rimetterlo nell'elenco serve una riga nel pannello Supabase:
+              <br />update coaches set nascosto = false where name = '{daArchiviare.name}';
+            </div>
+          </>)}
+        </div>
+        <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+      </div>
+    )
+  }
+
   // ── AGGIUNGI COACH ────────────────────────────────────────────────────────
   if (view === 'addCoach') return (
     <div style={page}>
@@ -480,6 +629,10 @@ export default function Settings({ navigate, goHome, session, coach, cambiaCoach
           <Riga etichetta="Cambia coach" valore={coach.name} onClick={cambiaCoach} />
         )}
         <Riga etichetta="Aggiungi coach" onClick={() => setView('addCoach')} />
+        {coaches.filter(c => c.id !== coach.id && c.nascosto !== true).length > 0 && (
+          <Riga etichetta="Archivia coach"
+            onClick={() => { setDaArchiviare(null); setView('archivia') }} />
+        )}
 
         {bioDisponibile && (
           <>
