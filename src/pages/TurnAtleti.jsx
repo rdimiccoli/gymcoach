@@ -5,6 +5,7 @@ import { comePulsante } from '../lib/stile'
 import { settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
+import RiordinaPersone from '../components/RiordinaPersone'
 import { GIORNI_PREDEFINITI, giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -41,6 +42,10 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   // seduta, senza perdere di vista l'elenco e senza scorrere su e giù.
   const affiancato = useSchermoLargo()
   const [aperta, setAperta] = useState(null)
+  // L'ordine si cambia da qui, con le persone davanti: è il momento in cui
+  // il coach si accorge di volerlo cambiare, non quando gestisce i clienti.
+  const [riordino, setRiordino] = useState(false)
+  const [ordineAttivo, setOrdineAttivo] = useState(false)
 
   useEffect(() => { carica() }, [turn.id])
 
@@ -57,6 +62,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
     setSchede(schedeAttive)
 
     const caps = await capacita()
+    setOrdineAttivo(caps.ordinePersone)
     const assegnazioni = caps.assegnazioni
       ? await caricaAssegnazioni(schedeAttive.map(s => s.id))
       : {}
@@ -118,7 +124,16 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
             color: day === d ? '#fff' : 'var(--testo-debole)',
           }}>{etichettaGiorno(d, quantiGiorni)}</button>
         ))}
+        {ordineAttivo && righe.length > 1 && (
+          <button onClick={() => setRiordino(true)} style={pulsanteOrdine}
+            aria-label="Cambia l'ordine delle persone">↑↓</button>
+        )}
       </div>
+
+      {riordino && (
+        <RiordinaPersone turnId={turn.id}
+          onChiuso={cambiato => { setRiordino(false); if (cambiato) carica() }} />
+      )}
 
       <div style={affiancato ? affiancamento : { display: 'contents' }}>
       <div style={affiancato ? colonnaElenco : scroll}>
@@ -230,6 +245,9 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   )
 }
 
+// Il pulsante dell'ordine sta in fondo alla riga dei giorni: due frecce,
+// della stessa altezza delle linguette, senza rubare una riga di schermo.
+const pulsanteOrdine = { width: '46px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px solid var(--bordo)', background: 'var(--sup)', color: 'var(--testo-chiaro)', fontSize: '15px', lineHeight: 1, cursor: 'pointer' }
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 

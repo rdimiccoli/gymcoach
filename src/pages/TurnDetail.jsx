@@ -7,6 +7,7 @@ import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
+import RiordinaPersone from '../components/RiordinaPersone'
 import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -41,6 +42,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   useEffect(() => { if (incorporato && params.giorno) setDay(params.giorno) }, [incorporato, params.giorno])
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
+  // Cambiare l'ordine da qui vale per tutto il turno: aperta una persona
+  // sola, o gli ospiti venuti da un altro turno, il pulsante non compare —
+  // sposterebbe nomi che in questa schermata non si vedono nemmeno.
+  const [riordino, setRiordino] = useState(false)
+  const [ordineAttivo, setOrdineAttivo] = useState(false)
+  useEffect(() => { capacita().then(c => setOrdineAttivo(c.ordinePersone)) }, [])
   // loads[clientId_exId_week] = kg
   const [loads, setLoads] = useState({})
   // notes[clientId_exId] = testo. Il vincolo unico nel database è su
@@ -333,7 +340,18 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
         ))}
+        {/* Qui l'ordine conta davvero: è l'elenco di nomi che il coach ha
+            sotto ogni esercizio. Si cambia senza uscire dal turno. */}
+        {ordineAttivo && !soloAtleti?.length && clients.length > 1 && (
+          <button onClick={() => setRiordino(true)} style={pulsanteOrdine}
+            aria-label="Cambia l'ordine delle persone">↑↓</button>
+        )}
       </div>
+
+      {riordino && (
+        <RiordinaPersone turnId={turn.id}
+          onChiuso={cambiato => { setRiordino(false); if (cambiato) loadData() }} />
+      )}
 
       {/* Tutto quello che resta del pannello «avanza settimana»: un numero, in
           chiaro, uguale per tutte. Non si tocca e non si può sbagliare. */}
@@ -735,6 +753,9 @@ const testataPersona = {
   background: 'var(--acc-fondo)', borderBottom: '1px solid var(--acc-riempimento)',
 }
 
+// Il pulsante dell'ordine sta in fondo alla riga dei giorni: due frecce,
+// della stessa altezza delle linguette, senza rubare una riga di schermo.
+const pulsanteOrdine = { width: '46px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px solid var(--bordo)', background: 'var(--sup)', color: 'var(--testo-chiaro)', fontSize: '15px', lineHeight: 1, cursor: 'pointer' }
 const pannello = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
