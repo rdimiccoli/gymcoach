@@ -12,7 +12,7 @@
 import { supabase } from '../supabaseClient'
 import { run } from './notify'
 import { capacita } from './capacita'
-import { ordinaElenco } from './ordinePersone'
+import { ordinaElenco, numeraDaCapo, spostaDi, daSalvare } from './ordinePersone'
 
 export async function conOrdineDelTurno(query) {
   const { ordinePersone } = await capacita()
@@ -38,4 +38,29 @@ export async function salvaOrdine(righe) {
     if (error) return false
   }
   return true
+}
+
+/**
+ * Sposta una persona nel posto di un'altra, e salva.
+ *
+ * Si ragiona per «vicino» e non per «un passo su»: sotto un esercizio può
+ * comparire solo una parte del turno — chi segue quella scheda — e spostare
+ * di un posto nell'elenco intero scambierebbe il nome con qualcuno che lì
+ * non si vede nemmeno. Il vicino lo sceglie chi chiama, guardando l'elenco
+ * che ha davvero a schermo.
+ *
+ * `tutte` sono tutte le persone del turno, nell'ordine attuale: servono
+ * intere perché la prima volta nessuno ha un numero, e numerarne solo una
+ * parte manderebbe tutti gli altri in fondo.
+ *
+ * Torna il nuovo elenco, o quello di prima se non c'era niente da fare o se
+ * il salvataggio non è passato.
+ */
+export async function spostaAccanto(tutte, id, idVicino) {
+  const numerati = numeraDaCapo(tutte)
+  const da = numerati.findIndex(p => p.id === id)
+  const a = numerati.findIndex(p => p.id === idVicino)
+  if (da < 0 || a < 0 || da === a) return tutte
+  const dopo = spostaDi(numerati, da, a - da)
+  return await salvaOrdine(daSalvare(tutte, dopo)) ? dopo : tutte
 }

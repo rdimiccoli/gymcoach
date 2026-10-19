@@ -4,8 +4,7 @@ import { run } from '../lib/notify'
 import { comePulsante } from '../lib/stile'
 import { settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
-import { conOrdineDelTurno } from '../lib/ordineDb'
-import RiordinaPersone from '../components/RiordinaPersone'
+import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { GIORNI_PREDEFINITI, giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -42,9 +41,6 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   // seduta, senza perdere di vista l'elenco e senza scorrere su e giù.
   const affiancato = useSchermoLargo()
   const [aperta, setAperta] = useState(null)
-  // L'ordine si cambia da qui, con le persone davanti: è il momento in cui
-  // il coach si accorge di volerlo cambiare, non quando gestisce i clienti.
-  const [riordino, setRiordino] = useState(false)
   const [ordineAttivo, setOrdineAttivo] = useState(false)
 
   useEffect(() => { carica() }, [turn.id])
@@ -109,6 +105,25 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   // prima.
   const quantiGiorni = schede.length ? Math.max(...schede.map(giorniDi)) : GIORNI_PREDEFINITI
 
+  // Le persone del turno, una volta sola: chi segue due schede ha due righe,
+  // ma nell'ordine conta una volta. Gli ospiti non ci sono — il loro posto è
+  // nel turno da cui vengono.
+  const personeDelTurno = righe.filter(r => !r.ospite).map(r => r.persona)
+    .filter((p, i, elenco) => elenco.findIndex(x => x.id === p.id) === i)
+
+  /** Sposta una persona di un posto e rimette in fila le righe. */
+  async function spostaPersona(persona, verso) {
+    const i = personeDelTurno.findIndex(p => p.id === persona.id)
+    const vicino = personeDelTurno[i + verso]
+    if (!vicino) return
+    const dopo = await spostaAccanto(personeDelTurno, persona.id, vicino.id)
+    if (dopo === personeDelTurno) return
+    const posto = new Map(dopo.map((p, n) => [p.id, n]))
+    // Gli ospiti restano in fondo, dove stanno già.
+    const quale = r => (r.ospite ? Infinity : posto.get(r.persona.id) ?? Infinity)
+    setRighe(prec => [...prec].sort((a, b) => quale(a) - quale(b)))
+  }
+
   return (
     <div style={affiancato ? { ...page, maxWidth: 'var(--colonna-larga)' } : page}>
       <TopBar title={turn.name} subtitle={`${righe.length} ${righe.length === 1 ? 'persona' : 'persone'}`} onBack={goBack} />
@@ -124,16 +139,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
             color: day === d ? '#fff' : 'var(--testo-debole)',
           }}>{etichettaGiorno(d, quantiGiorni)}</button>
         ))}
-        {ordineAttivo && righe.length > 1 && (
-          <button onClick={() => setRiordino(true)} style={pulsanteOrdine}
-            aria-label="Cambia l'ordine delle persone">↑↓</button>
-        )}
       </div>
-
-      {riordino && (
-        <RiordinaPersone turnId={turn.id}
-          onChiuso={cambiato => { setRiordino(false); if (cambiato) carica() }} />
-      )}
 
       <div style={affiancato ? affiancamento : { display: 'contents' }}>
       <div style={affiancato ? colonnaElenco : scroll}>
@@ -148,13 +154,21 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
         {righe.map((riga, i) => {
           const settimana = settimanaDaCalendario(riga.scheda)
           const apribile = Boolean(riga.scheda)
+          // Le frecce su una riga sola per persona: chi segue due schede ha
+          // due righe, e due coppie di frecce per lo stesso nome non
+          // vorrebbero dire niente.
+          const iPersona = personeDelTurno.findIndex(p => p.id === riga.persona.id)
+          const conFrecce = ordineAttivo && !riga.ospite && personeDelTurno.length > 1 &&
+            righe.findIndex(r => r.persona.id === riga.persona.id) === i
           return (
+            <div key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}
+              style={{ display: 'flex', alignItems: 'stretch', gap: '6px' }}>
             <button
-              key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}
               type="button"
               onClick={() => apri(riga)}
               style={{
                 ...rigaPersona,
+                flex: 1, minWidth: 0,
                 cursor: apribile ? 'pointer' : 'default',
                 opacity: apribile ? 1 : 0.6,
                 // Affiancato, la riga aperta a destra resta accesa a sinistra:
@@ -186,6 +200,21 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
               </div>
               {apribile && <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>}
             </button>
+            {/* Fuori dalla riga e non dentro: la riga è già un pulsante, e
+                un pulsante dentro un pulsante non si può fare. */}
+            {conFrecce && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '7px', flexShrink: 0 }}>
+                <button onClick={() => spostaPersona(riga.persona, -1)}
+                  disabled={iPersona === 0}
+                  aria-label={`Sposta ${riga.persona.surname} più su`}
+                  style={{ ...frecciaOrdine, opacity: iPersona === 0 ? 0.25 : 1 }}>↑</button>
+                <button onClick={() => spostaPersona(riga.persona, +1)}
+                  disabled={iPersona === personeDelTurno.length - 1}
+                  aria-label={`Sposta ${riga.persona.surname} più giù`}
+                  style={{ ...frecciaOrdine, opacity: iPersona === personeDelTurno.length - 1 ? 0.25 : 1 }}>↓</button>
+              </div>
+            )}
+            </div>
           )
         })}
 
@@ -245,9 +274,9 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   )
 }
 
-// Il pulsante dell'ordine sta in fondo alla riga dei giorni: due frecce,
-// della stessa altezza delle linguette, senza rubare una riga di schermo.
-const pulsanteOrdine = { width: '46px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px solid var(--bordo)', background: 'var(--sup)', color: 'var(--testo-chiaro)', fontSize: '15px', lineHeight: 1, cursor: 'pointer' }
+// Le frecce dell'ordine, in colonna accanto alla riga: due mezze altezze
+// invece di una riga in più da scorrere.
+const frecciaOrdine = { background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: '#fff', fontSize: '15px', lineHeight: 1, width: '40px', flex: 1, borderRadius: '3px', cursor: 'pointer', padding: 0 }
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 

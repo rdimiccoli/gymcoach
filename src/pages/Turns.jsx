@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { capacita } from '../lib/capacita'
-import { conOrdineDelTurno } from '../lib/ordineDb'
-import RiordinaPersone from '../components/RiordinaPersone'
+import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { ScheletroElenco } from '../components/Scheletro'
 import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
@@ -31,8 +30,8 @@ export default function Turns({ navigate, goHome, coach }) {
   const [silverAttivo, setSilverAttivo] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
-  // Il riordino è lo stesso foglio che si apre dalle schermate del giorno:
-  // un solo modo di spostare i nomi, uguale ovunque lo si cerchi.
+  // Riordino: l'elenco diventa frecce su e giù invece di matita e cestino,
+  // così in quella modalità non si può toccare nient'altro per sbaglio.
   const [riordino, setRiordino] = useState(false)
   const [renameTurnModal, setRenameTurnModal] = useState(null)
   // Si rinomina l'ORARIO e il TIPO, non il nome scritto a mano.
@@ -61,6 +60,13 @@ export default function Turns({ navigate, goHome, coach }) {
     )
     setTurns(t || [])
     setLoading(false)
+  }
+
+  /** Sposta una persona di un posto e salva. */
+  async function sposta(indice, passo) {
+    const vicino = clients[indice + passo]
+    if (!vicino) return
+    setClients(await spostaAccanto(clients, clients[indice].id, vicino.id))
   }
 
   async function loadClients(turn) {
@@ -232,16 +238,22 @@ export default function Turns({ navigate, goHome, coach }) {
           </div>
           {clients.length > 1 && ordineAttivo && (
             <button onClick={() => setRiordino(v => !v)} style={{
-              background: 'var(--sup-alta)',
-              border: '1px solid var(--bordo)',
-              color: 'var(--testo-chiaro)',
+              background: riordino ? 'var(--accento)' : 'var(--sup-alta)',
+              border: `1px solid ${riordino ? 'var(--accento)' : 'var(--bordo)'}`,
+              color: riordino ? '#fff' : 'var(--testo-chiaro)',
               fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
               fontWeight: '700', letterSpacing: '1px', padding: '6px 12px',
               borderRadius: '3px', cursor: 'pointer', flexShrink: 0,
-            }}>↑↓ RIORDINA</button>
+            }}>{riordino ? '✓ FATTO' : '↑↓ RIORDINA'}</button>
           )}
         </div>
-        {clients.map(client => (
+        {riordino && (
+          <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
+            Spostali nell'ordine in cui li segui. Chi lavora in coppia mettilo
+            vicino: li ritrovi così in tutte le schermate del turno.
+          </div>
+        )}
+        {clients.map((client, indice) => (
           <div key={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
@@ -250,6 +262,17 @@ export default function Turns({ navigate, goHome, coach }) {
               </div>
               {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Non attiva</div>}
             </div>
+            {/* Riordinando restano solo le frecce: in quel momento non c'è
+                niente altro da fare, e archiviare o eliminare per sbaglio
+                mentre si sposta un nome sarebbe il danno peggiore. */}
+            {riordino ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button onClick={() => sposta(indice, -1)} disabled={indice === 0} aria-label="Sposta su"
+                  style={{ ...frecciaOrdine, opacity: indice === 0 ? 0.25 : 1 }}>↑</button>
+                <button onClick={() => sposta(indice, +1)} disabled={indice === clients.length - 1} aria-label="Sposta giù"
+                  style={{ ...frecciaOrdine, opacity: indice === clients.length - 1 ? 0.25 : 1 }}>↓</button>
+              </div>
+            ) : (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <button onClick={() => openEditClient(client)}
                 style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '14px', padding: '6px 10px', borderRadius: '3px' }}>
@@ -264,16 +287,12 @@ export default function Turns({ navigate, goHome, coach }) {
                 🗑
               </button>
             </div>
+            )}
           </div>
         ))}
         {clients.length === 0 && <div style={emptyText}>Nessun cliente ancora.</div>}
         <div style={{ height: '20px' }} />
       </div>
-
-      {riordino && (
-        <RiordinaPersone turnId={selectedTurn.id}
-          onChiuso={cambiato => { setRiordino(false); if (cambiato) loadClients(selectedTurn) }} />
-      )}
 
       {/* Edit client modal */}
       {editClient && (
@@ -461,6 +480,8 @@ const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight:
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }
 const row = { background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '6px', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+// Le frecce sono grandi come un pollice: si usano con le mani sudate.
+const frecciaOrdine = { background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: '#fff', fontSize: '20px', lineHeight: 1, width: '46px', height: '42px', borderRadius: '4px', cursor: 'pointer' }
 const emptyText = { color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '20px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 const sheet = { background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }

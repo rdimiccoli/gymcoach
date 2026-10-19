@@ -6,8 +6,7 @@ import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
-import { conOrdineDelTurno } from '../lib/ordineDb'
-import RiordinaPersone from '../components/RiordinaPersone'
+import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -42,10 +41,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   useEffect(() => { if (incorporato && params.giorno) setDay(params.giorno) }, [incorporato, params.giorno])
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
-  // Cambiare l'ordine da qui vale per tutto il turno: aperta una persona
-  // sola, o gli ospiti venuti da un altro turno, il pulsante non compare —
-  // sposterebbe nomi che in questa schermata non si vedono nemmeno.
-  const [riordino, setRiordino] = useState(false)
+  // Tutte le persone del turno, non solo quelle che seguono questa scheda:
+  // servono intere per spostarne una, perché i numeri d'ordine valgono per
+  // il turno e la prima volta non ce l'ha nessuno.
+  const [tuttiDelTurno, setTuttiDelTurno] = useState([])
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   useEffect(() => { capacita().then(c => setOrdineAttivo(c.ordinePersone)) }, [])
   // loads[clientId_exId_week] = kg
@@ -109,6 +108,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     const cl = personeDellaScheda(cycle, tutti || [], assegnazioni)
     setExercises(exData || [])
     setClients(cl)
+    setTuttiDelTurno(tutti || [])
 
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
@@ -274,6 +274,25 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
+  /**
+   * Sposta una persona di un posto nell'elenco che si ha davanti.
+   *
+   * Il «vicino» è quello che si vede sopra o sotto in QUESTA schermata: se
+   * la scheda è assegnata solo ad alcuni, i nomi in mezzo che non compaiono
+   * restano dove sono, altrimenti premendo la freccia non succederebbe
+   * niente di visibile.
+   */
+  async function spostaPersona(client, verso) {
+    const i = clients.findIndex(c => c.id === client.id)
+    const vicino = clients[i + verso]
+    if (!vicino) return
+    const dopo = await spostaAccanto(tuttiDelTurno, client.id, vicino.id)
+    if (dopo === tuttiDelTurno) return
+    setTuttiDelTurno(dopo)
+    const posto = new Map(dopo.map((p, n) => [p.id, n]))
+    setClients(prec => [...prec].sort((a, b) => posto.get(a.id) - posto.get(b.id)))
+  }
+
   // Get current kg and previous kg+reps for a client/exercise
   function getLoadInfo(client, ex) {
     const week = settimana
@@ -340,18 +359,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
         ))}
-        {/* Qui l'ordine conta davvero: è l'elenco di nomi che il coach ha
-            sotto ogni esercizio. Si cambia senza uscire dal turno. */}
-        {ordineAttivo && !soloAtleti?.length && clients.length > 1 && (
-          <button onClick={() => setRiordino(true)} style={pulsanteOrdine}
-            aria-label="Cambia l'ordine delle persone">↑↓</button>
-        )}
       </div>
-
-      {riordino && (
-        <RiordinaPersone turnId={turn.id}
-          onChiuso={cambiato => { setRiordino(false); if (cambiato) loadData() }} />
-      )}
 
       {/* Tutto quello che resta del pannello «avanza settimana»: un numero, in
           chiaro, uguale per tutte. Non si tocca e non si può sbagliare. */}
@@ -436,7 +444,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
 
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'var(--acc-riempimento)' : 'var(--sup-alta)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
-                  {clients.map(client => {
+                  {clients.map((client, indiceCliente) => {
                     return (
                       <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -471,6 +479,23 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                               )
                             }
                           </div>
+                          {/* Le frecce stanno accanto al nome, dove il coach
+                              guarda quando si accorge che due persone che
+                              lavorano in coppia sono lontane. Lontane dai
+                              tasti dei chili, che stanno sotto: spostando un
+                              nome non si rischia di toccare un carico. */}
+                          {ordineAttivo && !soloAtleti?.length && clients.length > 1 && (
+                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginRight: '6px' }}>
+                              <button onClick={() => spostaPersona(client, -1)}
+                                disabled={indiceCliente === 0}
+                                aria-label={`Sposta ${client.surname} più su`}
+                                style={{ ...frecciaOrdine, opacity: indiceCliente === 0 ? 0.25 : 1 }}>↑</button>
+                              <button onClick={() => spostaPersona(client, +1)}
+                                disabled={indiceCliente === clients.length - 1}
+                                aria-label={`Sposta ${client.surname} più giù`}
+                                style={{ ...frecciaOrdine, opacity: indiceCliente === clients.length - 1 ? 0.25 : 1 }}>↓</button>
+                            </div>
+                          )}
                           <button onClick={() => setEditModal({ client, group })} style={{
                             background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo)',
                             borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
@@ -753,9 +778,9 @@ const testataPersona = {
   background: 'var(--acc-fondo)', borderBottom: '1px solid var(--acc-riempimento)',
 }
 
-// Il pulsante dell'ordine sta in fondo alla riga dei giorni: due frecce,
-// della stessa altezza delle linguette, senza rubare una riga di schermo.
-const pulsanteOrdine = { width: '46px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px solid var(--bordo)', background: 'var(--sup)', color: 'var(--testo-chiaro)', fontSize: '15px', lineHeight: 1, cursor: 'pointer' }
+// Le frecce dell'ordine, accanto al nome. Più piccole di quelle di TURNI
+// perché qui la riga è già piena, ma abbastanza da prenderle col pollice.
+const frecciaOrdine = { background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: '#fff', fontSize: '15px', lineHeight: 1, width: '34px', height: '30px', borderRadius: '3px', cursor: 'pointer', padding: 0 }
 const pannello = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
