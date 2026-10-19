@@ -68,6 +68,16 @@ describe('eserciziDaCsv', () => {
     expect(problemi[0]).toContain('7')
   })
 
+  it('accetta i giorni 4 e 5, da quando una scheda può averne cinque', () => {
+    const { esercizi, problemi } = eserciziDaCsv([
+      INTESTAZIONE,
+      'a,0,4,3x8,3x10,3x12,null,Stacco',
+      'b,1,5,3x8,3x10,3x12,null,Trazioni',
+    ].join('\n'))
+    expect(problemi).toHaveLength(0)
+    expect(esercizi.map(e => e.giorno)).toEqual([4, 5])
+  })
+
   it('rifiuta un testo senza le colonne necessarie invece di indovinare', () => {
     expect(eserciziDaCsv('a,b,c\n1,2,3').problemi[0]).toContain('exercise_name')
     expect(eserciziDaCsv('exercise_name\nPanca').problemi[0]).toContain('day')

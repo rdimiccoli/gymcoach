@@ -6,6 +6,8 @@ import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
+import { conOrdineDelTurno } from '../lib/ordineDb'
+import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
@@ -85,12 +87,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
         // Vengono da un altro turno: si prendono per nome, non per turno.
         // A parità di cognome decide il nome: due Rossi non si scambiano di
         // posto a ogni apertura della schermata.
-        ? run(supabase.from('clients').select('*').in('id', soloAtleti)
-            .order('surname').order('name'),
+        ? run(await conOrdineDelTurno(supabase.from('clients').select('*').in('id', soloAtleti)),
             'Impossibile caricare le persone.')
-        : run(supabase.from('clients').select('*')
-            .eq('turn_id', turn.id).eq('is_active', true)
-            .order('surname').order('name'),
+        : run(await conOrdineDelTurno(supabase.from('clients').select('*')
+            .eq('turn_id', turn.id).eq('is_active', true)),
             'Impossibile caricare gli atleti del turno.'),
       // Le persone sono già scelte una per una: il filtro per scheda non serve.
       perOspiti
@@ -325,13 +325,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
 
       {!incorporato && (<>
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
-        {[1,2,3].map(d => (
+        {elencoGiorni(cycle).map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)'
-          }}>GIORNO {d}</button>
+          }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
         ))}
       </div>
 

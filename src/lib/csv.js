@@ -7,6 +7,8 @@
 //   "2xMAX + 15"" + MAX + DROP"
 // che va letto come  2xMAX + 15" + MAX + DROP
 
+import { GIORNI_MIN, GIORNI_MAX } from './giorni'
+
 /**
  * Indovina il separatore guardando la prima riga, fuori dalle virgolette.
  *
@@ -105,8 +107,8 @@ export function eserciziDaCsv(testo) {
     if (!nome) { problemi.push(`Riga ${numeroRiga}: manca il nome dell'esercizio.`); return }
 
     const giorno = parseInt(pulisci(r[iGiorno]), 10)
-    if (![1, 2, 3].includes(giorno)) {
-      problemi.push(`Riga ${numeroRiga} ("${nome}"): giorno "${pulisci(r[iGiorno])}" non valido, deve essere 1, 2 o 3.`)
+    if (!Number.isInteger(giorno) || giorno < GIORNI_MIN || giorno > GIORNI_MAX) {
+      problemi.push(`Riga ${numeroRiga} ("${nome}"): giorno "${pulisci(r[iGiorno])}" non valido, deve essere un numero da ${GIORNI_MIN} a ${GIORNI_MAX}.`)
       return
     }
 

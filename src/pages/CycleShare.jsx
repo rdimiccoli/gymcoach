@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
+import { conOrdineDelTurno } from '../lib/ordineDb'
+import { elencoGiorni } from '../lib/giorni'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -50,8 +52,8 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
       // Load clients of this turn
       const { data: cl } = await run(
-        supabase.from('clients').select('*')
-          .eq('turn_id', c.turn_id).eq('is_active', true).order('surname'),
+        await conOrdineDelTurno(supabase.from('clients').select('*')
+          .eq('turn_id', c.turn_id).eq('is_active', true)),
         'Impossibile caricare gli atleti del turno.'
       )
       setClients(cl || [])
@@ -100,7 +102,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     text += `📅 ${weekRange.label}\n`
     text += `━━━━━━━━━━━━━━━━━━━\n\n`
 
-    for (let d = 1; d <= 3; d++) {
+    for (const d of elencoGiorni(cycle)) {
       const groups = raggruppaEsercizi(days[d])
       if (!groups.length) continue
       text += `📌 *GIORNO ${d}*\n`
@@ -221,7 +223,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
                   {/* Day tabs */}
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                    {[1,2,3].map(d => (
+                    {elencoGiorni(cycle).map(d => (
                       <button key={d} onClick={() => setPreviewDay(d)} style={{
                         flex: 1, padding: '7px', borderRadius: '4px', border: 'none',
                         fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700',

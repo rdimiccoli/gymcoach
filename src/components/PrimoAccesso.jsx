@@ -28,7 +28,7 @@ const PUNTI = [
   {
     n: '2',
     titolo: 'LE SCHEDE',
-    testo: 'Una scheda dura sei settimane e ha tre giorni di esercizi. Si assegna a un turno, e vale per tutte le atlete di quel turno.',
+    testo: 'Una scheda dura sei settimane e di solito ha tre giorni di esercizi — ma puoi farne da uno a cinque. Si assegna a un turno, e vale per tutte le atlete di quel turno.',
   },
   {
     n: '3',

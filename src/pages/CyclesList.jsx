@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
+import { conOrdineDelTurno } from '../lib/ordineDb'
 import { caricaAssegnazioni, salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 import { ScheletroElenco } from '../components/Scheletro'
@@ -162,8 +163,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
     setAtletiTurno([])
     if (!assegnazioniAttive) return
     const { data } = await run(
-      supabase.from('clients').select('id, name, surname')
-        .eq('turn_id', cycle.turn_id).eq('is_active', true).order('surname'),
+      await conOrdineDelTurno(supabase.from('clients').select('id, name, surname')
+        .eq('turn_id', cycle.turn_id).eq('is_active', true)),
       'Impossibile caricare le persone del turno.'
     )
     setAtletiTurno(data || [])

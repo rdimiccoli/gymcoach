@@ -4,6 +4,8 @@ import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
 import { raggruppaEsercizi, oggiLocale } from '../lib/schede'
 import { capacita } from '../lib/capacita'
+import { conOrdineDelTurno } from '../lib/ordineDb'
+import { GIORNI_MAX, GIORNI_MIN, GIORNI_PREDEFINITI, giorniDi, elencoGiorni, giornoValido } from '../lib/giorni'
 import { salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 // Con il parser CSV dietro: pesa solo per chi importa davvero.
@@ -11,10 +13,12 @@ const ImportaCsv = lazy(() => import('../components/ImportaCsv'))
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-// I giorni validi sono 1-3. Una riga con day nullo o fuori range faceva
-// crashare l'app (map[e.day] undefined) invece di essere semplicemente ignorata.
-const GIORNI = [1, 2, 3]
-const giornoValido = d => GIORNI.includes(Number(d))
+// Una riga con day nullo o fuori range faceva crashare l'app
+// (map[e.day] undefined) invece di essere semplicemente ignorata.
+const GIORNI_TUTTI = Array.from({ length: GIORNI_MAX }, (_, i) => i + 1)
+const giornoNoto = d => GIORNI_TUTTI.includes(Number(d))
+/** Un contenitore vuoto per ogni giorno possibile: così `exList[d]` c'è sempre. */
+const giorniVuoti = () => Object.fromEntries(GIORNI_TUTTI.map(d => [d, []]))
 
 
 export default function CycleForm({ navigate, goBack, goHome, params }) {
@@ -26,7 +30,11 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   // un giorno di scarto può spostare il cambio di settimana.
   const [startDate, setStartDate] = useState(oggiLocale())
   const [day, setDay] = useState(1)
-  const [exList, setExList] = useState({ 1: [], 2: [], 3: [] })
+  const [exList, setExList] = useState(giorniVuoti)
+  // Quanti giorni ha questa scheda. Le schede di prima non hanno il numero e
+  // valgono tre: identiche a come erano.
+  const [giorni, setGiorni] = useState(GIORNI_PREDEFINITI)
+  const [giorniAttivi, setGiorniAttivi] = useState(false)
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -46,12 +54,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   useEffect(() => {
     capacita().then(async c => {
       setCategorieAttive(c.categorie)
+      setGiorniAttivi(c.giorniScheda)
       // Solo creando: una scheda esistente si riassegna da MODIFICA nella
       // lista schede, dove stanno già nome e data d'inizio.
       if (!c.assegnazioni || cycleId || !turnId) return
       const { data } = await run(
-        supabase.from('clients').select('id, name, surname')
-          .eq('turn_id', turnId).eq('is_active', true).order('surname'),
+        await conOrdineDelTurno(supabase.from('clients').select('id, name, surname')
+          .eq('turn_id', turnId).eq('is_active', true)),
         'Impossibile caricare le persone del turno.'
       )
       setAtletiTurno(data || [])
@@ -113,9 +122,23 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       'Impossibile caricare gli esercizi della scheda.'
     )
     if (exData) {
-      const map = { 1: [], 2: [], 3: [] }
+      // Il numero di giorni è quello salvato, ma mai meno del giorno più alto
+      // che ha esercizi: se i due numeri non tornassero, una linguetta
+      // mancante nasconderebbe del lavoro già fatto senza dirlo a nessuno.
+      const piuAlto = Math.max(0, ...(exData || []).map(e => Number(e.day)).filter(giornoNoto))
+      const quanti = Math.max(giorniDi(cycle), piuAlto || GIORNI_MIN)
+      setGiorni(quanti)
+      // Se gli esercizi vanno più in là del numero salvato — succede
+      // importando un CSV con il giorno 4 — il numero si allinea anche nel
+      // database, altrimenti nella schermata del turno quella linguetta non
+      // comparirebbe e la giornata sembrerebbe persa.
+      if (quanti > giorniDi(cycle) && (await capacita()).giorniScheda) {
+        await run(supabase.from('cycles').update({ giorni: quanti }).eq('id', cycleId),
+          'Numero di giorni non allineato.')
+      }
+      const map = giorniVuoti()
       exData.forEach(e => {
-        if (!e.exercises?.name || !giornoValido(e.day)) return
+        if (!e.exercises?.name || !giornoNoto(e.day)) return
         map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
       })
       setExList(map)
@@ -130,8 +153,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       'Impossibile leggere la scheda da clonare.'
     )
     if (!srcEx?.length) return
-    const map = { 1: [], 2: [], 3: [] }
-    const inserts = srcEx.filter(e => e.exercises?.name && giornoValido(e.day)).map((e, i) => ({
+    const map = giorniVuoti()
+    const inserts = srcEx.filter(e => e.exercises?.name && giornoNoto(e.day)).map((e, i) => ({
       cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
       reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
       sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
@@ -142,7 +165,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       'Clonazione non riuscita: gli esercizi non sono stati copiati.'
     )
     inserted?.forEach(e => {
-      if (!e.exercises?.name || !giornoValido(e.day)) return
+      if (!e.exercises?.name || !giornoNoto(e.day)) return
       map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
     })
     setExList(map)
@@ -152,7 +175,12 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (!cycleName.trim()) return
     setSaving(true)
     const { data } = await run(
-      supabase.from('cycles').insert({ turn_id: turnId, name: cycleName, start_date: startDate, is_active: true }).select().single(),
+      supabase.from('cycles').insert({
+        turn_id: turnId, name: cycleName, start_date: startDate, is_active: true,
+        // Il numero si scrive solo se la colonna c'è: finché la migrazione non
+        // è passata, la scheda nasce come nasceva prima.
+        ...(giorniAttivi ? { giorni } : {}),
+      }).select().single(),
       'Scheda non creata. Controlla la connessione e riprova.'
     )
     // Senza questo controllo data era null e `data.id` faceva schermata bianca.
@@ -164,6 +192,25 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (cloneFromId) await cloneExercises(data.id, cloneFromId)
     setSaving(false)
     setStep('exercises')
+  }
+
+  /**
+   * Cambia quante giornate ha la scheda, e lo salva subito se la scheda
+   * esiste già. Se il salvataggio non passa si torna al numero di prima:
+   * meglio una linguetta che non compare che una che sparisce al prossimo
+   * accesso.
+   */
+  async function cambiaGiorni(nuovo) {
+    const prima = giorni
+    const n = Math.min(GIORNI_MAX, Math.max(GIORNI_MIN, nuovo))
+    setGiorni(n)
+    setDay(d => giornoValido(d, { giorni: n }))
+    if (!currentCycleId || !giorniAttivi) return
+    const { error } = await run(
+      supabase.from('cycles').update({ giorni: n }).eq('id', currentCycleId),
+      'Numero di giorni non salvato.'
+    )
+    if (error) setGiorni(prima)
   }
 
   function generateLabel(prefix) {
@@ -350,7 +397,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
     setExList(prev => {
       const aggiornato = {}
-      for (const d of [1, 2, 3]) {
+      for (const d of GIORNI_TUTTI) {
         aggiornato[d] = prev[d].map(ex => ex.exerciseId === vecchioId
           ? { ...ex, exerciseId: destinazione.id, name: destinazione.name }
           : ex)
@@ -369,7 +416,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     if (error) return
     setExList(prev => {
       const updated = {}
-      for (const d of [1, 2, 3]) {
+      for (const d of GIORNI_TUTTI) {
         updated[d] = prev[d].map(ex => ex.exerciseId === editExerciseModal.id ? { ...ex, name: editExerciseName.trim() } : ex)
       }
       return updated
@@ -557,6 +604,25 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         <input value={cycleName} onChange={e => setCycleName(e.target.value)} placeholder="es. 4a Scheda Maggio 2026" style={inp} />
         <div style={{ ...fieldLabel, marginTop: '16px' }}>DATA DI INIZIO</div>
         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={inp} />
+        {giorniAttivi && (
+          <>
+            <div style={{ ...fieldLabel, marginTop: '16px' }}>QUANTI GIORNI</div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {GIORNI_TUTTI.map(n => (
+                <button key={n} type="button" onClick={() => setGiorni(n)} style={{
+                  flex: 1, padding: '12px 0', borderRadius: '4px',
+                  border: `1px solid ${giorni === n ? 'var(--accento)' : 'var(--bordo)'}`,
+                  background: giorni === n ? 'var(--accento)' : 'var(--sup-alta)',
+                  color: giorni === n ? '#fff' : 'var(--testo-chiaro)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '800',
+                }}>{n}</button>
+              ))}
+            </div>
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '6px' }}>
+              Quante volte a settimana si allena. Si può cambiare dopo.
+            </div>
+          </>
+        )}
         {atletiTurno.length > 0 && (
           <div style={{ marginTop: '22px' }}>
             <ScegliPersone atleti={atletiTurno} scelte={scelte} onChange={setScelte} />
@@ -578,14 +644,30 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       <TopBar title={cycleName.toUpperCase()} subtitle={readOnly ? 'Sola lettura' : 'Gestione esercizi'} onBack={goBack} />
 
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
-        {[1,2,3].map(d => (
+        {/* Qui le linguette sono corte — G1, G2 — e non «GIORNO 1» come
+            nella schermata del turno: in questa riga ci stanno anche il più
+            e il meno, e la scritta lunga andava a capo. Nell'editor «G1» è
+            già la parola che si usa sui pulsanti per spostare un esercizio
+            da un giorno all'altro. */}
+        {elencoGiorni({ giorni }).map(d => (
           <button key={d} onClick={() => { setDay(d); setActiveGroup(null) }} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)'
-          }}>GIORNO {d}</button>
+          }}>G{d}</button>
         ))}
+        {/* Aggiungere un giorno non tocca niente di quello che c'è già.
+            Toglierlo compare solo se l'ultimo giorno è vuoto: così il
+            pulsante non può far sparire esercizi. */}
+        {!readOnly && giorniAttivi && giorni > GIORNI_MIN && exList[giorni]?.length === 0 && (
+          <button onClick={() => cambiaGiorni(giorni - 1)} aria-label="Togli l'ultimo giorno"
+            style={linguettaPiu}>−</button>
+        )}
+        {!readOnly && giorniAttivi && giorni < GIORNI_MAX && (
+          <button onClick={() => cambiaGiorni(giorni + 1)} aria-label="Aggiungi un giorno"
+            style={linguettaPiu}>+</button>
+        )}
       </div>
 
       {!readOnly && exList[day].length > 1 && (
@@ -675,7 +757,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                           <button onPointerUp={e => { e.stopPropagation(); setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
                             style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px', touchAction: 'manipulation' }}>✏️</button>
-                          {[1,2,3].filter(d => d !== day).map(targetDay => (
+                          {elencoGiorni({ giorni }).filter(d => d !== day).map(targetDay => (
                             <button key={targetDay} onPointerUp={e => { e.stopPropagation(); moveToDay(day, ex.idx, targetDay) }}
                               style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '3px 7px', color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation' }}>
                               G{targetDay}
@@ -808,7 +890,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       {mostraImport && (
         <Suspense fallback={null}><ImportaCsv
           cycleId={currentCycleId}
-          esistentiPerGiorno={{ 1: exList[1].length, 2: exList[2].length, 3: exList[3].length }}
+          esistentiPerGiorno={Object.fromEntries(GIORNI_TUTTI.map(d => [d, exList[d].length]))}
           onFatto={() => { setMostraImport(false); loadExistingCycle() }}
           onClose={() => setMostraImport(false)}
         /></Suspense>
@@ -893,5 +975,7 @@ const freccia = {
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   padding: 0, touchAction: 'manipulation', cursor: 'pointer',
 }
+// Il più e il meno accanto alle linguette: quadrati, della stessa altezza.
+const linguettaPiu = { width: '40px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px dashed var(--bordo)', background: 'var(--sup)', color: 'var(--testo-debole)', fontSize: '18px', fontWeight: '700', lineHeight: 1, cursor: 'pointer' }
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }

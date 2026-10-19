@@ -9,6 +9,7 @@
 
 import { supabase } from '../supabaseClient'
 import { run } from './notify'
+import { conOrdineDelTurno } from './ordineDb'
 import { oggiLocale } from './schede'
 import { raggruppaOspiti } from './assegnazioni'
 import { caricaAssegnazioni } from './assegnazioniDb'
@@ -59,9 +60,9 @@ export async function caricaOspitiDiOggi(idTurni) {
 /** I Silver degli ALTRI turni: chi può essere aggiunto come ospite qui. */
 export async function silverDisponibili(idTurno) {
   const { data } = await run(
-    supabase.from('clients').select('id, name, surname, turn_id, turns(name, time)')
-      .eq('silver', true).eq('is_active', true).neq('turn_id', idTurno)
-      .order('surname'),
+    await conOrdineDelTurno(
+      supabase.from('clients').select('id, name, surname, turn_id, turns(name, time)')
+        .eq('silver', true).eq('is_active', true).neq('turn_id', idTurno)),
     'Impossibile caricare gli atleti Silver.'
   )
   return data || []

@@ -4,6 +4,8 @@ import { run } from '../lib/notify'
 import { comePulsante } from '../lib/stile'
 import { settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
+import { conOrdineDelTurno } from '../lib/ordineDb'
+import { GIORNI_PREDEFINITI, giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
@@ -14,7 +16,6 @@ import OspitiDelGiorno from '../components/OspitiDelGiorno'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-const GIORNI = [1, 2, 3]
 
 /**
  * Il turno visto per persona invece che per esercizio.
@@ -46,8 +47,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   async function carica() {
     setLoading(true)
     const [{ data: atleti }, { data: attive }] = await Promise.all([
-      run(supabase.from('clients').select('*')
-        .eq('turn_id', turn.id).eq('is_active', true).order('surname'),
+      run(await conOrdineDelTurno(supabase.from('clients').select('*')
+        .eq('turn_id', turn.id).eq('is_active', true)),
         'Impossibile caricare le persone del turno.'),
       run(supabase.from('cycles').select('*').eq('turn_id', turn.id).eq('is_active', true),
         'Impossibile caricare le schede del turno.'),
@@ -96,6 +97,11 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   }
 
   const piuDiUnaScheda = schede.length > 1
+  // Le linguette sono le stesse per tutto il turno, ma le schede attive
+  // possono avere un numero di giorni diverso: si mostra il più alto, così
+  // nessuno resta senza la sua linguetta. Senza schede restano tre, come
+  // prima.
+  const quantiGiorni = schede.length ? Math.max(...schede.map(giorniDi)) : GIORNI_PREDEFINITI
 
   return (
     <div style={affiancato ? { ...page, maxWidth: 'var(--colonna-larga)' } : page}>
@@ -104,13 +110,13 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
       {/* Il giorno si sceglie qui, sul turno: in un corso di gruppo è lo
           stesso per tutti, non una cosa da ripetere persona per persona. */}
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
-        {GIORNI.map(d => (
+        {elencoGiorni({ giorni: quantiGiorni }).map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
             flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)',
-          }}>GIORNO {d}</button>
+          }}>{etichettaGiorno(d, quantiGiorni)}</button>
         ))}
       </div>
 

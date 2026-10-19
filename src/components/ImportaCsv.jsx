@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { eserciziDaCsv } from '../lib/csv'
+import { GIORNI_MAX } from '../lib/giorni'
 
 /**
  * Importa una scheda incollando il CSV esportato dal database.
@@ -87,7 +88,7 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
           <br />
           <span style={{ color: 'var(--testo-chiaro)' }}>Obbligatorie:</span>{' '}
           <code style={{ fontFamily: 'monospace', color: 'var(--accento)' }}>exercise_name</code> e{' '}
-          <code style={{ fontFamily: 'monospace', color: 'var(--accento)' }}>day</code> (1, 2 o 3).
+          <code style={{ fontFamily: 'monospace', color: 'var(--accento)' }}>day</code> (da 1 a {GIORNI_MAX}).
           <br />
           <span style={{ color: 'var(--testo-debole)' }}>Facoltative:</span>{' '}
           <code style={{ fontFamily: 'monospace' }}>reps_a</code>{' '}
