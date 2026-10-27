@@ -281,7 +281,7 @@ export default function Turns({ navigate, goHome, coach }) {
                 {client.surname} {client.name}
                 {client.silver && <span style={distintivoSilver}>SILVER</span>}
               </div>
-              {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Non attiva</div>}
+              {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>In archivio</div>}
             </div>
             {/* Riordinando restano solo le frecce: in quel momento non c'è
                 niente altro da fare, e archiviare o eliminare per sbaglio

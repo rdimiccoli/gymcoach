@@ -97,8 +97,8 @@ export function ConfermaCambio({ coach, onConferma, onAnnulla }) {
           </div>
         </div>
         <div style={{ color: 'var(--testo-medio)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
-          Da adesso vedrai i turni, le schede e le atlete di {coach.name || coach.email}.
-          I carichi che segnerai finiranno sulle sue atlete.
+          Da adesso vedrai i turni, le schede e le persone di {coach.name || coach.email}.
+          I carichi che segnerai finiranno nei suoi turni.
         </div>
         <button type="button" disabled={attesa}
           onClick={() => { setAttesa(true); onConferma() }}

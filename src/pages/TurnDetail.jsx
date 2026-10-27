@@ -170,12 +170,17 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   async function saveLoads(clientId, clientWeek, loadUpdates) {
     // Un solo upsert per tutto il gruppo: prima era una richiesta per esercizio,
     // in fila, e nessuna delle due controllava l'esito.
-    const righe = loadUpdates.map(({ cycleExId, kg }) => ({
+    // Solo i carichi scritti davvero. Un campo lasciato vuoto non è «0 kg»:
+    // prima lo diventava, e aprire DETTAGLI solo per scrivere una nota
+    // registrava uno zero fasullo — che poi compariva nello storico come un
+    // crollo del carico.
+    const conCarico = loadUpdates.filter(u => u.kg != null)
+    const righe = conCarico.map(({ cycleExId, kg }) => ({
       client_id: clientId, cycle_exercise_id: cycleExId, kg, week: clientWeek
     }))
     // Passa dalla coda: se manca il segnale il carico non si perde, resta sul
     // telefono e parte da solo. Fallisce solo se è il server a rifiutare.
-    const { differito, errore } = await salvaCarichi(righe)
+    const { differito, errore } = righe.length ? await salvaCarichi(righe) : { differito: false, errore: null }
     if (errore) {
       notifyError('Carichi rifiutati dal server. Riprova.')
       // La modale resta aperta con i valori digitati: si può ritentare senza
@@ -185,7 +190,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
 
     setLoads(prev => {
       const next = { ...prev }
-      loadUpdates.forEach(({ cycleExId, kg }) => { next[`${clientId}_${cycleExId}_${clientWeek}`] = kg })
+      conCarico.forEach(({ cycleExId, kg }) => { next[`${clientId}_${cycleExId}_${clientWeek}`] = kg })
       return next
     })
 
@@ -226,13 +231,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       })
       return next
     })
-    loadUpdates.forEach(({ cycleExId, kg }) => {
+    conCarico.forEach(({ cycleExId, kg }) => {
       const ex = exercises.find(e => e.id === cycleExId)
       const cliente = clients.find(c => c.id === clientId)
       if (ex && cliente) controllaRecord(cliente, ex, kg)
     })
     conferma()
-    notifyOk(differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
+    notifyOk(!righe.length ? 'Salvato' : differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
     setEditModal(null)
   }
 
@@ -243,7 +248,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     tocco() // conferma il tocco senza obbligare a guardare lo schermo
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])
-    const base = Number.isFinite(attuale) ? attuale : 0
+    // Settimana nuova, ancora vuota: si parte dal carico della volta prima,
+    // che è scritto lì accanto («prec. 27.5»). Partire da zero voleva dire
+    // che + dava 1 kg, e per arrivare a 28 bisognava aprire DETTAGLI.
+    const precedente = parseFloat(getLoadInfo(client, ex).prevKg)
+    const base = Number.isFinite(attuale) ? attuale : Number.isFinite(precedente) ? precedente : 0
     const nuovo = Math.max(0, parseFloat((base + delta).toFixed(2)))
 
     setLoads(prev => ({ ...prev, [chiave]: nuovo }))
@@ -650,7 +659,10 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
   const [kgMap, setKgMap] = useState(() => {
     const m = {}
     group.exercises.forEach(ex => {
-      m[ex.id] = parseFloat(loads[`${client.id}_${ex.id}_${week}`]) || 0
+      // Vuoto, non zero, se questa settimana non c'è ancora un carico: lo
+      // zero è un dato (corpo libero), il vuoto vuol dire «non segnato».
+      const v = parseFloat(loads[`${client.id}_${ex.id}_${week}`])
+      m[ex.id] = Number.isFinite(v) ? v : ''
     })
     return m
   })
@@ -671,11 +683,14 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
   }
 
   const change = (exId, delta) => {
+    // Campo vuoto: si parte dal carico della volta prima, come nella lista.
+    const ex = group.exercises.find(e => e.id === exId)
+    const precedente = parseFloat(ex ? getPrevLoad(ex)?.kg : NaN)
     setKgMap(prev => {
       // prev[exId] può essere la stringa '' o '.' quando il coach svuota il campo
       // per riscriverlo: sommarci un numero dava concatenazione e poi crash.
       const attuale = parseFloat(prev[exId])
-      const base = Number.isFinite(attuale) ? attuale : 0
+      const base = Number.isFinite(attuale) ? attuale : Number.isFinite(precedente) ? precedente : 0
       return { ...prev, [exId]: Math.max(0, parseFloat((base + delta).toFixed(2))) }
     })
   }
@@ -701,7 +716,8 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
     }
     onSave(group.exercises.map(ex => ({
       cycleExId: ex.id,
-      kg: parseFloat(kgMap[ex.id]) || 0,
+      // null = campo vuoto: non si salva nessun carico per questo esercizio.
+      kg: Number.isFinite(parseFloat(kgMap[ex.id])) ? parseFloat(kgMap[ex.id]) : null,
       nota: noteMap[ex.id] ?? '',
     })))
   }
@@ -750,7 +766,8 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
             {/* KG input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <input
-                type="number" value={val}
+                type="number" value={val} inputMode="decimal"
+                placeholder={prev ? String(prev.kg) : '—'}
                 onChange={e => handleManualInput(ex.id, e.target.value)}
                 style={{ flex: 1, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
               />

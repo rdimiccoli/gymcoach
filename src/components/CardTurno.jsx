@@ -97,7 +97,7 @@ export default function CardTurno({
                 )}
                 {mostraConteggio && atlete.length > 0 && (
                   <span style={{ color: 'var(--testo-debole)', fontSize: '13px' }}>
-                    {atlete.length} {atlete.length === 1 ? 'atleta' : 'atlete'}
+                    {atlete.length} {atlete.length === 1 ? 'persona' : 'persone'}
                   </span>
                 )}
               </div>
@@ -113,7 +113,7 @@ export default function CardTurno({
                 Nessuna scheda attiva
               </div>
               <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px' }}>
-                {atlete.length > 0 ? `${atlete.length} atlete in attesa` : 'Creane una da SCHEDE'}
+                {atlete.length > 0 ? `${atlete.length} ${atlete.length === 1 ? 'persona' : 'persone'} in attesa` : 'Creane una da SCHEDE'}
               </div>
             </div>
           )}

@@ -768,7 +768,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       borderRadius: '6px', padding: '12px 14px', marginBottom: '6px',
                       opacity: isDragging ? 0.5 : 1, transition: 'border 0.1s',
                     }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: readOnly ? 0 : '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                       {!readOnly && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
                           {/* Frecce: noiose e infallibili. Chi ha fretta trascina la maniglia. */}
@@ -815,19 +815,22 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         </div>
                       )}
                     </div>
-                    {!readOnly && (
+                    {/* Le ripetizioni si vedono anche in sola lettura: aprendo una
+                        scheda completata si va proprio a cercare quelle. Prima
+                        restavano solo i nomi degli esercizi. */}
+                    {(
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                         {isCircuit
                           ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'rgba(59,130,246,0.7)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)' }} />
+                              <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)', ...(readOnly ? soloLettura : null) }} />
                             </div>
                           ))
                           : [['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                              <input value={ex[field]} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => scriviReps(ex.id)} style={repsInp} />
+                              <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, ...(readOnly ? soloLettura : null) }} />
                             </div>
                           ))
                         }
@@ -998,7 +1001,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                   ⚠ USATO IN {usoEsercizio} SCHEDE
                 </div>
                 <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4 }}>
-                  Il catalogo esercizi è condiviso fra tutte le coach.
+                  Il catalogo esercizi è condiviso fra tutti i coach.
                   {usatoInQuestaScheda
                     ? ' Rinominare in tutte le schede cambia il nome anche in quelle già completate e nello storico degli atleti.'
                     : ' Il nuovo nome comparirà ovunque, anche nelle schede già completate.'}
@@ -1051,5 +1054,7 @@ const freccia = {
 }
 // Il più e il meno accanto alle linguette: quadrati, della stessa altezza.
 const linguettaPiu = { width: '40px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px dashed var(--bordo)', background: 'var(--sup)', color: 'var(--testo-debole)', fontSize: '18px', fontWeight: '700', lineHeight: 1, cursor: 'pointer' }
+// In sola lettura i campi restano dove sono ma non sembrano più da toccare.
+const soloLettura = { background: 'transparent', borderStyle: 'dashed', color: 'var(--testo-chiaro)', cursor: 'default' }
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }
 const bigBtn = { width: '100%', background: 'var(--accento)', border: 'none', color: '#fff', padding: '14px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', cursor: 'pointer' }

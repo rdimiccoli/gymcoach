@@ -32,7 +32,7 @@ export default function Athletes({ navigate, goHome, coach }) {
     const nomiTurni = Object.fromEntries(turni.map(t => [t.id, t.name]))
     const { data: clienti } = await run(
       supabase.from('clients').select('*').in('turn_id', turni.map(t => t.id)).order('surname'),
-      'Impossibile caricare le atlete.'
+      'Impossibile caricare le persone.'
     )
     setAtlete((clienti || []).map(c => ({ ...c, turnName: nomiTurni[c.turn_id] || '' })))
     setLoading(false)
@@ -47,7 +47,7 @@ export default function Athletes({ navigate, goHome, coach }) {
 
   return (
     <div style={page}>
-      <TopBar title="ATLETI" subtitle={`${attive} attive${mostraArchiviate ? ` · ${atlete.length - attive} archiviate` : ''}`} />
+      <TopBar title="ATLETI" subtitle={`${attive} ${attive === 1 ? 'persona attiva' : 'persone attive'}${mostraArchiviate ? ` · ${atlete.length - attive} in archivio` : ''}`} />
 
       <div style={{ padding: '12px 16px 8px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         <input
@@ -71,7 +71,7 @@ export default function Athletes({ navigate, goHome, coach }) {
             color: mostraArchiviate ? 'var(--accento)' : 'var(--testo-debole)',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
           }}>
-            {mostraArchiviate ? '● CON ARCHIVIATE' : 'MOSTRA ARCHIVIATE'}
+            {mostraArchiviate ? '● CON L\'ARCHIVIO' : 'MOSTRA ARCHIVIO'}
           </button>
         </div>
       </div>
@@ -80,7 +80,7 @@ export default function Athletes({ navigate, goHome, coach }) {
         {loading && <ScheletroElenco righe={5} />}
         {!loading && visibili.length === 0 && (
           <div style={vuoto}>
-            {testo ? `Nessuna atleta trovata per "${cerca.trim()}".` : 'Nessuna atleta. Aggiungile dalla scheda del turno.'}
+            {testo ? `Nessun risultato per "${cerca.trim()}".` : 'Ancora nessuno. Le persone si aggiungono da TURNI, dentro il turno.'}
           </div>
         )}
 
@@ -94,7 +94,7 @@ export default function Athletes({ navigate, goHome, coach }) {
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {a.surname} {a.name}
-                {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '7px', letterSpacing: '1px' }}>ARCHIVIATA</span>}
+                {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '7px', letterSpacing: '1px' }}>IN ARCHIVIO</span>}
               </div>
               <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{a.turnName}</div>
             </div>

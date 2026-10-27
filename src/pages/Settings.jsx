@@ -428,7 +428,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
           {!daArchiviare && (<>
             <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '20px' }}>
               Il coach sparisce dall'elenco all'accesso. <strong>Non si cancella niente:</strong>
-              {' '}turni, atlete e carichi restano, e si può rimettere quando si vuole.
+              {' '}turni, persone e carichi restano, e si può rimettere quando si vuole.
             </div>
             {altri.length === 0 && (
               <div style={{ color: 'var(--testo-debole)', fontSize: '14px', padding: '20px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
@@ -464,7 +464,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
 
             {turniSuoi > 0 && (<>
               <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '16px' }}>
-                Ha <strong>{turniSuoi} {turniSuoi === 1 ? 'turno' : 'turni'}</strong> con le loro atlete.
+                Ha <strong>{turniSuoi} {turniSuoi === 1 ? 'turno' : 'turni'}</strong>, con le loro persone e le loro schede.
                 Archiviarlo senza passarli a qualcuno li renderebbe invisibili a tutti.
               </div>
               <div style={fieldLabel}>A CHI PASSANO I SUOI TURNI</div>
@@ -536,7 +536,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
 
         <div style={{ color: 'var(--testo-debole)', fontSize: '13px', lineHeight: 1.5, marginTop: '22px' }}>
           Un nome sbagliato si corregge entrando in quel profilo e usando MODIFICA.
-          Un profilo non si può eliminare da qui: dietro ci sono turni e atlete,
+          Un profilo non si può eliminare da qui: dietro ci sono turni e persone,
           e non deve poterli staccare un tocco di troppo.
         </div>
       </div>

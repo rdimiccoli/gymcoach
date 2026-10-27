@@ -6,7 +6,10 @@ import { ScheletroStorico } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
-const WEEK_LABEL = w => w <= 2 ? 'Sett. 1–2' : w <= 4 ? 'Sett. 3–4' : 'Sett. 5–6'
+// La settimana esatta. Prima si scriveva «Sett. 1–2» sia per la prima sia
+// per la seconda — le coppie di settimane delle ripetizioni — e due carichi
+// diversi sembravano registrati nello stesso momento.
+const WEEK_LABEL = w => `Sett. ${w}`
 
 export default function AthleteProfile({ navigate, goBack, goHome, params }) {
   const { client } = params
@@ -66,6 +69,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
       if (!cycle) return
       if (!byExercise[ex.name]) byExercise[ex.name] = []
       byExercise[ex.name].push({
+        cycleId: cycle.id,
         cycleName: cycle.name,
         date: cycle.start_date,
         week: load.week,
@@ -103,7 +107,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
 
         {!loading && history.length === 0 && (
           <div style={{ color: 'var(--bordo-forte)', textAlign: 'center', padding: '40px', fontSize: '14px', border: '1px dashed var(--sup-alta)', borderRadius: '8px' }}>
-            Nessun carico registrato ancora per questo atleta.
+            Nessun carico registrato ancora.
           </div>
         )}
 
@@ -116,18 +120,22 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>{history.length}</div>
               </div>
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SESSIONI TOTALI</div>
+                {/* Sono i carichi segnati, non le sedute: quattro esercizi per
+                    tre settimane fanno dodici carichi in tre sedute. Prima si
+                    chiamava «sessioni totali» e diceva dodici. */}
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>CARICHI SEGNATI</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>
                   {history.reduce((sum, ex) => sum + ex.entries.length, 0)}
                 </div>
               </div>
-              {/* Al posto della «settimana attuale», che era il contatore
-                  manuale: qui il carico più alto mai sollevato, che è la cosa
-                  che il coach cerca davvero aprendo una scheda atleta. */}
+              {/* Al posto del «carico max», che era il più alto fra esercizi
+                  diversi: i 120 kg della pressa accanto ai 30 della panca non
+                  dicono niente. Il massimo vero sta su ogni esercizio, sotto
+                  BEST. Qui: quante schede ha fatto. */}
               <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>CARICO MAX</div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SCHEDE</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: 'var(--accento)' }}>
-                  {Math.max(0, ...history.flatMap(ex => ex.entries.map(e => Number(e.kg) || 0)))} <span style={{ fontSize: '15px', fontWeight: '700' }}>kg</span>
+                  {new Set(history.flatMap(ex => ex.entries.map(e => e.cycleId))).size}
                 </div>
               </div>
             </div>
@@ -187,7 +195,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                           il grafico le vuole nell'ordine in cui sono successe. */}
                       {ex.entries.length > 1 && (
                         <div style={{ padding: '14px 14px 4px' }}>
-                          <Andamento punti={[...ex.entries].reverse().map(e => ({ kg: e.kg, etichetta: WEEK_LABEL(e.week).replace('Sett. ', 'S') }))} />
+                          <Andamento punti={[...ex.entries].reverse().map(e => ({ kg: e.kg, etichetta: `S${e.week}` }))} />
                         </div>
                       )}
                       {ex.entries.map((entry, i) => (
@@ -238,7 +246,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
         )}
         <div style={{ height: '24px' }} />
       </div>
-      <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+      <BottomNav active="athletes" navigate={navigate} goHome={goHome} />
     </div>
   )
 }

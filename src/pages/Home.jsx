@@ -133,7 +133,7 @@ export default function Home({ navigate, goHome, session, coach }) {
               Non hai ancora nessun turno
             </div>
             <div style={{ color: 'var(--testo-debole)', fontSize: '14px', lineHeight: 1.5, marginBottom: '18px' }}>
-              Un turno è una fascia oraria con le sue atlete — per esempio «09:00 — Femminile».
+              Un turno è una fascia oraria con le persone che ci vengono — per esempio «09:00 — Femminile».
               Si comincia da lì.
             </div>
             <button onClick={() => navigate('turns')} style={pulsanteVuoto}>+ CREA IL PRIMO TURNO</button>
@@ -221,7 +221,7 @@ function InvitoImpronta({ onAttiva, onNo }) {
       </div>
       <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
         Adesso chiunque prenda in mano questo dispositivo sbloccato vede e modifica
-        i dati di tutte le atlete.
+        i dati di tutte le persone.
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={onAttiva} style={{
