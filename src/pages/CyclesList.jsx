@@ -8,12 +8,16 @@ import { caricaAssegnazioni, salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
+import MenuPuntini from '../components/MenuPuntini'
+import CatalogoEsercizi from '../components/CatalogoEsercizi'
 import BottomNav from '../components/BottomNav'
 
 export default function CyclesList({ navigate, goHome, coach }) {
   const [turns, setTurns] = useState([])
   const [cyclesByTurn, setCyclesByTurn] = useState({})
   const [loading, setLoading] = useState(true)
+  // Due linguette: le schede dei turni e il catalogo degli esercizi.
+  const [linguetta, setLinguetta] = useState('schede')
   const [cloneModal, setCloneModal] = useState(null)
   const [completeModal, setCompleteModal] = useState(null)
   const [renameModal, setRenameModal] = useState(null)
@@ -205,7 +209,22 @@ export default function CyclesList({ navigate, goHome, coach }) {
   return (
     <div style={page}>
       <TopBar title="SCHEDE" subtitle="Storico e gestione" />
-      <div style={scroll}>
+
+      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
+        {[['schede', 'SCHEDE'], ['esercizi', 'ESERCIZI']].map(([id, testo]) => (
+          <button key={id} type="button" onClick={() => setLinguetta(id)} style={{
+            flex: 1, padding: '10px', borderRadius: '4px', border: 'none', cursor: 'pointer',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1.5px',
+            background: linguetta === id ? 'var(--accento)' : 'var(--sup)',
+            color: linguetta === id ? '#fff' : 'var(--testo-debole)',
+          }}>{testo}</button>
+        ))}
+      </div>
+
+      {linguetta === 'esercizi' && <CatalogoEsercizi />}
+
+      {linguetta === 'schede' && (
+      <div style={scroll} data-scorre>
         {loading && <ScheletroElenco righe={4} />}
 
         {turns.map(turn => {
@@ -237,12 +256,26 @@ export default function CyclesList({ navigate, goHome, coach }) {
                   borderLeft: cycle.is_active ? '2px solid var(--accento)' : '2px solid var(--bordo)',
                   borderRadius: '6px', padding: '12px 14px', marginBottom: '7px',
                 }}>
-                  {/* Header row — info + open button */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  {/* In vista solo APRI, che è quello che si usa sempre. Il resto
+                      sta nel menu ⋮: cinque pulsanti per scheda facevano della
+                      pagina un muro dove il nome della scheda si perdeva. */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
                       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cycle?.name || '(senza nome)'}</div>
-                      <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '2px' }}>
-                        {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
+                      {/* Lo stato sta sotto il nome, accanto alla data: a destra
+                          tagliava il nome della scheda a metà sul telefono. */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                        {cycle.is_active ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 5px var(--ok)' }} />
+                            <span style={{ color: 'var(--ok)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>ATTIVA</span>
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>COMPLETATA</span>
+                        )}
+                        <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>
+                          {cycle.start_date ? new Date(cycle.start_date).toLocaleDateString('it-IT') : 'Data non impostata'}
+                        </span>
                       </div>
                       {/* Una scheda per pochi deve dirlo da fuori: senza questa riga
                           sembrerebbe uguale a tutte le altre. */}
@@ -253,35 +286,18 @@ export default function CyclesList({ navigate, goHome, coach }) {
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      {cycle.is_active ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 5px var(--ok)' }} />
-                          <span style={{ color: 'var(--ok)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>ATTIVA</span>
-                        </div>
-                      ) : (
-                        <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>COMPLETATA</span>
-                      )}
-                      {/* OPEN BUTTON — only this is tappable for navigation */}
                       <button onClick={() => navigate('cycle-form', { turnId: turn.id, cycleId: cycle.id, readOnly: !cycle.is_active })}
-                        style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '6px 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
+                        style={{ height: '34px', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '0 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
                         APRI →
                       </button>
+                      <MenuPuntini etichetta={`Altre azioni per ${cycle.name}`} voci={[
+                        { icona: '📤', testo: 'Condividi', azione: () => navigate('cycle-share', { cycleId: cycle.id, cycleName: cycle.name }) },
+                        { icona: '✏️', testo: 'Modifica', azione: () => apriModifica(cycle) },
+                        { icona: '⬇', testo: 'Scarica CSV', azione: () => esportaCsv(cycle) },
+                        cycle.is_active && { icona: '✓', testo: 'Completa', azione: () => setCompleteModal(cycle) },
+                        { icona: '🗑', testo: 'Elimina', pericolo: true, azione: () => setDeleteModal({ cycle, turnId: turn.id }) },
+                      ]} />
                     </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <button onClick={() => navigate('cycle-share', { cycleId: cycle.id, cycleName: cycle.name })}
-                      style={actionBtn}>📤 CONDIVIDI</button>
-                    <button onClick={() => apriModifica(cycle)}
-                      style={actionBtn}>✏️ MODIFICA</button>
-                    <button onClick={() => esportaCsv(cycle)} style={actionBtn}>⬇ CSV</button>
-                    {cycle.is_active && (
-                      <button onClick={() => setCompleteModal(cycle)}
-                        style={{ ...actionBtn, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.25)', color: 'var(--attenzione)' }}>✓ COMPLETA</button>
-                    )}
-                    <button onClick={() => setDeleteModal({ cycle, turnId: turn.id })}
-                      style={{ ...actionBtn, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: 'rgba(239,68,68,0.7)' }}>🗑 ELIMINA</button>
                   </div>
                 </div>
               ))}
@@ -302,6 +318,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
         )}
         <div style={{ height: '20px' }} />
       </div>
+      )}
 
 
 
@@ -414,7 +431,6 @@ const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', 
 const scroll = { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
 const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
-const actionBtn = { background: 'var(--sup)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '7px 12px', color: 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 // maxHeight + scroll: con nome, data e l'elenco delle persone, su un telefono
 // piccolo il pulsante SALVA finirebbe sotto il bordo dello schermo.

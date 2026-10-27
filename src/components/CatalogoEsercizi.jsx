@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { quantoEUsato, rinominaEsercizio, eliminaEsercizio, unisciEsercizi } from '../lib/eserciziDb'
-import { ScheletroElenco } from '../components/Scheletro'
-import TopBar from '../components/TopBar'
-import BottomNav from '../components/BottomNav'
+import { ScheletroElenco } from './Scheletro'
 
 /**
- * Il catalogo degli esercizi, tutto in un posto.
+ * Il catalogo degli esercizi, tutto in un posto. Sta in SCHEDE, sotto la
+ * linguetta ESERCIZI: gli esercizi sono il materiale delle schede, e lì un
+ * coach li va a cercare.
  *
  * Fino a qui un esercizio si rinominava solo da dentro una scheda, e non si
  * eliminava da nessuna parte: un coach che ne creava uno con un errore di
@@ -19,7 +19,7 @@ import BottomNav from '../components/BottomNav'
  * cancella anche i carichi dei clienti: prima di farlo il foglio lo dice con
  * i numeri veri, e il pulsante li ripete.
  */
-export default function Esercizi({ navigate, goHome }) {
+export default function CatalogoEsercizi() {
   const [esercizi, setEsercizi] = useState([])
   const [cerca, setCerca] = useState('')
   const [loading, setLoading] = useState(true)
@@ -100,13 +100,11 @@ export default function Esercizi({ navigate, goHome }) {
   const usato = uso && uso.righe > 0
 
   return (
-    <div style={page}>
-      <TopBar title="ESERCIZI" subtitle={`${esercizi.length} nel catalogo`} />
-
+    <div style={contenitore}>
       <div style={{ padding: '12px 16px 8px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         <input value={cerca} onChange={e => setCerca(e.target.value)} placeholder="Cerca esercizio..." style={inp} />
         <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '8px' }}>
-          Tocca un esercizio per cambiargli nome o eliminarlo. Vale per tutte le schede.
+          {loading ? ' ' : `${esercizi.length} esercizi. Tocca un esercizio per cambiargli nome o eliminarlo: vale per tutte le schede.`}
         </div>
       </div>
 
@@ -221,13 +219,12 @@ export default function Esercizi({ navigate, goHome }) {
           </div>
         </div>
       )}
-
-      <BottomNav active="exercises" navigate={navigate} goHome={goHome} />
     </div>
   )
 }
 
-const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden' }
+// Riempie lo spazio che SCHEDE gli lascia fra le linguette e la barra in fondo.
+const contenitore = { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '12px 16px', WebkitOverflowScrolling: 'touch' }
 const inp = { width: '100%', boxSizing: 'border-box', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '6px', padding: '13px 14px', color: '#fff', fontSize: '16px', outline: 'none' }
 const vuoto = { color: 'var(--testo-fioco)', fontSize: '14px', textAlign: 'center', padding: '40px 16px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }

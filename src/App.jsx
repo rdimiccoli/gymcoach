@@ -12,7 +12,6 @@ import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
-import Esercizi from './pages/Esercizi'
 import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
 import ScegliCoach, { ConfermaCambio } from './components/ScegliCoach'
 import Notifier from './components/Notifier'
@@ -319,7 +318,6 @@ export default function App() {
     settings: Settings,
     turns: Turns,
     athletes: Athletes,
-    exercises: Esercizi,
     'athlete-profile': AthleteProfile,
   }
 
