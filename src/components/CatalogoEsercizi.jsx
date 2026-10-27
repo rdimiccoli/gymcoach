@@ -125,8 +125,8 @@ export default function CatalogoEsercizi() {
       </div>
 
       {aperto && (
-        <div style={velo}>
-          <div style={foglio}>
+        <div className="velo-entra" style={velo}>
+          <div className="foglio-entra" style={foglio}>
             {!conferma && (<>
               <div style={titolo}>MODIFICA ESERCIZIO</div>
               <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '14px' }}>

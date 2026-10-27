@@ -323,7 +323,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
 
 
       {cloneModal && (
-        <div style={overlay}>
+        <div className="velo-entra" style={overlay}>
           <div style={{ ...sheet, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div style={sheetTitle}>NUOVA SCHEDA</div>
             <div style={sheetSub}>Inizia da zero oppure clona una scheda esistente.</div>
@@ -358,8 +358,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
       )}
 
       {completeModal && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>COMPLETA SCHEDA</div>
             <div style={sheetSub}>Confermi di voler completare "{completeModal.name}"?</div>
             <button onClick={() => completeCycle(completeModal)} style={sheetBtnYellow}>
@@ -371,8 +371,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
       )}
 
       {renameModal && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>MODIFICA SCHEDA</div>
             <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '6px' }}>NOME</div>
             <input value={renameValue} onChange={e => setRenameValue(e.target.value)}
@@ -405,8 +405,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
       )}
 
       {deleteModal && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>ELIMINA SCHEDA</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>{deleteModal.cycle.name}?</div>

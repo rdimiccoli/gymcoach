@@ -86,8 +86,8 @@ export default function ScegliCoach({ coaches, attuale, onScelto, onAnnulla, cam
 export function ConfermaCambio({ coach, onConferma, onAnnulla }) {
   const [attesa, setAttesa] = useState(false)
   return (
-    <div style={sfondo} onClick={onAnnulla}>
-      <div style={foglio} onClick={e => e.stopPropagation()}>
+    <div className="velo-entra" style={sfondo} onClick={onAnnulla}>
+      <div className="foglio-entra" style={foglio} onClick={e => e.stopPropagation()}>
         {/* Anche qui il segno di chi si sta per diventare: la conferma deve
             far vedere la stessa cosa che si è appena toccata. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>

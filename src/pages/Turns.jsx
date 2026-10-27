@@ -1,9 +1,10 @@
 import { comePulsante } from '../lib/stile.js'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
+import { useScivola } from '../lib/movimento'
 import { ScheletroElenco } from '../components/Scheletro'
 import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
@@ -33,6 +34,8 @@ export default function Turns({ navigate, goHome, coach }) {
   // Riordino: l'elenco diventa frecce su e giù invece di matita e cestino,
   // così in quella modalità non si può toccare nient'altro per sbaglio.
   const [riordino, setRiordino] = useState(false)
+  const elencoRef = useRef(null)
+  const ricordaPosti = useScivola(elencoRef)
   const [renameTurnModal, setRenameTurnModal] = useState(null)
   // Si rinomina l'ORARIO e il TIPO, non il nome scritto a mano.
   //
@@ -66,7 +69,9 @@ export default function Turns({ navigate, goHome, coach }) {
   async function sposta(indice, passo) {
     const vicino = clients[indice + passo]
     if (!vicino) return
-    setClients(await spostaAccanto(clients, clients[indice].id, vicino.id))
+    const dopo = await spostaAccanto(clients, clients[indice].id, vicino.id)
+    ricordaPosti()
+    setClients(dopo)
   }
 
   async function loadClients(turn) {
@@ -221,7 +226,7 @@ export default function Turns({ navigate, goHome, coach }) {
   if (view === 'turn') return (
     <div style={page}>
       <TopBar title={selectedTurn?.name} subtitle="Gestione clienti" onBack={() => setView('main')} />
-      <div style={scroll}>
+      <div style={scroll} ref={elencoRef}>
         <div style={sectionLabel}>AGGIUNGI CLIENTE</div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nome" style={{ ...inp, flex: 1 }} />
@@ -254,7 +259,7 @@ export default function Turns({ navigate, goHome, coach }) {
           </div>
         )}
         {clients.map((client, indice) => (
-          <div key={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
+          <div key={client.id} data-scivola={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
@@ -296,8 +301,8 @@ export default function Turns({ navigate, goHome, coach }) {
 
       {/* Edit client modal */}
       {editClient && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>MODIFICA CLIENTE</div>
             <div style={{ ...fieldLabel, marginTop: '4px' }}>NOME</div>
             <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inp, marginBottom: '12px' }} />
@@ -346,8 +351,8 @@ export default function Turns({ navigate, goHome, coach }) {
 
       {/* Delete confirm modal */}
       {deleteConfirm && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>ELIMINA CLIENTE</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>
               Confermi di voler eliminare
@@ -425,8 +430,8 @@ export default function Turns({ navigate, goHome, coach }) {
         <div style={{ height: '76px' }} />
       </div>
       {renameTurnModal && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>MODIFICA TURNO</div>
             <div style={fieldLabel}>ORARIO</div>
             <input value={renameTime} onChange={e => setRenameTime(e.target.value)} autoFocus
@@ -451,8 +456,8 @@ export default function Turns({ navigate, goHome, coach }) {
       )}
 
       {deleteTurnConfirm && (
-        <div style={overlay}>
-          <div style={sheet}>
+        <div className="velo-entra" style={overlay}>
+          <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>ELIMINA TURNO</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare questo turno?</div>
             <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '13px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>

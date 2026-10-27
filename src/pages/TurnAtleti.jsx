@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { comePulsante } from '../lib/stile'
 import { settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
+import { useScivola } from '../lib/movimento'
 import { GIORNI_PREDEFINITI, giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -42,6 +43,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   const affiancato = useSchermoLargo()
   const [aperta, setAperta] = useState(null)
   const [ordineAttivo, setOrdineAttivo] = useState(false)
+  const elencoRef = useRef(null)
+  const ricordaPosti = useScivola(elencoRef)
 
   useEffect(() => { carica() }, [turn.id])
 
@@ -121,6 +124,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
     const posto = new Map(dopo.map((p, n) => [p.id, n]))
     // Gli ospiti restano in fondo, dove stanno già.
     const quale = r => (r.ospite ? Infinity : posto.get(r.persona.id) ?? Infinity)
+    ricordaPosti()
     setRighe(prec => [...prec].sort((a, b) => quale(a) - quale(b)))
   }
 
@@ -142,7 +146,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
       </div>
 
       <div style={affiancato ? affiancamento : { display: 'contents' }}>
-      <div style={affiancato ? colonnaElenco : scroll}>
+      <div style={affiancato ? colonnaElenco : scroll} ref={elencoRef}>
         {loading && <ScheletroElenco righe={6} />}
 
         {!loading && righe.length === 0 && (
@@ -162,6 +166,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
             righe.findIndex(r => r.persona.id === riga.persona.id) === i
           return (
             <div key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}
+              data-scivola={`${riga.persona.id}:${riga.scheda?.id || 'niente'}:${riga.ospite ? 'o' : 'm'}`}
               style={{ display: 'flex', alignItems: 'stretch', gap: '6px' }}>
             <button
               type="button"

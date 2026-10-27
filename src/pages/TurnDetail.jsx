@@ -7,6 +7,7 @@ import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
+import { useScivola } from '../lib/movimento'
 import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -45,6 +46,15 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // servono intere per spostarne una, perché i numeri d'ordine valgono per
   // il turno e la prima volta non ce l'ha nessuno.
   const [tuttiDelTurno, setTuttiDelTurno] = useState([])
+  // Le animazioni (index.css, «IL MOVIMENTO»). Ognuna è un contatore per
+  // carico: cambiando, cambia la `key` dell'elemento animato e l'animazione
+  // riparte. Solo per quello che il coach ha toccato in questa seduta —
+  // aprendo la schermata non deve saltare niente.
+  const [saltelli, setSaltelli] = useState({})     // il numero cambiato con + / −
+  const [salvati, setSalvati] = useState({})       // il server ha detto sì
+  const [recordAppena, setRecordAppena] = useState({}) // record battuto adesso
+  const elencoRef = useRef(null)
+  const ricordaPosti = useScivola(elencoRef)
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   useEffect(() => { capacita().then(c => setOrdineAttivo(c.ordinePersone)) }, [])
   // loads[clientId_exId_week] = kg
@@ -236,6 +246,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     const nuovo = Math.max(0, parseFloat((base + delta).toFixed(2)))
 
     setLoads(prev => ({ ...prev, [chiave]: nuovo }))
+    setSaltelli(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     carichiPendenti.current[chiave] = {
       client_id: client.id, cycle_exercise_id: ex.id, kg: nuovo, week: settimana,
       __client: client, __ex: ex,
@@ -258,6 +269,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     // Il primo carico in assoluto non è un record: è solo il primo.
     if (massimo === undefined || kg <= massimo) return
     setRecord(prev => ({ ...prev, [chiave]: kg }))
+    setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     festa()
     notifyOk(`🏆 Record di ${client.name}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${massimo})`)
   }
@@ -269,7 +281,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     // eslint-disable-next-line no-unused-vars
     const { __client, __ex, ...daSpedire } = riga
     clearTimeout(timerCarichi.current[chiave])
-    const { errore } = await salvaCarichi([daSpedire])
+    const { errore, differito } = await salvaCarichi([daSpedire])
+    if (!errore && !differito) setSalvati(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     if (!errore) controllaRecord(riga.__client, riga.__ex, riga.kg)
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
@@ -290,6 +303,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     if (dopo === tuttiDelTurno) return
     setTuttiDelTurno(dopo)
     const posto = new Map(dopo.map((p, n) => [p.id, n]))
+    ricordaPosti()
     setClients(prec => [...prec].sort((a, b) => posto.get(a.id) - posto.get(b.id)))
   }
 
@@ -382,7 +396,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       </div>
       </>)}
 
-      <div style={scroll}>
+      <div style={scroll} ref={elencoRef}>
         {loading && <ScheletroElenco righe={4} />}
         {!loading && exercises.length === 0 && (
           <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
@@ -446,7 +460,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'var(--acc-riempimento)' : 'var(--sup-alta)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
                   {clients.map((client, indiceCliente) => {
                     return (
-                      <div key={client.id} style={{ borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
+                      <div key={client.id} data-scivola={`${groupKey}:${client.id}`} style={{ position: 'relative', borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Con una persona sola il nome sta già in cima al
@@ -517,7 +531,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div key={ex.id} style={{ position: 'relative', background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {salvati[`${client.id}_${ex.id}_${settimana}`] > 0 && (
+                                  <span key={salvati[`${client.id}_${ex.id}_${settimana}`]} className="lampo-salvato" aria-hidden="true" />
+                                )}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   {group.exercises.length > 1 && (
                                     <div style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -531,6 +548,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                     {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
                                       && currentKg >= record[`${client.id}_${ex.exercise_id}`] && currentKg > 0 && (
                                       <span title="Massimo di sempre su questo esercizio"
+                                        key={recordAppena[`${client.id}_${ex.exercise_id}`] || 0}
+                                        className={recordAppena[`${client.id}_${ex.exercise_id}`] ? 'record-entra' : undefined}
                                         style={{ color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
                                         🏆 RECORD
                                       </span>
@@ -551,7 +570,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                 <button onClick={() => modificaCarico(client, ex, -1)} style={tastoCarico}>−</button>
                                 <button type="button" onClick={() => setEditModal({ client, group })}
                                   style={{ ...comePulsante, minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
-                                  <span style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
+                                  <span key={saltelli[`${client.id}_${ex.id}_${settimana}`] || 0}
+                                    className={saltelli[`${client.id}_${ex.id}_${settimana}`] ? 'salto' : undefined}
+                                    style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
                                     {currentKg !== undefined ? currentKg : '—'}
                                   </span>
                                   <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
@@ -673,7 +694,7 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
   }
 
   return (
-    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
+    <div className="foglio-entra" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
         {/* Cognome prima, come nell'elenco da cui si arriva qui: toccare
             «Bailon Vincenzo» e ritrovarsi «VINCENZO BAILON» in testa fa

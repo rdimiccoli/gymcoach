@@ -129,8 +129,8 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
           Da computer il difetto non si riproduce: è una decisione che prende
           la scheda grafica del telefono. */}
       {elencoAperto && createPortal((
-        <div style={sfondo} onClick={chiudiElenco}>
-          <div style={foglio} onClick={e => e.stopPropagation()}>
+        <div className="velo-entra" style={sfondo} onClick={chiudiElenco}>
+          <div className="foglio-entra" style={foglio} onClick={e => e.stopPropagation()}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '6px' }}>
               CHI VIENE OGGI DA UN ALTRO TURNO?
             </div>

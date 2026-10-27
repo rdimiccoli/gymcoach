@@ -60,8 +60,15 @@ export default function MenuPuntini({ voci, etichetta = 'Altre azioni' }) {
       </button>
 
       {aperto && (
-        <div ref={tendina} role="menu"
-          style={{ ...stileTendina, ...(versoAlto ? { bottom: 'calc(100% + 6px)' } : { top: 'calc(100% + 6px)' }) }}>
+        <div ref={tendina} role="menu" className="tendina-entra"
+          style={{
+            ...stileTendina,
+            // Si apre partendo dal pulsante: dall'angolo in alto a destra, o
+            // da quello in basso quando si apre verso l'alto.
+            ...(versoAlto
+              ? { bottom: 'calc(100% + 6px)', transformOrigin: 'bottom right' }
+              : { top: 'calc(100% + 6px)', transformOrigin: 'top right' }),
+          }}>
           {elenco.map((v, i) => (
             <button key={v.testo} type="button" role="menuitem"
               onClick={() => { setAperto(false); v.azione() }}

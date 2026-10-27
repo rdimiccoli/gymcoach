@@ -1,10 +1,12 @@
 import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { flushSync } from 'react-dom'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
 import { raggruppaEsercizi, oggiLocale } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
+import { chiudiRiga } from '../lib/movimento'
 import { GIORNI_MAX, GIORNI_MIN, GIORNI_PREDEFINITI, giorniDi, elencoGiorni, giornoValido } from '../lib/giorni'
 import { salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
@@ -304,11 +306,15 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       )
       if (error) return
     }
-    setExList(prev => {
+    // La riga si chiude prima di sparire: si vede che se n'è andata, invece
+    // di ritrovarsi con un esercizio in meno senza capire quale.
+    const rimetti = fromDay === day ? await chiudiRiga(rowRefs.current[idx]) : () => {}
+    flushSync(() => setExList(prev => {
       const fromList = prev[fromDay].filter((_, i) => i !== idx)
       const toList = [...prev[toDay], { ...ex }]
       return { ...prev, [fromDay]: fromList, [toDay]: toList }
-    })
+    }))
+    rimetti()
   }
 
   async function moveExToGroup(fromIdx, targetGroupLabel) {
@@ -351,8 +357,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       )
       if (error) { setDeleteExConfirm(null); return }
     }
-    setExList(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) }))
     setDeleteExConfirm(null)
+    const rimetti = d === day ? await chiudiRiga(rowRefs.current[idx]) : () => {}
+    flushSync(() => setExList(prev => ({ ...prev, [d]: prev[d].filter((_, i) => i !== idx) })))
+    rimetti()
   }
 
   // `exercises` è un catalogo condiviso: rinominare una riga cambia il nome in
@@ -927,8 +935,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         // Niente chiusura toccando fuori: il tocco che apre questo foglio
         // arriva da un tasto piccolo, e un secondo tocco nervoso lo
         // richiuderebbe prima di averlo letto. Si esce con Annulla.
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
+        <div className="velo-entra" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div className="foglio-entra" style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>SPOSTA ESERCIZIO</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '4px' }}>
               Vuoi spostarlo dal Giorno {spostaConferma.d} al Giorno {spostaConferma.a}?
@@ -944,8 +952,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
       {/* Delete confirm modal */}
       {deleteExConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
+        <div className="velo-entra" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div className="foglio-entra" style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>ELIMINA ESERCIZIO</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '4px' }}>Confermi di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{deleteExConfirm?.name}?</div>
@@ -959,8 +967,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
       {/* Edit exercise modal */}
       {editExerciseModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
+        <div className="velo-entra" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div className="foglio-entra" style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '16px' }}>MODIFICA ESERCIZIO</div>
             <input value={editExerciseName} onChange={e => setEditExerciseName(e.target.value)} placeholder="Nome esercizio" autoFocus
               style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px' }} />
