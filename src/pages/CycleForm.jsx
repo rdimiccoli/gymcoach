@@ -70,6 +70,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
+  // Spostare un esercizio in un altro giorno chiede conferma. Prima bastava
+  // sfiorare G2 o G3 — piccoli, attaccati alla maniglia per trascinare — e
+  // l'esercizio spariva dal giorno senza che nessuno se ne accorgesse.
+  const [spostaConferma, setSpostaConferma] = useState(null) // { d, idx, a, nome }
   const [mostraImport, setMostraImport] = useState(false)
   const [usoEsercizio, setUsoEsercizio] = useState(null) // in quante schede è usato
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
@@ -319,6 +323,15 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       if (error) return
     }
     setExList(prev => ({ ...prev, [day]: prev[day].map((e, i) => i === fromIdx ? { ...e, supersetGroup: targetGroupLabel } : e) }))
+  }
+
+  async function confermaSpostamento() {
+    const { d, idx, a, nome } = spostaConferma
+    setSpostaConferma(null)
+    // Fra il tocco e la conferma l'elenco non cambia — il foglio copre tutto —
+    // ma si controlla lo stesso che in quel posto ci sia ancora lui.
+    if (exList[d]?.[idx]?.name !== nome) return
+    await moveToDay(d, idx, a)
   }
 
   function removeExercise(d, idx) {
@@ -757,12 +770,25 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                           <button onPointerUp={e => { e.stopPropagation(); setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
                             style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px', touchAction: 'manipulation' }}>✏️</button>
-                          {elencoGiorni({ giorni }).filter(d => d !== day).map(targetDay => (
-                            <button key={targetDay} onPointerUp={e => { e.stopPropagation(); moveToDay(day, ex.idx, targetDay) }}
-                              style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '3px 7px', color: 'var(--testo-debole)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation' }}>
-                              G{targetDay}
-                            </button>
-                          ))}
+                          {elencoGiorni({ giorni }).filter(d => d !== day).map(targetDay => {
+                            // Il tasto premuto resta acceso finché il foglio
+                            // di conferma è aperto: si vede quale si è toccato.
+                            const acceso = spostaConferma?.d === day && spostaConferma?.idx === ex.idx && spostaConferma?.a === targetDay
+                            return (
+                              <button key={targetDay}
+                                onPointerUp={e => { e.stopPropagation(); setSpostaConferma({ d: day, idx: ex.idx, a: targetDay, nome: ex.name }) }}
+                                aria-label={`Sposta ${ex.name} al Giorno ${targetDay}`}
+                                style={{
+                                  background: acceso ? 'var(--accento)' : 'var(--sup-alta)',
+                                  border: `1px solid ${acceso ? 'var(--accento)' : 'var(--bordo)'}`,
+                                  borderRadius: '3px', padding: '3px 7px',
+                                  color: acceso ? '#fff' : 'var(--testo-debole)',
+                                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation',
+                                }}>
+                                G{targetDay}
+                              </button>
+                            )
+                          })}
                           <button onPointerUp={e => { e.stopPropagation(); removeExercise(day, ex.idx) }}
                             style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '18px', padding: '4px 6px', touchAction: 'manipulation' }}>✕</button>
                         </div>
@@ -894,6 +920,26 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
           onFatto={() => { setMostraImport(false); loadExistingCycle() }}
           onClose={() => setMostraImport(false)}
         /></Suspense>
+      )}
+
+      {/* Conferma prima di spostare un esercizio in un altro giorno */}
+      {spostaConferma && (
+        // Niente chiusura toccando fuori: il tocco che apre questo foglio
+        // arriva da un tasto piccolo, e un secondo tocco nervoso lo
+        // richiuderebbe prima di averlo letto. Si esce con Annulla.
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>SPOSTA ESERCIZIO</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '4px' }}>
+              Vuoi spostarlo dal Giorno {spostaConferma.d} al Giorno {spostaConferma.a}?
+            </div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{spostaConferma.nome}</div>
+            <button onClick={confermaSpostamento} style={{ width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
+              SÌ, SPOSTA AL GIORNO {spostaConferma.a}
+            </button>
+            <button onClick={() => setSpostaConferma(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px' }}>Annulla</button>
+          </div>
+        </div>
       )}
 
       {/* Delete confirm modal */}
