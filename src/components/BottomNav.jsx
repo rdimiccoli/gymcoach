@@ -1,4 +1,4 @@
-import { IconaHome, IconaSchede, IconaTurni, IconaAtleti, IconaImpostazioni } from './Icone'
+import { IconaHome, IconaSchede, IconaTurni, IconaAtleti, IconaEsercizi, IconaImpostazioni } from './Icone'
 
 /**
  * Il menu dell'app.
@@ -23,6 +23,7 @@ export default function BottomNav({ active, navigate, goHome }) {
     { id: 'cycles',   Icona: IconaSchede,        label: 'SCHEDE',  action: () => navigate('cycles') },
     { id: 'turns',    Icona: IconaTurni,         label: 'TURNI',   action: () => navigate('turns') },
     { id: 'athletes', Icona: IconaAtleti,        label: 'ATLETI',  action: () => navigate('athletes') },
+    { id: 'exercises', Icona: IconaEsercizi,     label: 'ESERCIZI', action: () => navigate('exercises') },
     { id: 'settings', Icona: IconaImpostazioni,  label: 'IMPOST.', action: () => navigate('settings') },
   ]
   return (
@@ -33,9 +34,7 @@ export default function BottomNav({ active, navigate, goHome }) {
           <div style={{ color: active === item.id ? 'var(--accento)' : '#4a4643', display: 'flex', lineHeight: 1 }}>
             <item.Icona />
           </div>
-          <div style={{
-            fontSize: '13px',
-            letterSpacing: '0.5px',
+          <div className="etichetta-navigazione" style={{
             fontFamily: 'Barlow Condensed, sans-serif',
             fontWeight: '700',
             color: active === item.id ? 'var(--accento)' : '#555',

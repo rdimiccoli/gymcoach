@@ -59,6 +59,18 @@ export function IconaAtleti({ size = 23 }) {
   )
 }
 
+/** Manubrio: il catalogo degli esercizi. */
+export function IconaEsercizi({ size = 23 }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M8 12h8" />
+      <rect x="4.5" y="7" width="3.5" height="10" rx="1" />
+      <rect x="16" y="7" width="3.5" height="10" rx="1" />
+      <path d="M2.5 10v4M21.5 10v4" />
+    </svg>
+  )
+}
+
 /**
  * Ingranaggio delle impostazioni.
  *

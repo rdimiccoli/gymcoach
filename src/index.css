@@ -231,6 +231,20 @@ button { cursor: pointer; }
   min-width: 0;
 }
 
+.etichetta-navigazione {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Con sei voci, su un telefono stretto (360px) «ESERCIZI» arrivava a
+   toccare «IMPOST.»: lì le scritte si stringono di un punto e perdono la
+   spaziatura, e le voci rinunciano ai margini laterali. */
+@media (max-width: 380px) {
+  .voce-navigazione { padding-left: 1px; padding-right: 1px; }
+  .etichetta-navigazione { font-size: 12px; letter-spacing: 0; }
+}
+
 /* Il segno della voce aperta: una linguetta sopra l'icona. */
 .segno-attivo {
   position: absolute;
