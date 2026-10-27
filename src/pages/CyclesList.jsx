@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { settimanaDaCalendario } from '../lib/schede'
@@ -10,6 +10,8 @@ import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import MenuPuntini from '../components/MenuPuntini'
 import CatalogoEsercizi from '../components/CatalogoEsercizi'
+import AvvisoRosso from '../components/AvvisoRosso'
+import { perditeScheda } from '../lib/contaDanni'
 import BottomNav from '../components/BottomNav'
 
 export default function CyclesList({ navigate, goHome, coach }) {
@@ -31,6 +33,9 @@ export default function CyclesList({ navigate, goHome, coach }) {
   const [atletiTurno, setAtletiTurno] = useState([])
   const [scelte, setScelte] = useState(null)
   const [deleteModal, setDeleteModal] = useState(null)
+  // Cosa si perde eliminando la scheda: undefined finché si conta.
+  const [perdite, setPerdite] = useState(undefined)
+  const contoPer = useRef(null)
   const [completedAlerts, setCompletedAlerts] = useState([])
   const [allCycles, setAllCycles] = useState([]) // all cycles across all turns
 
@@ -174,6 +179,14 @@ export default function CyclesList({ navigate, goHome, coach }) {
     setAtletiTurno(data || [])
   }
 
+  async function apriEliminazione(cycle, turnId) {
+    setDeleteModal({ cycle, turnId })
+    setPerdite(undefined)
+    contoPer.current = cycle.id
+    const p = await perditeScheda(cycle.id)
+    if (contoPer.current === cycle.id) setPerdite(p)
+  }
+
   async function deleteCycle(cycle, turnId) {
     setDeleteModal(null)
 
@@ -295,7 +308,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
                         { icona: '✏️', testo: 'Modifica', azione: () => apriModifica(cycle) },
                         { icona: '⬇', testo: 'Scarica CSV', azione: () => esportaCsv(cycle) },
                         cycle.is_active && { icona: '✓', testo: 'Completa', azione: () => setCompleteModal(cycle) },
-                        { icona: '🗑', testo: 'Elimina', pericolo: true, azione: () => setDeleteModal({ cycle, turnId: turn.id }) },
+                        { icona: '🗑', testo: 'Elimina', pericolo: true, azione: () => apriEliminazione(cycle, turn.id) },
                       ]} />
                     </div>
                   </div>
@@ -410,11 +423,16 @@ export default function CyclesList({ navigate, goHome, coach }) {
             <div style={sheetTitle}>ELIMINA SCHEDA</div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '8px' }}>{deleteModal.cycle.name}?</div>
-            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '13px', marginBottom: '20px' }}>
-              ⚠ Verranno eliminati tutti gli esercizi e i carichi associati.{deleteModal.cycle.is_active ? ' Se non resta nessun\'altra scheda attiva, la più recente verrà riattivata.' : ''}
-            </div>
-            <button onClick={() => deleteCycle(deleteModal.cycle, deleteModal.turnId)}
-              style={{ ...sheetBtnGrey, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: '10px' }}>
+            <AvvisoRosso perdite={perdite}
+              senzaNumeri="Si cancellano anche tutti gli esercizi della scheda e i carichi registrati dai clienti."
+              nienteDaPerdere="La scheda è vuota: non ci sono esercizi né carichi, non si perde niente." />
+            {deleteModal.cycle.is_active && (
+              <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '14px' }}>
+                Se non resta nessun&apos;altra scheda attiva, la più recente verrà riattivata.
+              </div>
+            )}
+            <button onClick={() => deleteCycle(deleteModal.cycle, deleteModal.turnId)} disabled={perdite === undefined}
+              style={{ ...sheetBtnGrey, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', marginBottom: '10px', opacity: perdite === undefined ? 0.4 : 1 }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: 'rgba(239,68,68,0.9)', letterSpacing: '1px' }}>🗑 SÌ, ELIMINA</div>
             </button>
             <button onClick={() => setDeleteModal(null)} style={cancelBtn}>Annulla</button>

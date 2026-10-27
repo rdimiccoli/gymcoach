@@ -5,6 +5,8 @@ import { run, notifyOk } from '../lib/notify'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
+import { perditePersona, perditeTurno } from '../lib/contaDanni'
+import AvvisoRosso from '../components/AvvisoRosso'
 import { ScheletroElenco } from '../components/Scheletro'
 import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
@@ -30,6 +32,11 @@ export default function Turns({ navigate, goHome, coach }) {
   const [editSilver, setEditSilver] = useState(false)
   const [silverAttivo, setSilverAttivo] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  // Cosa si perde con la cancellazione aperta: undefined finché si conta.
+  // Il ref tiene a chi appartiene il conto in corso, così un conto che
+  // arriva tardi non finisce sotto la conferma di qualcun altro.
+  const [perdite, setPerdite] = useState(undefined)
+  const contoPer = useRef(null)
   const [deleteTurnConfirm, setDeleteTurnConfirm] = useState(null)
   // Riordino: l'elenco diventa frecce su e giù invece di matita e cestino,
   // così in quella modalità non si può toccare nient'altro per sbaglio.
@@ -119,6 +126,14 @@ export default function Turns({ navigate, goHome, coach }) {
 
   async function deleteTurn(id) {
     setDeleteTurnConfirm(id)
+    await contaPerdite(`turno:${id}`, () => perditeTurno(id))
+  }
+
+  async function contaPerdite(chi, conta) {
+    setPerdite(undefined)
+    contoPer.current = chi
+    const p = await conta()
+    if (contoPer.current === chi) setPerdite(p)
   }
 
   /** I turni vecchi hanno solo `name`: l'orario e il tipo si ricavano da lì. */
@@ -207,6 +222,7 @@ export default function Turns({ navigate, goHome, coach }) {
   // Delete client (with all loads)
   async function confirmDeleteClient(client) {
     setDeleteConfirm(client)
+    await contaPerdite(`persona:${client.id}`, () => perditePersona(client.id))
   }
 
   async function executeDeleteClient() {
@@ -360,11 +376,14 @@ export default function Turns({ navigate, goHome, coach }) {
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
               {deleteConfirm.surname} {deleteConfirm.name}?
             </div>
-            <div style={{ color: 'rgba(239,68,68,0.7)', fontSize: '13px', marginBottom: '20px' }}>
-              ⚠ Verranno eliminati anche tutti i suoi carichi storici.
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '14px' }}>
+              Se vuoi solo toglierla dal turno senza perdere niente, usa ARCHIVIA.
             </div>
-            <button onClick={executeDeleteClient}
-              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>
+            <AvvisoRosso perdite={perdite}
+              senzaNumeri="Si cancellano anche tutti i suoi carichi e le sue note, di tutte le schede."
+              nienteDaPerdere="Non ha ancora carichi né note: non si perde niente." />
+            <button onClick={executeDeleteClient} disabled={perdite === undefined}
+              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px', opacity: perdite === undefined ? 0.4 : 1 }}>
               🗑 SÌ, ELIMINA
             </button>
             <button onClick={() => setDeleteConfirm(null)} style={cancelBtn}>Annulla</button>
@@ -459,10 +478,15 @@ export default function Turns({ navigate, goHome, coach }) {
         <div className="velo-entra" style={overlay}>
           <div className="foglio-entra" style={sheet}>
             <div style={sheetTitle}>ELIMINA TURNO</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare questo turno?</div>
-            <div style={{ color: 'rgba(239,68,68,0.8)', fontSize: '13px', marginBottom: '20px' }}>⚠ Verranno eliminati tutti i clienti, schede e carichi associati.</div>
-            <button onClick={executeDeleteTurn}
-              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px' }}>🗑 SÌ, ELIMINA</button>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '6px' }}>Confermi di voler eliminare</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '12px' }}>
+              {turns.find(x => x.id === deleteTurnConfirm)?.name || 'questo turno'}?
+            </div>
+            <AvvisoRosso perdite={perdite}
+              senzaNumeri="Si cancellano anche tutte le persone del turno, le sue schede e tutti i carichi registrati."
+              nienteDaPerdere="Il turno è vuoto: non ci sono persone né schede, non si perde niente." />
+            <button onClick={executeDeleteTurn} disabled={perdite === undefined}
+              style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '10px', opacity: perdite === undefined ? 0.4 : 1 }}>🗑 SÌ, ELIMINA</button>
             <button onClick={() => setDeleteTurnConfirm(null)} style={cancelBtn}>Annulla</button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { vistaTurni, impostaVistaTurni, PER_ATLETA, PER_ESERCIZIO } from '../lib
 import { capacita } from '../lib/capacita'
 import { EMOJI_COACH } from '../lib/avatarCoach'
 import { caricaFoto, togliFoto } from '../lib/foto'
+import AvvisoRosso from '../components/AvvisoRosso'
 import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -25,6 +26,9 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
   const [vistaSuProfilo, setVistaSuProfilo] = useState(false)
   const [fotoDisponibile, setFotoDisponibile] = useState(false)
   const [salvoFoto, setSalvoFoto] = useState(false)
+  // TOGLI LA FOTO chiede conferma: la foto viene cancellata dallo spazio
+  // file, e per riaverla bisogna sceglierla di nuovo dal telefono.
+  const [confermaTogliFoto, setConfermaTogliFoto] = useState(false)
   const [nuovoCoach, setNuovoCoach] = useState('')
   const [coachAggiunto, setCoachAggiunto] = useState('')
   // Archiviazione: chi si toglie, quanti turni ha, e a chi passano.
@@ -310,8 +314,24 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
                 onChange={e => { scegliFoto(e.target.files?.[0]); e.target.value = '' }}
                 style={{ display: 'none' }} />
             </label>
-            {coach.foto && (
-              <button onClick={rimuoviFoto} disabled={salvoFoto} style={{
+            {coach.foto && confermaTogliFoto && (
+              <div style={{ marginTop: '4px' }}>
+                <AvvisoRosso perdite={['la tua foto del profilo']} />
+                <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '-6px', marginBottom: '14px' }}>
+                  Per rimetterla dovrai sceglierla di nuovo dal telefono.
+                </div>
+                <button onClick={async () => { await rimuoviFoto(); setConfermaTogliFoto(false) }} disabled={salvoFoto}
+                  style={{ ...bigBtn, background: 'rgba(239,68,68,0.9)', marginBottom: '8px', opacity: salvoFoto ? 0.5 : 1 }}>
+                  {salvoFoto ? 'TOLGO...' : '🗑 SÌ, TOGLI LA FOTO'}
+                </button>
+                <button onClick={() => setConfermaTogliFoto(false)} disabled={salvoFoto}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                  Annulla
+                </button>
+              </div>
+            )}
+            {coach.foto && !confermaTogliFoto && (
+              <button onClick={() => setConfermaTogliFoto(true)} disabled={salvoFoto} style={{
                 width: '100%', background: 'transparent', border: '1px solid var(--bordo)',
                 borderRadius: '4px', padding: '13px', color: 'var(--testo-medio)',
                 fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',

@@ -8,6 +8,7 @@ import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalenda
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
+import AvvisoRosso from '../components/AvvisoRosso'
 import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
@@ -685,7 +686,19 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
     else if (val === '' || val === '.') setKgMap(prev => ({ ...prev, [exId]: val }))
   }
 
-  const handleSave = () => {
+  // Una nota che c'era e che è stata svuotata, al salvataggio viene
+  // cancellata. Prima succedeva senza dirlo: qui si chiede conferma, con il
+  // testo che sta per sparire sotto gli occhi.
+  const [noteDaCancellare, setNoteDaCancellare] = useState(null)
+
+  const handleSave = (confermato = false) => {
+    const svuotate = group.exercises.filter(ex =>
+      (notes?.[`${client.id}_${ex.id}`] ?? '').trim() && !String(noteMap[ex.id] ?? '').trim())
+    if (svuotate.length && !confermato) {
+      setNoteDaCancellare(svuotate.map(ex =>
+        `la nota${group.exercises.length > 1 ? ` su ${ex?.exercises?.name ?? 'questo esercizio'}` : ''}: «${notes[`${client.id}_${ex.id}`].trim()}»`))
+      return
+    }
     onSave(group.exercises.map(ex => ({
       cycleExId: ex.id,
       kg: parseFloat(kgMap[ex.id]) || 0,
@@ -778,9 +791,19 @@ function LoadModal({ client, group, loads, notes, settimana, onSave, onClose }) 
         )
       })}
 
-      <button onClick={handleSave} style={{ background: 'var(--accento)', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '2px' }}>
+      {noteDaCancellare ? (<>
+        <AvvisoRosso perdite={noteDaCancellare} />
+        <button onClick={() => handleSave(true)} style={{ background: 'rgba(239,68,68,0.9)', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '800', letterSpacing: '1.5px' }}>
+          SÌ, SALVA E CANCELLA {noteDaCancellare.length === 1 ? 'LA NOTA' : 'LE NOTE'}
+        </button>
+        <button onClick={() => setNoteDaCancellare(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-medio)', width: '100%', padding: '10px', fontSize: '14px', marginTop: '4px' }}>
+          Torna indietro (la nota resta)
+        </button>
+      </>) : (
+      <button onClick={() => handleSave()} style={{ background: 'var(--accento)', border: 'none', color: '#fff', width: '100%', padding: '15px', borderRadius: '4px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '2px' }}>
         SALVA CARICHI ✓
       </button>
+      )}
       <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '10px', fontSize: '14px', marginTop: '4px' }}>
         Annulla
       </button>

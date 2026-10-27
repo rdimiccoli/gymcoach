@@ -7,6 +7,8 @@ import { raggruppaEsercizi, oggiLocale } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { chiudiRiga } from '../lib/movimento'
+import { perditeEsercizioDellaScheda } from '../lib/contaDanni'
+import AvvisoRosso from '../components/AvvisoRosso'
 import { GIORNI_MAX, GIORNI_MIN, GIORNI_PREDEFINITI, giorniDi, elencoGiorni, giornoValido } from '../lib/giorni'
 import { salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
@@ -72,6 +74,9 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   const [editExerciseModal, setEditExerciseModal] = useState(null)
   const [editExerciseName, setEditExerciseName] = useState('')
   const [deleteExConfirm, setDeleteExConfirm] = useState(null)
+  // Cosa si perde togliendo quell'esercizio: undefined finché si conta.
+  const [perditeEx, setPerditeEx] = useState(undefined)
+  const contoPerEx = useRef(null)
   // Spostare un esercizio in un altro giorno chiede conferma. Prima bastava
   // sfiorare G2 o G3 — piccoli, attaccati alla maniglia per trascinare — e
   // l'esercizio spariva dal giorno senza che nessuno se ne accorgesse.
@@ -340,9 +345,17 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     await moveToDay(d, idx, a)
   }
 
-  function removeExercise(d, idx) {
+  async function removeExercise(d, idx) {
     const ex = exList[d][idx]
     setDeleteExConfirm({ d, idx, name: ex.name })
+    // Togliere un esercizio dalla scheda cancella, a cascata, i carichi che
+    // i clienti ci hanno registrato. Prima di chiedere conferma si conta.
+    setPerditeEx(ex.id ? undefined : [])
+    contoPerEx.current = ex.id
+    if (!ex.id) return
+    const p = await perditeEsercizioDellaScheda(ex.id)
+    // Se nel frattempo si è aperta la conferma di un altro, questo conto non è suo.
+    if (contoPerEx.current === ex.id) setPerditeEx(p)
   }
 
   async function executeRemoveExercise() {
@@ -954,11 +967,18 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       {deleteExConfirm && (
         <div className="velo-entra" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div className="foglio-entra" style={{ background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '24px 16px 36px', width: '100%', maxWidth: 'var(--colonna)' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>ELIMINA ESERCIZIO</div>
-            <div style={{ color: 'var(--testo-medio)', fontSize: '14px', marginBottom: '4px' }}>Confermi di voler eliminare</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>{deleteExConfirm?.name}?</div>
-            <button onClick={executeRemoveExercise} style={{ width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
-              🗑 SÌ, ELIMINA
+            {/* «Togli dalla scheda» e non «elimina esercizio»: l'esercizio
+                resta nel catalogo. Si elimina davvero solo da SCHEDE →
+                ESERCIZI. Prima le parole promettevano più di quello che
+                succedeva, e non dicevano la cosa che conta: i carichi. */}
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '8px' }}>TOGLI DALLA SCHEDA</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '4px' }}>{deleteExConfirm?.name}</div>
+            <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '14px' }}>L&apos;esercizio resta nel catalogo: sparisce solo da questa scheda.</div>
+            <AvvisoRosso perdite={perditeEx}
+              senzaNumeri="Si cancellano anche tutti i carichi che i clienti hanno registrato su questo esercizio, in questa scheda."
+              nienteDaPerdere="Nessun cliente ha ancora registrato carichi su questo esercizio: non si perde niente." />
+            <button onClick={executeRemoveExercise} disabled={perditeEx === undefined} style={{ opacity: perditeEx === undefined ? 0.4 : 1, width: '100%', background: 'rgba(239,68,68,0.9)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '2px', marginBottom: '10px' }}>
+              🗑 SÌ, TOGLI DALLA SCHEDA
             </button>
             <button onClick={() => setDeleteExConfirm(null)} style={{ background: 'transparent', border: 'none', color: 'var(--testo-fioco)', width: '100%', padding: '8px', fontSize: '14px' }}>Annulla</button>
           </div>
