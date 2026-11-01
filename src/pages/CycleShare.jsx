@@ -5,6 +5,7 @@ import { raggruppaEsercizi } from '../lib/schede'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { elencoGiorni, GIORNI_MAX } from '../lib/giorni'
 import { settimaneDi, fasi, etichettaFase } from '../lib/settimane'
+import { disegnaScheda, mandaImmagine } from '../lib/immagineScheda'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -146,10 +147,61 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     const text = generateText()
     if (!text) return
     if (navigator.share) {
-      await navigator.share({ title: cycle?.name, text })
+      // Chiudere la condivisione senza mandare è un rifiuto della promessa:
+      // non è un errore, e non deve finire in console come tale.
+      try { await navigator.share({ title: cycle?.name, text }) } catch { /* annullata */ }
     } else {
       copyText()
     }
+  }
+
+  // ── La scheda come immagine ────────────────────────────────────────────
+  // Si prepara appena si sceglie la persona e le settimane, non al tocco:
+  // il telefono apre la condivisione solo subito dopo il tocco, e se nel
+  // mezzo ci fosse da disegnare l'immagine la rifiuterebbe.
+  const [immagine, setImmagine] = useState(null)   // { blob, url }
+  const [immagineFallita, setImmagineFallita] = useState(false)
+  const [esitoImmagine, setEsitoImmagine] = useState(null)
+
+  useEffect(() => {
+    if (!selectedClient || !cycle) { setImmagine(null); return }
+    let annullato = false
+    const client = clients.find(c => c.id === selectedClient)
+    const fascia = WEEK_RANGES[selectedWeekRange]
+    const giorni = elencoGiorni(cycle).map(numero => ({
+      numero,
+      gruppi: raggruppaEsercizi(days[numero] || []).map(group => ({
+        tipo: group.type,
+        righe: group.exercises.map(ex => group.type === 'circuit'
+          ? { nome: ex?.exercises?.name ?? '', reps: `${ex.reps_a} · ${ex.reps_b} · ${ex.reps_c} giri`, kg: null }
+          : { nome: ex?.exercises?.name ?? '', reps: getRepsForRange(ex, selectedWeekRange), kg: getLoadForRange(selectedClient, ex.id, selectedWeekRange) }),
+      })),
+    }))
+    const quanteSett = settimaneDi(cycle)
+    setImmagineFallita(false)
+    disegnaScheda({
+      titolo: cycle.name,
+      persona: `${client?.name ?? ''} ${client?.surname ?? ''}`.trim(),
+      fascia: fascia?.label ?? '',
+      sottotitolo: `Scheda da ${quanteSett} ${quanteSett === 1 ? 'settimana' : 'settimane'} · ${giorni.length} ${giorni.length === 1 ? 'giorno' : 'giorni'}`,
+      giorni,
+    }).then(blob => {
+      if (annullato) return
+      setImmagine(prec => { if (prec) URL.revokeObjectURL(prec.url); return { blob, url: URL.createObjectURL(blob) } })
+    }).catch(e => {
+      console.error('immagine della scheda', e)
+      if (!annullato) setImmagineFallita(true)
+    })
+    return () => { annullato = true }
+  }, [selectedClient, selectedWeekRange, cycle, days, loads, clients])
+
+  async function mandaComeImmagine() {
+    if (!immagine) return
+    const client = clients.find(c => c.id === selectedClient)
+    const nome = `${cycle?.name ?? 'scheda'} ${client?.surname ?? ''} ${WEEK_RANGES[selectedWeekRange]?.label ?? ''}`
+      .trim().replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()
+    const esito = await mandaImmagine(immagine.blob, `${nome}.png`, cycle?.name)
+    if (esito === 'scaricata') { setEsitoImmagine('Immagine salvata nei download.'); setTimeout(() => setEsitoImmagine(null), 3500) }
   }
 
   async function copyText() {
@@ -215,6 +267,14 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
             {selectedClient && (
               <>
                 <div style={stepLabel}>3 · ANTEPRIMA</div>
+                {/* Quello che il cliente riceverà, così com'è. Finché si
+                    prepara — o se il telefono non sa disegnarla — resta
+                    l'anteprima di prima, giorno per giorno. */}
+                {immagine && (
+                  <img src={immagine.url} alt={`Anteprima della scheda come immagine`}
+                    style={{ width: '100%', display: 'block', borderRadius: '10px', border: '1px solid var(--sup-alta)', marginBottom: '14px' }} />
+                )}
+                {!immagine && (
                 <div style={{ background: 'var(--sup-velo)', border: '1px solid var(--sup-alta)', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
                   {/* Client + week header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid var(--sup-alta)' }}>
@@ -283,11 +343,25 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     <div style={{ color: 'var(--bordo-forte)', fontSize: '13px', textAlign: 'center', padding: '12px' }}>Nessun esercizio per il Giorno {previewDay}</div>
                   )}
                 </div>
+                )}
+
+                {!immagineFallita && (
+                  <button onClick={mandaComeImmagine} disabled={!immagine} style={{
+                    width: '100%', background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '15px', marginBottom: '8px',
+                    color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '800', letterSpacing: '1.5px',
+                    opacity: immagine ? 1 : 0.5, cursor: immagine ? 'pointer' : 'default',
+                  }}>
+                    {immagine ? '📷 INVIA COME IMMAGINE' : 'PREPARO L’IMMAGINE…'}
+                  </button>
+                )}
+                {esitoImmagine && (
+                  <div style={{ color: 'var(--ok)', fontSize: '13px', textAlign: 'center', marginBottom: '8px' }}>{esitoImmagine}</div>
+                )}
 
                 {/* Send buttons */}
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={shareText} style={{ flex: 2, background: 'var(--accento)', border: 'none', borderRadius: '4px', padding: '14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px' }}>
-                    📤 INVIA SU WHATSAPP
+                  <button onClick={shareText} style={{ flex: 2, background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '14px', color: 'var(--testo-forte)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px' }}>
+                    💬 INVIA COME TESTO
                   </button>
                   <button onClick={copyText} style={{ flex: 1, background: copied ? 'rgba(34,197,94,0.15)' : 'var(--sup-alta)', border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'var(--bordo)'}`, borderRadius: '4px', padding: '14px', color: copied ? 'var(--ok)' : 'var(--testo-chiaro)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700' }}>
                     {copied ? '✓ OK!' : '📋 COPIA'}

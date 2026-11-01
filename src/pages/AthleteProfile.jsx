@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
-import Andamento from '../components/Andamento'
+import Andamento, { Linetta } from '../components/Andamento'
+import { analizzaEsercizio, riassunto, numero } from '../lib/progressi'
 import { ScheletroStorico } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
@@ -79,26 +80,35 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
       })
     })
 
-    // Sort each exercise's entries by date desc
+    // Per ogni esercizio: le voci dalla più recente (per l'elenco) e l'analisi
+    // fatta in ordine di tempo (per i progressi).
     const result = Object.entries(byExercise)
-      .map(([name, entries]) => ({
-        name,
-        entries: entries.sort((a, b) => b.sortKey.localeCompare(a.sortKey)),
-        best: Math.max(...entries.map(e => e.kg))
-      }))
+      .map(([name, entries]) => {
+        const recenti = entries.sort((a, b) => b.sortKey.localeCompare(a.sortKey))
+        const inOrdine = [...recenti].reverse()
+        const analisi = analizzaEsercizio(inOrdine)
+        // il segno di record va sulle voci dell'elenco, che è al contrario
+        recenti.forEach((voce, i) => { voce.record = analisi.sonoRecord[recenti.length - 1 - i] })
+        return { name, entries: recenti, best: analisi.migliore, analisi }
+      })
       .sort((a, b) => a.name.localeCompare(b.name))
 
     setHistory(result)
-    // Auto-expand first exercise
-    if (result.length > 0) setExpanded({ [result[0].name]: true })
     setLoading(false)
   }
+
+  const somma = riassunto(history.map(e => e.analisi))
+  const schede = new Set(history.flatMap(ex => ex.entries.map(e => e.cycleId))).size
+  const dataPrima = history.flatMap(ex => ex.entries.map(e => e.date)).filter(Boolean).sort()[0]
+  const daQuando = dataPrima
+    ? new Date(`${dataPrima}T00:00:00`).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+    : null
 
   return (
     <div style={page}>
       <TopBar
         title={`${client.surname} ${client.name}`.toUpperCase()}
-        subtitle="Storico carichi"
+        subtitle="Progressi"
         onBack={goBack}
       />
 
@@ -113,102 +123,104 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
 
         {!loading && history.length > 0 && (
           <>
-            {/* Summary bar */}
-            <div style={{ background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', gap: '20px' }}>
-              <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>ESERCIZI TRACCIATI</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>{history.length}</div>
-              </div>
-              <div>
-                {/* Sono i carichi segnati, non le sedute: quattro esercizi per
-                    tre settimane fanno dodici carichi in tre sedute. Prima si
-                    chiamava «sessioni totali» e diceva dodici. */}
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>CARICHI SEGNATI</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: '#fff' }}>
-                  {history.reduce((sum, ex) => sum + ex.entries.length, 0)}
+            {/* ── Il numero che si mostra al cliente ─────────────────────
+                Uno solo, grande: quanto sono cresciuti in media i suoi
+                carichi, ogni esercizio rispetto a sé stesso. Mai una somma
+                di chili di esercizi diversi. */}
+            <div style={hero}>
+              {somma.crescitaMedia !== null ? (<>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span aria-hidden="true" style={{ fontSize: '28px', fontWeight: '900', color: somma.crescitaMedia > 0 ? 'var(--ok)' : somma.crescitaMedia < 0 ? 'var(--errore)' : 'var(--testo-medio)' }}>
+                    {somma.crescitaMedia > 0 ? '↑' : somma.crescitaMedia < 0 ? '↓' : '='}
+                  </span>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '60px', fontWeight: '900', lineHeight: 0.95, color: '#fff' }}>
+                    {somma.crescitaMedia > 0 ? '+' : ''}{somma.crescitaMedia}%
+                  </span>
                 </div>
-              </div>
-              {/* Al posto del «carico max», che era il più alto fra esercizi
-                  diversi: i 120 kg della pressa accanto ai 30 della panca non
-                  dicono niente. Il massimo vero sta su ogni esercizio, sotto
-                  BEST. Qui: quante schede ha fatto. */}
-              <div>
-                <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif' }}>SCHEDE</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '26px', fontWeight: '900', color: 'var(--accento)' }}>
-                  {new Set(history.flatMap(ex => ex.entries.map(e => e.cycleId))).size}
+                <div style={{ color: 'var(--testo-forte)', fontSize: '15px', marginTop: '6px' }}>
+                  {somma.crescitaMedia > 0 ? 'di crescita media dei carichi' : somma.crescitaMedia < 0 ? 'di calo medio dei carichi' : 'carichi stabili, in media'}
                 </div>
-              </div>
+                <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>
+                  su {somma.misurabili} {somma.misurabili === 1 ? 'esercizio' : 'esercizi'}{daQuando ? ` · da ${daQuando}` : ''}
+                </div>
+              </>) : (
+                <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.45 }}>
+                  Ancora pochi dati: i progressi compaiono quando un esercizio ha almeno due carichi segnati.
+                </div>
+              )}
             </div>
 
-            {/* Exercise list */}
+            {/* ── Tre numeri in fila ──────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '18px' }}>
+              <Tessera etichetta="IN CRESCITA" valore={somma.misurabili ? `${somma.inCrescita}` : '—'} sotto={somma.misurabili ? `su ${somma.misurabili}` : 'esercizi'} />
+              <Tessera etichetta="RECORD" valore={`${somma.record}`} sotto={somma.record === 1 ? 'battuto' : 'battuti'} />
+              <Tessera etichetta="SCHEDE" valore={`${schede}`} sotto={schede === 1 ? 'seguita' : 'seguite'} />
+            </div>
+
+            <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', marginBottom: '8px' }}>
+              ESERCIZIO PER ESERCIZIO
+            </div>
+
             {history.map(ex => {
               const isOpen = expanded[ex.name]
-              const latest = ex.entries[0]
-              const prev = ex.entries[1]
-              const trend = prev ? parseFloat((latest.kg - prev.kg).toFixed(2)) : null
+              const a = ex.analisi
+              const inOrdine = [...ex.entries].reverse()
               return (
                 <div key={ex.name} style={{ marginBottom: '8px' }}>
-                  {/* Header — always visible */}
-                  <div
+                  <button type="button" aria-expanded={Boolean(isOpen)}
                     onClick={() => setExpanded(e => ({ ...e, [ex.name]: !e[ex.name] }))}
                     style={{
+                      ...comeRiga,
                       background: isOpen ? 'var(--acc-fondo)' : 'var(--sup)',
                       border: `1px solid ${isOpen ? 'var(--acc-bordo)' : 'var(--sup-alta)'}`,
-                      borderRadius: isOpen ? '6px 6px 0 0' : '6px',
-                      padding: '12px 14px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      cursor: 'pointer',
+                      borderRadius: isOpen ? '8px 8px 0 0' : '8px',
                     }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {ex.name}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
-                        {/* Latest load */}
-                        <span style={{ color: 'var(--accento)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
-                          {latest.kg}kg
-                        </span>
-                        <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                          {WEEK_LABEL(latest.week)}
-                        </span>
-                        {/* Trend */}
-                        {trend !== null && (
-                          <span style={{ fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: trend > 0 ? 'var(--ok)' : trend < 0 ? 'var(--errore)' : 'var(--testo-fioco)' }}>
-                            {trend > 0 ? `↑ +${trend}kg` : trend < 0 ? `↓ ${trend}kg` : '='}
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                        <Stato a={a} />
+                        {a.alMassimo && (
+                          <span style={{ color: 'var(--attenzione)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', letterSpacing: '0.5px' }}>🏆 AL SUO MASSIMO</span>
                         )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '1px' }}>BEST</div>
-                        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', color: 'var(--testo-chiaro)' }}>{ex.best}kg</div>
+                    <Linetta valori={inOrdine.map(e => Number(e.kg))} />
+                    <div style={{ textAlign: 'right', minWidth: '58px' }}>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '22px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>
+                        {numero(a.ultimo)}<span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--testo-medio)' }}> kg</span>
                       </div>
-                      <div style={{ color: 'var(--testo-fioco)', fontSize: '18px' }}>{isOpen ? '∨' : '›'}</div>
+                      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px', marginTop: '2px' }}>
+                        MAX {numero(a.migliore)}
+                      </div>
                     </div>
-                  </div>
+                  </button>
 
-                  {/* History entries */}
                   {isOpen && (
-                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--acc-riempimento)', borderTop: 'none', borderRadius: '0 0 6px 6px', overflow: 'hidden' }}>
-                      {/* Le voci arrivano dalla più recente alla più vecchia:
-                          il grafico le vuole nell'ordine in cui sono successe. */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--acc-riempimento)', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
                       {ex.entries.length > 1 && (
-                        <div style={{ padding: '14px 14px 4px' }}>
-                          <Andamento punti={[...ex.entries].reverse().map(e => ({ kg: e.kg, etichetta: `S${e.week}` }))} />
+                        <div style={{ padding: '14px 14px 10px' }}>
+                          <Andamento punti={inOrdine.map(e => ({
+                            kg: Number(e.kg), etichetta: `S${e.week}`, record: e.record,
+                            dettaglio: `Sett. ${e.week} · ${e.cycleName}`,
+                          }))} />
                         </div>
                       )}
+                      {/* L'elenco è la versione in tabella del grafico: ogni
+                          valore si legge anche senza toccare niente. */}
                       {ex.entries.map((entry, i) => (
                         <div key={i} style={{
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           padding: '10px 14px',
-                          borderBottom: i < ex.entries.length - 1 ? '1px solid var(--sup)' : 'none',
+                          borderTop: '1px solid var(--sup)',
                           background: i === 0 ? 'var(--acc-velo)' : 'transparent'
                         }}>
                           <div>
                             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '600', color: i === 0 ? '#fff' : 'var(--testo-chiaro)', letterSpacing: '0.3px' }}>
                               {entry.cycleName}
                               {i === 0 && <span style={{ marginLeft: '6px', color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>ULTIMO</span>}
+                              {entry.record && <span style={{ marginLeft: '6px', color: 'var(--attenzione)', fontSize: '12px', fontWeight: '700', letterSpacing: '1px' }}>🏆 RECORD</span>}
                             </div>
                             <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
@@ -216,21 +228,20 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
                               </span>
                               {entry.date && (
                                 <span style={{ color: 'var(--bordo-forte)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                  {new Date(entry.date).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })}
+                                  {new Date(`${entry.date}T00:00:00`).toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })}
                                 </span>
                               )}
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: i === 0 ? 'var(--accento)' : 'var(--testo-medio)' }}>
-                              {entry.kg}<span style={{ fontSize: '13px', fontWeight: '400' }}>kg</span>
+                            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: i === 0 ? '#fff' : 'var(--testo-medio)', fontVariantNumeric: 'tabular-nums' }}>
+                              {numero(entry.kg)}<span style={{ fontSize: '13px', fontWeight: '400' }}> kg</span>
                             </div>
-                            {/* Delta vs previous entry */}
                             {i < ex.entries.length - 1 && (() => {
-                              const delta = parseFloat((entry.kg - ex.entries[i+1].kg).toFixed(2))
+                              const delta = parseFloat((entry.kg - ex.entries[i + 1].kg).toFixed(2))
                               return delta !== 0 ? (
-                                <div style={{ color: delta > 0 ? 'var(--ok)' : 'var(--errore)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
-                                  {delta > 0 ? `+${delta}` : delta}kg
+                                <div style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>
+                                  <span style={{ color: delta > 0 ? 'var(--ok)' : 'var(--errore)' }}>{delta > 0 ? '↑' : '↓'}</span> {delta > 0 ? '+' : ''}{numero(delta)}
                                 </div>
                               ) : null
                             })()}
@@ -251,5 +262,37 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
   )
 }
 
+/**
+ * Su o giù, sempre con la freccia e la parola: il verde e il rosso da soli
+ * non bastano a chi non distingue i colori (lo dice il controllo della
+ * skill dei grafici: per un daltonico i due sono quasi uguali).
+ */
+function Stato({ a }) {
+  const base = { fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.4px', color: 'var(--testo-forte)' }
+  if (a.stato === 'nuovo') return <span style={{ ...base, color: 'var(--testo-debole)' }}>PRIMO CARICO</span>
+  if (a.stato === 'fermo') return <span style={base}><span style={{ color: 'var(--testo-medio)' }}>=</span> STABILE</span>
+  const su = a.stato === 'su'
+  return (
+    <span style={base}>
+      <span style={{ color: su ? 'var(--ok)' : 'var(--errore)' }}>{su ? '↑' : '↓'}</span>
+      {' '}{su ? '+' : '−'}{numero(Math.abs(a.variazione))} kg
+      {a.percentuale !== null && <span style={{ color: 'var(--testo-debole)' }}> · {su ? '+' : ''}{a.percentuale}%</span>}
+      <span style={{ color: 'var(--testo-debole)' }}> {su ? 'IN CRESCITA' : 'IN CALO'}</span>
+    </span>
+  )
+}
+
+function Tessera({ etichetta, valore, sotto }) {
+  return (
+    <div style={{ background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '8px', padding: '10px 12px' }}>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '11px', letterSpacing: '1.5px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{etichetta}</div>
+      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1.05, marginTop: '2px' }}>{valore}</div>
+      <div style={{ color: 'var(--testo-debole)', fontSize: '12px' }}>{sotto}</div>
+    </div>
+  )
+}
+
+const hero = { background: 'linear-gradient(160deg, rgba(217,92,26,0.16), rgba(217,92,26,0.03) 60%)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '12px', padding: '18px 18px 16px', marginBottom: '10px' }
+const comeRiga = { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left', padding: '12px 14px', cursor: 'pointer', font: 'inherit', color: 'inherit', WebkitAppearance: 'none' }
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
