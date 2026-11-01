@@ -1,11 +1,12 @@
 import { settimanaDaCalendario } from '../lib/schede'
+import { settimaneDi } from '../lib/settimane'
 import { comePulsante } from '../lib/stile'
 
 /**
  * La card di un turno nella schermata iniziale.
  *
  * Deve dire in un colpo d'occhio, senza leggere: che ora è il turno, che
- * scheda sta girando, a che punto delle sei settimane siamo e quante persone
+ * scheda sta girando, a che punto delle sue settimane siamo e quante persone
  * ci sono. Prima queste informazioni erano sparse fra la scelta della fase e
  * la schermata del turno.
  *
@@ -24,6 +25,7 @@ export default function CardTurno({
   ospiti = null, provenienza = '', senzaScheda = 0, altreSchede = [], onApri,
 }) {
   const settimana = settimanaDaCalendario(scheda)
+  const totale = settimaneDi(scheda)
 
   // L'orario è l'identificatore vero del turno: è così che le coach lo chiamano
   // fra loro. Il nome completo («09:00 — Femminile») è ridondante.
@@ -79,12 +81,12 @@ export default function CardTurno({
                 </div>
               )}
 
-              {settimana && altreSchede.length === 0 && <BarraSettimane settimana={settimana} />}
+              {settimana && altreSchede.length === 0 && <BarraSettimane settimana={settimana} totale={totale} />}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
                 {settimana && altreSchede.length === 0 && (
                   <span style={{ color: 'var(--testo-forte)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>
-                    SETTIMANA {settimana} DI 6
+                    SETTIMANA {settimana} DI {totale}
                   </span>
                 )}
                 {altreSchede.length > 0 && (
@@ -125,11 +127,11 @@ export default function CardTurno({
   )
 }
 
-/** Sei tacche: a che punto siamo, senza doverlo leggere. */
-function BarraSettimane({ settimana }) {
+/** Una tacca per settimana: a che punto siamo, senza doverlo leggere. */
+function BarraSettimane({ settimana, totale }) {
   return (
     <div style={{ display: 'flex', gap: '3px', marginTop: '9px' }} aria-hidden="true">
-      {[1, 2, 3, 4, 5, 6].map(n => (
+      {Array.from({ length: totale }, (_, i) => i + 1).map(n => (
         <div key={n} style={{
           flex: 1, height: '4px', borderRadius: '2px',
           background: n <= settimana ? 'var(--accento)' : 'var(--sup-alta)',

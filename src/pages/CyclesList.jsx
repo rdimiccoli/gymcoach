@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { settimanaDaCalendario } from '../lib/schede'
+import { settimaneDi } from '../lib/settimane'
+import SceltaSettimane from '../components/SceltaSettimane'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { caricaAssegnazioni, salvaAssegnazioni } from '../lib/assegnazioniDb'
@@ -25,6 +27,10 @@ export default function CyclesList({ navigate, goHome, coach }) {
   const [renameModal, setRenameModal] = useState(null)
   const [renameValue, setRenameValue] = useState('')
   const [dataInizio, setDataInizio] = useState('')
+  // Quante settimane dura la scheda in MODIFICA. Si mostra solo se il
+  // database ha la colonna: prima dello script SQL, tutto resta a sei.
+  const [durata, setDurata] = useState(6)
+  const [durataAttiva, setDurataAttiva] = useState(false)
   // A chi va ogni scheda: { idScheda: Set(idAtleta) }. Una scheda assente da
   // qui vale per tutto il suo turno.
   const [assegnazioni, setAssegnazioni] = useState({})
@@ -60,7 +66,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
         'Impossibile caricare le schede.'
       )
 
-      const { assegnazioni: puoAssegnare } = await capacita()
+      const { assegnazioni: puoAssegnare, settimaneScheda } = await capacita()
+      setDurataAttiva(settimaneScheda)
       setAssegnazioniAttive(puoAssegnare)
       if (puoAssegnare) setAssegnazioni(await caricaAssegnazioni((tutteLeSchede || []).map(c => c.id)))
 
@@ -70,7 +77,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
 
       const alerts = turnIds.filter(id => {
         const attiva = cycleMap[id].find(x => x.is_active)
-        return attiva && settimanaDaCalendario(attiva) >= 6
+        return attiva && settimanaDaCalendario(attiva) >= settimaneDi(attiva)
       })
 
       setCyclesByTurn(cycleMap)
@@ -145,7 +152,10 @@ export default function CyclesList({ navigate, goHome, coach }) {
   async function renameCycle(cycle) {
     if (!renameValue.trim() || !sceltaValida(scelte, atletiTurno)) return
     const { error } = await run(
-      supabase.from('cycles').update({ name: renameValue.trim(), start_date: dataInizio }).eq('id', cycle.id),
+      supabase.from('cycles').update({
+        name: renameValue.trim(), start_date: dataInizio,
+        ...(durataAttiva ? { settimane: durata } : {}),
+      }).eq('id', cycle.id),
       'Modifiche alla scheda non salvate.'
     )
     if (error) { setRenameModal(null); return }
@@ -168,6 +178,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
     setRenameModal(cycle)
     setRenameValue(cycle.name)
     setDataInizio(cycle.start_date || '')
+    setDurata(settimaneDi(cycle))
     setScelte(assegnazioni[cycle.id]?.size ? new Set(assegnazioni[cycle.id]) : null)
     setAtletiTurno([])
     if (!assegnazioniAttive) return
@@ -253,7 +264,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
               {isAlert && activeCycle && (
                 <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.35)', borderRadius: '6px', padding: '10px 14px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>⚠ TUTTI ALLA SETTIMANA 6</div>
+                    <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>⚠ TUTTI ALLA SETTIMANA {settimaneDi(activeCycle)}</div>
                     <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '2px' }}>È ora di completare questa scheda?</div>
                   </div>
                   <button onClick={() => setCompleteModal(activeCycle)} style={{ background: 'var(--attenzione)', border: 'none', borderRadius: '3px', padding: '6px 12px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>
@@ -397,10 +408,16 @@ export default function CyclesList({ navigate, goHome, coach }) {
               style={{ width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '14px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px' }} />
             <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginBottom: '18px' }}>
               È da qui che l’app calcola a che settimana siete.
-              {settimanaDaCalendario({ start_date: dataInizio })
-                ? <> Con questa data il turno è alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaDaCalendario({ start_date: dataInizio })} di 6</strong>. Spostala avanti se il gruppo è rimasto indietro.</>
+              {settimanaDaCalendario({ start_date: dataInizio, settimane: durata })
+                ? <> Con questa data il turno è alla <strong style={{ color: 'var(--accento)' }}>settimana {settimanaDaCalendario({ start_date: dataInizio, settimane: durata })} di {durata}</strong>. Spostala avanti se il gruppo è rimasto indietro.</>
                 : <> Scegli una data non futura per vedere la settimana.</>}
             </div>
+
+            {durataAttiva && (
+              <div style={{ marginBottom: '18px' }}>
+                <SceltaSettimane valore={durata} onChange={setDurata} />
+              </div>
+            )}
 
             {atletiTurno.length > 0 && (
               <div style={{ marginBottom: '18px' }}>

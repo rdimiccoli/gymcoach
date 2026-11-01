@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { comePulsante } from '../lib/stile'
 import { settimanaDaCalendario } from '../lib/schede'
+import { settimaneDi } from '../lib/settimane'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
@@ -200,7 +201,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
                     // sotto ogni persona sarebbe rumore: si dice la settimana.
                     : piuDiUnaScheda || riga.ospite
                       ? `${riga.scheda.name}${settimana ? ` · sett. ${settimana}` : ''}`
-                      : settimana ? `Settimana ${settimana} di 6` : riga.scheda.name}
+                      : settimana ? `Settimana ${settimana} di ${settimaneDi(riga.scheda)}` : riga.scheda.name}
                 </div>
               </div>
               {apribile && <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>}

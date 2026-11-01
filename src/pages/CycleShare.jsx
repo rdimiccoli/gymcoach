@@ -3,18 +3,20 @@ import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
 import { conOrdineDelTurno } from '../lib/ordineDb'
-import { elencoGiorni } from '../lib/giorni'
+import { elencoGiorni, GIORNI_MAX } from '../lib/giorni'
+import { settimaneDi, fasi, etichettaFase } from '../lib/settimane'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 
 
 
-const WEEK_RANGES = [
-  { label: 'SETT. 1–2', repsField: 'reps_a', weeks: [1, 2] },
-  { label: 'SETT. 3–4', repsField: 'reps_b', weeks: [3, 4] },
-  { label: 'SETT. 5–6', repsField: 'reps_c', weeks: [5, 6] },
-]
+// Le fasce di settimane fra cui scegliere vengono dalla durata della
+// scheda: con 6 settimane sono 1-2 · 3-4 · 5-6 come sempre, con 8 sono
+// 1-3 · 4-6 · 7-8. Vedi settimane.js.
+const fasceDi = scheda => fasi(settimaneDi(scheda)).map(f => ({
+  label: etichettaFase(f), repsField: f.campo, weeks: [f.da, f.a],
+}))
 
 export default function CycleShare({ navigate, goBack, goHome, params }) {
   const { cycleId } = params
@@ -46,7 +48,9 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       'Impossibile caricare gli esercizi della scheda.'
     )
     if (ex) {
-      const map = { 1: [], 2: [], 3: [] }
+      // Tutti i giorni possibili, non solo i primi tre: con una scheda da
+      // cinque giorni il quarto e il quinto sparivano dal messaggio.
+      const map = Object.fromEntries(Array.from({ length: GIORNI_MAX }, (_, i) => [i + 1, []]))
       ex.forEach(e => { if (map[e.day]) map[e.day].push(e) })
       setDays(map)
 
@@ -77,8 +81,10 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     setLoading(false)
   }
 
+  const WEEK_RANGES = fasceDi(cycle)
+
   function getRepsForRange(ex, rangeIdx) {
-    return [ex.reps_a, ex.reps_b, ex.reps_c][rangeIdx]
+    return ex[WEEK_RANGES[rangeIdx]?.repsField ?? 'reps_a']
   }
 
   function getLoadForRange(clientId, exId, rangeIdx) {

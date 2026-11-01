@@ -9,6 +9,8 @@ import { conOrdineDelTurno } from '../lib/ordineDb'
 import { chiudiRiga } from '../lib/movimento'
 import { perditeEsercizioDellaScheda } from '../lib/contaDanni'
 import AvvisoRosso from '../components/AvvisoRosso'
+import SceltaSettimane from '../components/SceltaSettimane'
+import { SETTIMANE_PREDEFINITE, settimaneDi, fasi, etichettaFase } from '../lib/settimane'
 import { GIORNI_MAX, GIORNI_MIN, GIORNI_PREDEFINITI, giorniDi, elencoGiorni, giornoValido } from '../lib/giorni'
 import { salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
@@ -39,6 +41,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   // valgono tre: identiche a come erano.
   const [giorni, setGiorni] = useState(GIORNI_PREDEFINITI)
   const [giorniAttivi, setGiorniAttivi] = useState(false)
+  // Quante settimane dura: la sceglie il coach creando la scheda, e si cambia
+  // da MODIFICA in SCHEDE. Le caselle delle ripetizioni la seguono.
+  const [settimane, setSettimane] = useState(SETTIMANE_PREDEFINITE)
+  const [settimaneAttive, setSettimaneAttive] = useState(false)
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -59,6 +65,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     capacita().then(async c => {
       setCategorieAttive(c.categorie)
       setGiorniAttivi(c.giorniScheda)
+      setSettimaneAttive(c.settimaneScheda)
       // Solo creando: una scheda esistente si riassegna da MODIFICA nella
       // lista schede, dove stanno già nome e data d'inizio.
       if (!c.assegnazioni || cycleId || !turnId) return
@@ -127,7 +134,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       supabase.from('cycles').select('*').eq('id', cycleId).single(),
       'Impossibile caricare la scheda.'
     )
-    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()) }
+    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()); setSettimane(settimaneDi(cycle)) }
     const { data: exData } = await run(
       supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
       'Impossibile caricare gli esercizi della scheda.'
@@ -191,6 +198,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         // Il numero si scrive solo se la colonna c'è: finché la migrazione non
         // è passata, la scheda nasce come nasceva prima.
         ...(giorniAttivi ? { giorni } : {}),
+        ...(settimaneAttive ? { settimane } : {}),
       }).select().single(),
       'Scheda non creata. Controlla la connessione e riprova.'
     )
@@ -657,6 +665,11 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
             </div>
           </>
         )}
+        {settimaneAttive && (
+          <div style={{ marginTop: '16px' }}>
+            <SceltaSettimane valore={settimane} onChange={setSettimane} />
+          </div>
+        )}
         {atletiTurno.length > 0 && (
           <div style={{ marginTop: '22px' }}>
             <ScegliPersone atleti={atletiTurno} scelte={scelte} onChange={setScelte} />
@@ -672,10 +685,13 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   )
 
   const groups = getGroups()
+  const fasiScheda = fasi(settimane)
 
   return (
     <div style={{ ...page, position: 'relative' }}>
-      <TopBar title={cycleName.toUpperCase()} subtitle={readOnly ? 'Sola lettura' : 'Gestione esercizi'} onBack={goBack} />
+      <TopBar title={cycleName.toUpperCase()}
+        subtitle={`${readOnly ? 'Sola lettura' : 'Gestione esercizi'}${settimaneAttive ? ` · ${settimane} ${settimane === 1 ? 'settimana' : 'settimane'}` : ''}`}
+        onBack={goBack} />
 
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {/* Qui le linguette sono corte — G1, G2 — e non «GIORNO 1» come
@@ -819,7 +835,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         scheda completata si va proprio a cercare quelle. Prima
                         restavano solo i nomi degli esercizi. */}
                     {(
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isCircuit ? 3 : fasiScheda.length}, 1fr)`, gap: '6px' }}>
                         {isCircuit
                           ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
@@ -827,7 +843,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                               <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)', ...(readOnly ? soloLettura : null) }} />
                             </div>
                           ))
-                          : [['repsA','SETT.1-2'],['repsB','SETT.3-4'],['repsC','SETT.5-6']].map(([field, label]) => (
+                          // Una casella per fase: con 6 settimane 1-2 · 3-4 · 5-6
+                          // come sempre, con 8 settimane 1-3 · 4-6 · 7-8, con 2
+                          // settimane due caselle sole.
+                          : fasiScheda.map(f => [CAMPO_LOCALE[f.campo], etichettaFase(f)]).map(([field, label]) => (
                             <div key={field}>
                               <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
                               <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, ...(readOnly ? soloLettura : null) }} />
@@ -1054,6 +1073,8 @@ const freccia = {
 }
 // Il più e il meno accanto alle linguette: quadrati, della stessa altezza.
 const linguettaPiu = { width: '40px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px dashed var(--bordo)', background: 'var(--sup)', color: 'var(--testo-debole)', fontSize: '18px', fontWeight: '700', lineHeight: 1, cursor: 'pointer' }
+// Dal nome della colonna nel database al nome che usa questa pagina.
+const CAMPO_LOCALE = { reps_a: 'repsA', reps_b: 'repsB', reps_c: 'repsC' }
 // In sola lettura i campi restano dove sono ma non sembrano più da toccare.
 const soloLettura = { background: 'transparent', borderStyle: 'dashed', color: 'var(--testo-chiaro)', cursor: 'default' }
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }

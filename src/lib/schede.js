@@ -1,3 +1,5 @@
+import { settimaneDi, faseDi, SETTIMANE_PREDEFINITE } from './settimane'
+
 // Logica delle schede, condivisa fra le pagine.
 //
 // `groupExercises` era copiato quasi identico in TurnDetail, CycleShare e
@@ -50,11 +52,11 @@ export function numeroDaTesto(testo) {
 }
 
 /** Le ripetizioni cambiano ogni due settimane: a = 1-2, b = 3-4, c = 5-6. */
-export function repsPerSettimana(esercizio, settimana) {
+export function repsPerSettimana(esercizio, settimana, totale = SETTIMANE_PREDEFINITE) {
   if (!esercizio) return undefined
-  if (settimana <= 2) return esercizio.reps_a
-  if (settimana <= 4) return esercizio.reps_b
-  return esercizio.reps_c
+  // Le tre caselle si dividono le settimane della scheda: con sei sono
+  // 1-2, 3-4, 5-6 come sempre; con un'altra durata vedi settimane.js.
+  return esercizio[faseDi(settimana, totale).campo]
 }
 
 /**
@@ -103,7 +105,9 @@ export function settimanaDaCalendario(scheda) {
   if (Number.isNaN(inizio.getTime())) return null
   const giorni = Math.floor((Date.now() - inizio.getTime()) / 86_400_000)
   if (giorni < 0) return null
-  return Math.min(6, Math.floor(giorni / 7) + 1)
+  // Si ferma all'ultima settimana della scheda: oltre, la scheda è finita
+  // e va completata (lo dice l'avviso in SCHEDE).
+  return Math.min(settimaneDi(scheda), Math.floor(giorni / 7) + 1)
 }
 
 /**
