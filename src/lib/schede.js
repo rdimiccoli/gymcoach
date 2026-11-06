@@ -1,4 +1,4 @@
-import { settimaneDi, faseDi, SETTIMANE_PREDEFINITE } from './settimane'
+import { settimaneDi, faseDi, repsDiFase, SETTIMANE_PREDEFINITE } from './settimane'
 
 // Logica delle schede, condivisa fra le pagine.
 //
@@ -52,11 +52,11 @@ export function numeroDaTesto(testo) {
 }
 
 /** Le ripetizioni cambiano ogni due settimane: a = 1-2, b = 3-4, c = 5-6. */
-export function repsPerSettimana(esercizio, settimana, totale = SETTIMANE_PREDEFINITE) {
+export function repsPerSettimana(esercizio, settimana, totale = SETTIMANE_PREDEFINITE, ogni = null) {
   if (!esercizio) return undefined
-  // Le tre caselle si dividono le settimane della scheda: con sei sono
-  // 1-2, 3-4, 5-6 come sempre; con un'altra durata vedi settimane.js.
-  return esercizio[faseDi(settimana, totale).campo]
+  // Le caselle si dividono le settimane della scheda: con sei settimane e
+  // nessun passo sono 1-2, 3-4, 5-6 come sempre; vedi settimane.js.
+  return repsDiFase(esercizio, faseDi(settimana, totale, ogni).indice)
 }
 
 /**

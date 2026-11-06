@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { settimanaDaCalendario } from '../lib/schede'
-import { settimaneDi } from '../lib/settimane'
+import { settimaneDi, ogniDi, rimappaCaselle, stessaDivisione, colonneReps } from '../lib/settimane'
+import { isCircuito } from '../lib/schede'
 import SceltaSettimane from '../components/SceltaSettimane'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
@@ -31,6 +32,11 @@ export default function CyclesList({ navigate, goHome, coach }) {
   // database ha la colonna: prima dello script SQL, tutto resta a sei.
   const [durata, setDurata] = useState(6)
   const [durataAttiva, setDurataAttiva] = useState(false)
+  // Il passo delle ripetizioni in MODIFICA. Si salva solo se il coach lo
+  // tocca: una scheda di prima con le tre fasi automatiche resta com'è.
+  const [ogniModifica, setOgniModifica] = useState(null)
+  const [ogniToccato, setOgniToccato] = useState(false)
+  const [progressioniAttive, setProgressioniAttive] = useState(false)
   // A chi va ogni scheda: { idScheda: Set(idAtleta) }. Una scheda assente da
   // qui vale per tutto il suo turno.
   const [assegnazioni, setAssegnazioni] = useState({})
@@ -66,8 +72,9 @@ export default function CyclesList({ navigate, goHome, coach }) {
         'Impossibile caricare le schede.'
       )
 
-      const { assegnazioni: puoAssegnare, settimaneScheda } = await capacita()
+      const { assegnazioni: puoAssegnare, settimaneScheda, progressioni } = await capacita()
       setDurataAttiva(settimaneScheda)
+      setProgressioniAttive(progressioni)
       setAssegnazioniAttive(puoAssegnare)
       if (puoAssegnare) setAssegnazioni(await caricaAssegnazioni((tutteLeSchede || []).map(c => c.id)))
 
@@ -155,10 +162,31 @@ export default function CyclesList({ navigate, goHome, coach }) {
       supabase.from('cycles').update({
         name: renameValue.trim(), start_date: dataInizio,
         ...(durataAttiva ? { settimane: durata } : {}),
+        ...(progressioniAttive && ogniToccato ? { ogni: ogniModifica } : {}),
       }).eq('id', cycle.id),
       'Modifiche alla scheda non salvate.'
     )
     if (error) { setRenameModal(null); return }
+
+    // Se sono cambiate le caselle — durata o passo — si rifanno quelle degli
+    // esercizi, così ogni settimana tiene le ripetizioni che aveva prima.
+    // Vedi rimappaCaselle in settimane.js.
+    const divisionePrima = { totale: settimaneDi(cycle), ogni: ogniDi(cycle) }
+    const divisioneDopo = {
+      totale: durataAttiva ? durata : divisionePrima.totale,
+      ogni: progressioniAttive && ogniToccato ? ogniModifica : divisionePrima.ogni,
+    }
+    if (progressioniAttive && !stessaDivisione(divisionePrima, divisioneDopo)) {
+      const { data: righe } = await run(
+        supabase.from('cycle_exercises').select('id, superset_group, reps_a, reps_b, reps_c, reps_fasi').eq('cycle_id', cycle.id),
+        'Scheda salvata, ma non ho potuto leggere le ripetizioni da adeguare.')
+      for (const r of (righe || []).filter(r => !isCircuito(r.superset_group))) {
+        await run(
+          supabase.from('cycle_exercises')
+            .update(colonneReps(rimappaCaselle(r, divisionePrima, divisioneDopo))).eq('id', r.id),
+          'Scheda salvata, ma alcune ripetizioni non si sono adeguate.')
+      }
+    }
     // Solo se è cambiato qualcosa: salvare «tutto il turno» su una scheda che
     // lo era già sarebbe una richiesta a vuoto a ogni cambio di nome.
     const prima = assegnazioni[cycle.id]?.size ? assegnazioni[cycle.id] : null
@@ -179,6 +207,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
     setRenameValue(cycle.name)
     setDataInizio(cycle.start_date || '')
     setDurata(settimaneDi(cycle))
+    setOgniModifica(ogniDi(cycle))
+    setOgniToccato(false)
     setScelte(assegnazioni[cycle.id]?.size ? new Set(assegnazioni[cycle.id]) : null)
     setAtletiTurno([])
     if (!assegnazioniAttive) return
@@ -415,7 +445,9 @@ export default function CyclesList({ navigate, goHome, coach }) {
 
             {durataAttiva && (
               <div style={{ marginBottom: '18px' }}>
-                <SceltaSettimane valore={durata} onChange={setDurata} />
+                <SceltaSettimane valore={durata} onChange={setDurata}
+                  ogni={progressioniAttive ? ogniModifica : null}
+                  onCambiaOgni={progressioniAttive ? (v => { setOgniModifica(v); setOgniToccato(true) }) : undefined} />
               </div>
             )}
 

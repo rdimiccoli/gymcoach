@@ -3,14 +3,14 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { flushSync } from 'react-dom'
 import { supabase } from '../supabaseClient'
 import { run, notifyError } from '../lib/notify'
-import { raggruppaEsercizi, oggiLocale } from '../lib/schede'
+import { raggruppaEsercizi, oggiLocale, isCircuito } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { chiudiRiga } from '../lib/movimento'
 import { perditeEsercizioDellaScheda } from '../lib/contaDanni'
 import AvvisoRosso from '../components/AvvisoRosso'
 import SceltaSettimane from '../components/SceltaSettimane'
-import { SETTIMANE_PREDEFINITE, settimaneDi, fasi, etichettaFase } from '../lib/settimane'
+import { SETTIMANE_PREDEFINITE, settimaneDi, ogniDi, fasi, etichettaFase, repsDiFase, rimappaCaselle, stessaDivisione, colonneReps } from '../lib/settimane'
 import { GIORNI_MAX, GIORNI_MIN, GIORNI_PREDEFINITI, giorniDi, elencoGiorni, giornoValido } from '../lib/giorni'
 import { salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
@@ -45,6 +45,11 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   // da MODIFICA in SCHEDE. Le caselle delle ripetizioni la seguono.
   const [settimane, setSettimane] = useState(SETTIMANE_PREDEFINITE)
   const [settimaneAttive, setSettimaneAttive] = useState(false)
+  // Ogni quante settimane cambiano le ripetizioni. Una scheda nuova parte da
+  // «ogni 2», la progressione di sempre; una di prima senza passo ha le tre
+  // fasi automatiche (null). Serve lo script migrazione-progressioni.sql.
+  const [ogni, setOgni] = useState(2)
+  const [progressioniAttive, setProgressioniAttive] = useState(false)
   const [allExercises, setAllExercises] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
@@ -66,6 +71,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       setCategorieAttive(c.categorie)
       setGiorniAttivi(c.giorniScheda)
       setSettimaneAttive(c.settimaneScheda)
+      setProgressioniAttive(c.progressioni)
       // Solo creando: una scheda esistente si riassegna da MODIFICA nella
       // lista schede, dove stanno già nome e data d'inizio.
       if (!c.assegnazioni || cycleId || !turnId) return
@@ -122,11 +128,20 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   }
 
   async function loadClonePreview() {
+    // «*» e non le colonne per nome: prima delle migrazioni giorni,
+    // settimane e ogni non esistono, e chiederle per nome farebbe fallire
+    // tutta la lettura.
     const { data } = await run(
-      supabase.from('cycles').select('name').eq('id', cloneFromId).single(),
+      supabase.from('cycles').select('*').eq('id', cloneFromId).single(),
       'Impossibile leggere la scheda da clonare.'
     )
     setCloneInfo(data)
+    if (!data) return
+    // La copia parte uguale all'originale: stessi giorni, stessa durata,
+    // stesso passo. Il coach cambia solo quello che vuole.
+    setGiorni(giorniDi(data))
+    setSettimane(settimaneDi(data))
+    setOgni(ogniDi(data))
   }
 
   async function loadExistingCycle() {
@@ -134,7 +149,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       supabase.from('cycles').select('*').eq('id', cycleId).single(),
       'Impossibile caricare la scheda.'
     )
-    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()); setSettimane(settimaneDi(cycle)) }
+    if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()); setSettimane(settimaneDi(cycle)); setOgni(ogniDi(cycle)) }
     const { data: exData } = await run(
       supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
       'Impossibile caricare gli esercizi della scheda.'
@@ -157,7 +172,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       const map = giorniVuoti()
       exData.forEach(e => {
         if (!e.exercises?.name || !giornoNoto(e.day)) return
-        map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
+        map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, fasi: Array.isArray(e.reps_fasi) ? e.reps_fasi : null, supersetGroup: e.superset_group || null })
       })
       setExList(map)
     }
@@ -172,19 +187,37 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     )
     if (!srcEx?.length) return
     const map = giorniVuoti()
+    // Se il coach ha cambiato durata o passo rispetto all'originale, le
+    // caselle si rifanno come in MODIFICA: ogni settimana tiene le
+    // ripetizioni che aveva. I circuiti no: le loro tre caselle sono lavoro,
+    // pausa e giri, non settimane.
+    const prima = { totale: settimaneDi(cloneInfo), ogni: ogniDi(cloneInfo) }
+    const dopo = { totale: settimane, ogni: progressioniAttive ? ogni : null }
+    const rifai = progressioniAttive && cloneInfo && !stessaDivisione(prima, dopo)
     const inserts = srcEx.filter(e => e.exercises?.name && giornoNoto(e.day)).map((e, i) => ({
       cycle_id: newCycleId, exercise_id: e.exercise_id, day: e.day,
       reps_a: e.reps_a, reps_b: e.reps_b, reps_c: e.reps_c,
+      ...(Array.isArray(e.reps_fasi) ? { reps_fasi: e.reps_fasi } : {}),
+      ...(rifai && !isCircuito(e.superset_group) ? colonneReps(rimappaCaselle(e, prima, dopo)) : {}),
       sort_order: e.sort_order ?? i, superset_group: e.superset_group || null
     }))
     if (!inserts.length) return
+    // Se il coach ha tolto dei giorni ma l'originale ne usava di più, i
+    // giorni tornano quanti servono: una linguetta mancante nasconderebbe
+    // esercizi copiati senza dirlo a nessuno.
+    const piuAlto = Math.max(0, ...inserts.map(e => Number(e.day)))
+    if (piuAlto > giorni) {
+      setGiorni(piuAlto)
+      if (giorniAttivi) await run(supabase.from('cycles').update({ giorni: piuAlto }).eq('id', newCycleId),
+        'Numero di giorni non allineato.')
+    }
     const { data: inserted } = await run(
       supabase.from('cycle_exercises').insert(inserts).select('*, exercises(name)'),
       'Clonazione non riuscita: gli esercizi non sono stati copiati.'
     )
     inserted?.forEach(e => {
       if (!e.exercises?.name || !giornoNoto(e.day)) return
-      map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, supersetGroup: e.superset_group || null })
+      map[e.day].push({ id: e.id, exerciseId: e.exercise_id, name: e.exercises.name, repsA: e.reps_a, repsB: e.reps_b, repsC: e.reps_c, fasi: Array.isArray(e.reps_fasi) ? e.reps_fasi : null, supersetGroup: e.superset_group || null })
     })
     setExList(map)
   }
@@ -199,6 +232,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         // è passata, la scheda nasce come nasceva prima.
         ...(giorniAttivi ? { giorni } : {}),
         ...(settimaneAttive ? { settimane } : {}),
+        ...(progressioniAttive ? { ogni } : {}),
       }).select().single(),
       'Scheda non creata. Controlla la connessione e riprova.'
     )
@@ -295,9 +329,41 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     clearTimeout(repsTimers.current[exId])
     run(
       supabase.from('cycle_exercises')
-        .update({ reps_a: dati.repsA, reps_b: dati.repsB, reps_c: dati.repsC }).eq('id', exId),
+        .update({
+          reps_a: dati.repsA, reps_b: dati.repsB, reps_c: dati.repsC,
+          // Tutte le caselle stanno in reps_fasi; le prime tre si scrivono
+          // ANCHE nelle colonne di sempre, così il CSV e le schede di prima
+          // continuano a leggerle.
+          ...(dati.fasi ? { reps_fasi: dati.fasi } : {}),
+        }).eq('id', exId),
       `Ripetizioni di "${dati.nome}" non salvate.`
     )
+  }
+
+  /** Quello che c'è scritto nella casella k, senza ereditare niente. */
+  function casella(ex, k) {
+    if (Array.isArray(ex.fasi)) return ex.fasi[k] ?? ''
+    return [ex.repsA, ex.repsB, ex.repsC][k] ?? ''
+  }
+
+  /** Cambia la casella k di un esercizio, e la salva poco dopo. */
+  function aggiornaCasella(d, idx, k, val, quante) {
+    const ex = exList[d][idx]
+    const caselle = Array.from({ length: Math.max(quante, 3) }, (_, i) => casella(ex, i))
+    caselle[k] = val
+    const updated = {
+      ...ex,
+      repsA: caselle[0], repsB: caselle[1], repsC: caselle[2],
+      ...(progressioniAttive ? { fasi: caselle } : {}),
+    }
+    setExList(prev => ({ ...prev, [d]: prev[d].map((e, i) => i === idx ? updated : e) }))
+    if (!ex.id) return
+    repsPending.current[ex.id] = {
+      repsA: updated.repsA, repsB: updated.repsB, repsC: updated.repsC,
+      fasi: progressioniAttive ? caselle : null, nome: ex.name,
+    }
+    clearTimeout(repsTimers.current[ex.id])
+    repsTimers.current[ex.id] = setTimeout(() => scriviReps(ex.id), 600)
   }
 
   function updateReps(d, idx, field, val) {
@@ -667,7 +733,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         )}
         {settimaneAttive && (
           <div style={{ marginTop: '16px' }}>
-            <SceltaSettimane valore={settimane} onChange={setSettimane} />
+            <SceltaSettimane valore={settimane} onChange={setSettimane}
+              ogni={progressioniAttive ? ogni : null} onCambiaOgni={progressioniAttive ? setOgni : undefined} />
           </div>
         )}
         {atletiTurno.length > 0 && (
@@ -685,7 +752,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   )
 
   const groups = getGroups()
-  const fasiScheda = fasi(settimane)
+  const fasiScheda = fasi(settimane, progressioniAttive ? ogni : null)
 
   return (
     <div style={{ ...page, position: 'relative' }}>
@@ -835,7 +902,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                         scheda completata si va proprio a cercare quelle. Prima
                         restavano solo i nomi degli esercizi. */}
                     {(
-                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isCircuit ? 3 : fasiScheda.length}, 1fr)`, gap: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isCircuit ? 3 : Math.min(fasiScheda.length, 4)}, 1fr)`, gap: '6px' }}>
                         {isCircuit
                           ? [['repsA','DURATA'],['repsB','RIPOSO'],['repsC','GIRI']].map(([field, label]) => (
                             <div key={field}>
@@ -843,13 +910,18 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                               <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, borderColor: 'rgba(59,130,246,0.2)', ...(readOnly ? soloLettura : null) }} />
                             </div>
                           ))
-                          // Una casella per fase: con 6 settimane 1-2 · 3-4 · 5-6
-                          // come sempre, con 8 settimane 1-3 · 4-6 · 7-8, con 2
-                          // settimane due caselle sole.
-                          : fasiScheda.map(f => [CAMPO_LOCALE[f.campo], etichettaFase(f)]).map(([field, label]) => (
-                            <div key={field}>
-                              <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{label}</div>
-                              <input value={ex[field]} readOnly={readOnly} onChange={e => updateReps(day, ex.idx, field, e.target.value)} onBlur={() => { if (!readOnly) scriviReps(ex.id) }} style={{ ...repsInp, ...(readOnly ? soloLettura : null) }} />
+                          // Una casella per blocco: con 6 settimane 1-2 · 3-4 · 5-6
+                          // come sempre; con il passo, tante quanti i blocchi (in
+                          // righe da quattro). Vuota, mostra in grigio quello che
+                          // eredita dalla casella prima.
+                          : fasiScheda.map(f => (
+                            <div key={f.indice}>
+                              <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', letterSpacing: '1px', marginBottom: '3px', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif' }}>{etichettaFase(f)}</div>
+                              <input value={casella(ex, f.indice)} readOnly={readOnly}
+                                placeholder={f.indice > 0 ? repsDiFase({ reps_fasi: ex.fasi, reps_a: ex.repsA, reps_b: ex.repsB, reps_c: ex.repsC }, f.indice - 1) ?? '' : ''}
+                                onChange={e => aggiornaCasella(day, ex.idx, f.indice, e.target.value, fasiScheda.length)}
+                                onBlur={() => { if (!readOnly) scriviReps(ex.id) }}
+                                style={{ ...repsInp, ...(readOnly ? soloLettura : null) }} />
                             </div>
                           ))
                         }
@@ -1073,8 +1145,6 @@ const freccia = {
 }
 // Il più e il meno accanto alle linguette: quadrati, della stessa altezza.
 const linguettaPiu = { width: '40px', flexShrink: 0, padding: '9px 0', borderRadius: '4px', border: '1px dashed var(--bordo)', background: 'var(--sup)', color: 'var(--testo-debole)', fontSize: '18px', fontWeight: '700', lineHeight: 1, cursor: 'pointer' }
-// Dal nome della colonna nel database al nome che usa questa pagina.
-const CAMPO_LOCALE = { reps_a: 'repsA', reps_b: 'repsB', reps_c: 'repsC' }
 // In sola lettura i campi restano dove sono ma non sembrano più da toccare.
 const soloLettura = { background: 'transparent', borderStyle: 'dashed', color: 'var(--testo-chiaro)', cursor: 'default' }
 const repsInp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '9px 4px', color: '#fff', fontSize: '16px', outline: 'none', textAlign: 'center', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600', minHeight: '42px' }

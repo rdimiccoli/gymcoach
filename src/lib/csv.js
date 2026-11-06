@@ -96,7 +96,7 @@ export function eserciziDaCsv(testo) {
   }
 
   const iA = col('reps_a'), iB = col('reps_b'), iC = col('reps_c')
-  const iGruppo = col('superset_group'), iOrdine = col('sort_order')
+  const iGruppo = col('superset_group'), iOrdine = col('sort_order'), iFasi = col('reps_fasi')
 
   const esercizi = []
   const problemi = []
@@ -121,6 +121,8 @@ export function eserciziDaCsv(testo) {
       repsB: iB >= 0 ? pulisci(r[iB]) : '',
       repsC: iC >= 0 ? pulisci(r[iC]) : '',
       gruppo: iGruppo >= 0 ? oNullo(r[iGruppo]) : null,
+      // Tutte le caselle, se il file le ha; null = solo le tre di sempre.
+      fasi: iFasi >= 0 && pulisci(r[iFasi]) ? pulisci(r[iFasi]).split('|').map(v => v.trim()) : null,
       ordine: Number.isFinite(ordine) ? ordine : idx,
     })
   })
@@ -136,7 +138,12 @@ const virgoletta = v => {
 
 /** Produce il CSV di una scheda, nello stesso formato dell'esportazione. */
 export function csvDaEsercizi(esercizi) {
-  const intestazione = ['id', 'sort_order', 'day', 'reps_a', 'reps_b', 'reps_c', 'superset_group', 'exercise_name']
+  // Le caselle oltre la terza (il passo delle ripetizioni) vanno in una
+  // colonna in più, `reps_fasi`, separate da « | ». Solo se ce ne sono:
+  // una scheda di sempre esce identica a prima.
+  const conFasi = (esercizi || []).some(e => Array.isArray(e.reps_fasi) && e.reps_fasi.length)
+  const intestazione = ['id', 'sort_order', 'day', 'reps_a', 'reps_b', 'reps_c', 'superset_group', 'exercise_name',
+    ...(conFasi ? ['reps_fasi'] : [])]
   const righe = (esercizi || []).map(e => [
     e.id ?? '',
     e.sort_order ?? '',
@@ -146,6 +153,7 @@ export function csvDaEsercizi(esercizi) {
     e.reps_c ?? '',
     e.superset_group ?? 'null',
     e.exercises?.name ?? e.exercise_name ?? '',
+    ...(conFasi ? [Array.isArray(e.reps_fasi) ? e.reps_fasi.map(v => v ?? '').join(' | ') : ''] : []),
   ].map(virgoletta).join(','))
   return [intestazione.join(','), ...righe].join('\n')
 }

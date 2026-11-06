@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { eserciziDaCsv } from '../lib/csv'
 import { GIORNI_MAX } from '../lib/giorni'
+import { capacita } from '../lib/capacita'
 
 /**
  * Importa una scheda incollando il CSV esportato dal database.
@@ -51,6 +52,8 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
     }
 
     // 3. Le righe si accodano a quelle già presenti, mantenendo l'ordine del CSV.
+    //    Le caselle oltre la terza si scrivono solo se il database le sa tenere.
+    const { progressioni } = await capacita()
     const contatori = { ...esistentiPerGiorno }
     const righe = [...esercizi]
       .sort((a, b) => a.giorno - b.giorno || a.ordine - b.ordine)
@@ -62,6 +65,7 @@ export default function ImportaCsv({ cycleId, esistentiPerGiorno, onFatto, onClo
           exercise_id: perNome.get(e.nome.trim().toLowerCase()),
           day: e.giorno,
           reps_a: e.repsA, reps_b: e.repsB, reps_c: e.repsC,
+          ...(progressioni && e.fasi ? { reps_fasi: e.fasi } : {}),
           superset_group: e.gruppo,
           sort_order: posizione,
         }

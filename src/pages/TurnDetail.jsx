@@ -10,7 +10,7 @@ import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
 import AvvisoRosso from '../components/AvvisoRosso'
 import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
-import { settimaneDi } from '../lib/settimane'
+import { settimaneDi, ogniDi } from '../lib/settimane'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
@@ -92,6 +92,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const settimana = settimanaDaCalendario(cycle) || 1
   // Quante settimane dura questa scheda: sei, se nessuno ha scelto altro.
   const totale = settimaneDi(cycle)
+  // Ogni quante settimane cambiano le ripetizioni (null: le tre fasi di sempre).
+  const passo = ogniDi(cycle)
 
   // Uscendo dalla schermata le modifiche ancora in attesa partono comunque.
   useEffect(() => () => { Object.keys(carichiPendenti.current).forEach(scriviCarico) }, [])
@@ -330,7 +332,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       if (loads[`${client.id}_${ex.id}_${w}`] !== undefined) { prevWeek = w; break }
     }
     const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
-    const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek, totale) : undefined
+    const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek, totale, passo) : undefined
     return { currentKg, prevKg, prevReps }
   }
 
@@ -501,7 +503,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                               // sola in cima alla schermata.
                               : group.exercises.length === 1 && (
                                 <div style={{ marginTop: '4px' }}>
-                                  <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], settimana, totale)}</span>
+                                  <span style={{ color: '#fff', fontSize: '16px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{repsPerSettimana(group.exercises[0], settimana, totale, passo)}</span>
                                 </div>
                               )
                             }
@@ -556,7 +558,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                                     <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                      × {repsPerSettimana(ex, settimana, totale)}
+                                      × {repsPerSettimana(ex, settimana, totale, passo)}
                                     </span>
                                     {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
                                       && currentKg >= record[`${client.id}_${ex.exercise_id}`] && currentKg > 0 && (
@@ -647,6 +649,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           notes={notes}
           settimana={settimana}
           totale={totale}
+          passo={passo}
           onSave={(updates) => saveLoads(editModal.client.id, settimana, updates)}
           onClose={() => setEditModal(null)}
         />
@@ -657,7 +660,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   )
 }
 
-function LoadModal({ client, group, loads, notes, settimana, totale, onSave, onClose }) {
+function LoadModal({ client, group, loads, notes, settimana, totale, passo, onSave, onClose }) {
   const week = settimana
 
   const [kgMap, setKgMap] = useState(() => {
@@ -681,7 +684,7 @@ function LoadModal({ client, group, loads, notes, settimana, totale, onSave, onC
   function getPrevLoad(ex) {
     for (let w = week - 1; w >= 1; w--) {
       const kg = loads[`${client.id}_${ex.id}_${w}`]
-      if (kg !== undefined) return { kg, reps: repsPerSettimana(ex, w, totale) }
+      if (kg !== undefined) return { kg, reps: repsPerSettimana(ex, w, totale, passo) }
     }
     return null
   }
@@ -737,7 +740,7 @@ function LoadModal({ client, group, loads, notes, settimana, totale, onSave, onC
       <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginBottom: (group.type === 'superset' || group.type === 'circuit') ? '4px' : '16px' }}>
         {group.type === 'circuit'
           ? <span style={{ color: 'var(--circuito)' }}>🔄 Circuito · {group.exercises[0]?.reps_c} giri</span>
-          : <span>Settimana {week} · {repsPerSettimana(group.exercises[0], week, totale)}</span>
+          : <span>Settimana {week} · {repsPerSettimana(group.exercises[0], week, totale, passo)}</span>
         }
       </div>
       {group.type === 'superset' && (

@@ -4,7 +4,7 @@ import { run } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { elencoGiorni, GIORNI_MAX } from '../lib/giorni'
-import { settimaneDi, fasi, etichettaFase } from '../lib/settimane'
+import { settimaneDi, ogniDi, fasi, etichettaFase, repsDiFase } from '../lib/settimane'
 import { disegnaScheda, mandaImmagine } from '../lib/immagineScheda'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
@@ -15,8 +15,8 @@ import BottomNav from '../components/BottomNav'
 // Le fasce di settimane fra cui scegliere vengono dalla durata della
 // scheda: con 6 settimane sono 1-2 · 3-4 · 5-6 come sempre, con 8 sono
 // 1-3 · 4-6 · 7-8. Vedi settimane.js.
-const fasceDi = scheda => fasi(settimaneDi(scheda)).map(f => ({
-  label: etichettaFase(f), repsField: f.campo, weeks: [f.da, f.a],
+const fasceDi = scheda => fasi(settimaneDi(scheda), ogniDi(scheda)).map(f => ({
+  label: etichettaFase(f), indice: f.indice, weeks: [f.da, f.a],
 }))
 
 export default function CycleShare({ navigate, goBack, goHome, params }) {
@@ -85,7 +85,8 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
   const WEEK_RANGES = fasceDi(cycle)
 
   function getRepsForRange(ex, rangeIdx) {
-    return ex[WEEK_RANGES[rangeIdx]?.repsField ?? 'reps_a']
+    // Una casella vuota vale come quella prima: vedi settimane.js.
+    return repsDiFase(ex, WEEK_RANGES[rangeIdx]?.indice ?? 0)
   }
 
   function getLoadForRange(clientId, exId, rangeIdx) {
@@ -251,10 +252,12 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
             {/* Step 2 — Select week range */}
             <div style={stepLabel}>2 · SELEZIONA SETTIMANE</div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            {/* Con il passo di una settimana le fasce possono essere tante:
+                vanno a capo, almeno tre per riga. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
               {WEEK_RANGES.map((wr, i) => (
                 <button key={i} onClick={() => setSelectedWeekRange(i)} style={{
-                  flex: 1, padding: '11px 6px', borderRadius: '4px',
+                  flex: '1 0 28%', padding: '11px 6px', borderRadius: '4px',
                   border: `1px solid ${selectedWeekRange === i ? 'var(--acc-bordo-marcato)' : 'var(--sup-alta)'}`,
                   background: selectedWeekRange === i ? 'var(--acc-riempimento)' : 'var(--sup)',
                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '0.5px',

@@ -65,7 +65,7 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -76,10 +76,15 @@ export function capacita() {
       presente('cycles', 'giorni'),
       presente('clients', 'sort_order'),
       presente('cycles', 'settimane'),
+      presente('cycles', 'ogni'),
+      presente('cycle_exercises', 'reps_fasi'),
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
     // ospiti. Si accende solo se ci sono entrambi i pezzi.
-    return { categorie, assegnazioni, silver: colonnaSilver && ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda }
+    return { categorie, assegnazioni, silver: colonnaSilver && ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda,
+      // Il passo delle ripetizioni ha bisogno di tutte e due le colonne:
+      // la scelta sulla scheda e le caselle sugli esercizi.
+      progressioni: colonnaOgni && colonnaFasi }
   })()
   return richiesta
 }

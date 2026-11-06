@@ -150,4 +150,20 @@ describe('messaggi quando il file non va', () => {
     const { problemi } = eserciziDaCsv('exercise_name|day\nSquat|1')
     expect(problemi[1]).toContain('non siano state separate')
   })
+
+  it('porta con sé le caselle oltre la terza, e le rilegge', () => {
+    const testo = csvDaEsercizi([
+      { id: 'a', sort_order: 0, day: 1, reps_a: '4x10', reps_b: '4x8', reps_c: '4x6', reps_fasi: ['4x10', '4x8', '4x6', '5x5'], superset_group: null, exercise_name: 'Squat' },
+      { id: 'b', sort_order: 1, day: 1, reps_a: '3x12', reps_b: '3x10', reps_c: '3x8', superset_group: null, exercise_name: 'Panca' },
+    ])
+    const { esercizi, problemi } = eserciziDaCsv(testo)
+    expect(problemi).toHaveLength(0)
+    expect(esercizi[0].fasi).toEqual(['4x10', '4x8', '4x6', '5x5'])
+    expect(esercizi[1].fasi).toBeNull()
+  })
+
+  it('una scheda senza caselle in più esce identica a prima', () => {
+    const testo = csvDaEsercizi([{ id: 'b', sort_order: 1, day: 1, reps_a: '3x12', reps_b: '3x10', reps_c: '3x8', superset_group: null, exercise_name: 'Panca' }])
+    expect(testo.split('\n')[0]).toBe('id,sort_order,day,reps_a,reps_b,reps_c,superset_group,exercise_name')
+  })
 })
