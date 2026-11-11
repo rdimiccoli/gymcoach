@@ -29,6 +29,13 @@ export const NOVITA = [
     data: '11 novembre',
     schede: [
       {
+        icona: '🔙',
+        titolo: 'IL CARICO DELLA SCHEDA PRIMA',
+        testo: 'In una scheda nuova, accanto a ogni esercizio trovi il carico che il cliente faceva nella scheda prima: «scheda prec. 52.5». Il + e il − partono da lì. Niente più da cercare a mano.',
+        dove: ['HOME', 'APRI UN TURNO', 'SCHEDA PREC.'],
+        nota: 'Anche l\'immagine da mandare al cliente riporta quel carico. Nei dettagli, «USA ↵» lo scrive con un tocco.',
+      },
+      {
         icona: '⇄',
         titolo: 'SCAMBIA I GIORNI',
         testo: 'Tutti gli esercizi del Giorno 1 passano al Giorno 2, e quelli del Giorno 2 al Giorno 1. Con qualsiasi coppia di giorni.',

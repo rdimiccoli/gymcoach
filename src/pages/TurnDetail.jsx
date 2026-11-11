@@ -13,6 +13,8 @@ import { giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { settimaneDi, ogniDi } from '../lib/settimane'
 import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
+import { tutteLeRighe } from '../lib/tutteLeRighe'
+import { storicoEsercizi } from '../lib/storicoDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -67,6 +69,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const [notes, setNotes] = useState({})
   // record[clientId_exerciseId] = massimo di sempre su quell_esercizio
   const [record, setRecord] = useState({})
+  // precedenti[clientId_exerciseId] = { kg, settimana, scheda }: l'ultimo
+  // carico nelle schede prima di questa (vedi carichiPrecedenti.js). Serve
+  // alla prima settimana di una scheda nuova, che di suo non ha un «prec.».
+  const [precedenti, setPrecedenti] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [timer, setTimer] = useState(null)
@@ -129,10 +135,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
       const clIds = cl.map(c => c.id)
-      // Load ALL weeks for each client/exercise
+      // Tutte le settimane di questa scheda, a pagine: un turno grande supera
+      // le mille righe che Supabase manda in una volta (vedi tutteLeRighe.js).
       const [{ data: loadData }, { data: noteData }] = await Promise.all([
-        run(supabase.from('client_loads').select('*')
-          .in('client_id', clIds).in('cycle_exercise_id', exIds),
+        tutteLeRighe(() => supabase.from('client_loads').select('*')
+          .in('client_id', clIds).in('cycle_exercise_id', exIds)
+          .order('client_id').order('cycle_exercise_id').order('week'),
           'Impossibile caricare lo storico dei carichi.'),
         run(supabase.from('client_notes').select('client_id, cycle_exercise_id, note')
           .in('client_id', clIds).in('cycle_exercise_id', exIds),
@@ -144,26 +152,20 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       })
       setLoads(loadMap)
 
-      // ── Record personali ──────────────────────────────────────────────
-      // Il massimo di sempre non si ricava da loadMap: quello copre solo
-      // questa scheda. Lo stesso esercizio in schede diverse ha righe
-      // cycle_exercises diverse, quindi si passa da exercise_id.
+      // ── Record personali e carichi delle schede prima ─────────────────
+      // Né il massimo di sempre né il carico della scheda prima si ricavano
+      // da loadMap: quello copre solo questa scheda. Lo stesso esercizio in
+      // schede diverse ha righe cycle_exercises diverse, quindi si passa da
+      // exercise_id. Una lettura sola per tutte e due le cose.
       const idEsercizi = [...new Set(exData.map(e => e.exercise_id).filter(Boolean))]
-      if (idEsercizi.length) {
-        const { data: storico } = await run(
-          supabase.from('client_loads')
-            .select('kg, client_id, cycle_exercises!inner(exercise_id)')
-            .in('client_id', clIds)
-            .in('cycle_exercises.exercise_id', idEsercizi),
-          'Impossibile calcolare i record personali.'
-        )
-        const massimi = {}
-        storico?.forEach(r => {
-          const chiave = `${r.client_id}_${r.cycle_exercises?.exercise_id}`
-          if (r.kg != null && (massimi[chiave] === undefined || r.kg > massimi[chiave])) massimi[chiave] = r.kg
-        })
-        setRecord(massimi)
-      }
+      const { righe: storico, precedenti: dallaSchedaPrima } = await storicoEsercizi(clIds, idEsercizi, cycle)
+      const massimi = {}
+      storico?.forEach(r => {
+        const chiave = `${r.client_id}_${r.cycle_exercises?.exercise_id}`
+        if (r.kg != null && (massimi[chiave] === undefined || r.kg > massimi[chiave])) massimi[chiave] = r.kg
+      })
+      setRecord(massimi)
+      setPrecedenti(dallaSchedaPrima)
 
       const noteMap = {}
       noteData?.forEach(n => { noteMap[`${n.client_id}_${n.cycle_exercise_id}`] = n.note })
@@ -330,6 +332,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     let prevWeek = null
     for (let w = week - 1; w >= 1; w--) {
       if (loads[`${client.id}_${ex.id}_${w}`] !== undefined) { prevWeek = w; break }
+    }
+    if (prevWeek === null) {
+      // In questa scheda non c'è ancora niente prima di questa settimana —
+      // la prima settimana di una scheda nuova: vale l'ultimo carico della
+      // scheda prima, sullo stesso esercizio.
+      const prima = precedenti[`${client.id}_${ex.exercise_id}`]
+      if (prima) return { currentKg, prevKg: prima.kg, prevReps: undefined, daPrima: prima }
     }
     const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
     const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek, totale, passo) : undefined
@@ -541,7 +550,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             (mezzi chili e nota). */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {group.exercises.map(ex => {
-                            const { currentKg, prevKg } = getLoadInfo(client, ex)
+                            const { currentKg, prevKg, daPrima } = getLoadInfo(client, ex)
                             // Un carico di 0 kg (corpo libero, macchina assistita) è
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
@@ -570,8 +579,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                       </span>
                                     )}
                                     {prevKg !== undefined && (
-                                      <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
-                                        prec. {prevKg}
+                                      // Dalla scheda prima: lo si dice, e un po' più
+                                      // in vista — è il numero da cui ripartire.
+                                      <span title={daPrima ? `Ultimo carico nella scheda «${daPrima.scheda}», settimana ${daPrima.settimana}` : undefined}
+                                        style={{ color: daPrima ? 'var(--acc-testo-tenue)' : 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: daPrima ? '700' : '400' }}>
+                                        {daPrima ? 'scheda prec.' : 'prec.'} {prevKg}
                                       </span>
                                     )}
                                     {diff !== null && diff !== 0 && (
@@ -646,6 +658,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           client={editModal.client}
           group={editModal.group}
           loads={loads}
+          precedenti={precedenti}
           notes={notes}
           settimana={settimana}
           totale={totale}
@@ -660,7 +673,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   )
 }
 
-function LoadModal({ client, group, loads, notes, settimana, totale, passo, onSave, onClose }) {
+function LoadModal({ client, group, loads, precedenti = {}, notes, settimana, totale, passo, onSave, onClose }) {
   const week = settimana
 
   const [kgMap, setKgMap] = useState(() => {
@@ -680,13 +693,15 @@ function LoadModal({ client, group, loads, notes, settimana, totale, passo, onSa
     return m
   })
 
-  // Get previous week's load for reference
+  // Il carico della volta prima: in questa scheda, o — alla prima
+  // settimana di una scheda nuova — l'ultimo della scheda prima.
   function getPrevLoad(ex) {
     for (let w = week - 1; w >= 1; w--) {
       const kg = loads[`${client.id}_${ex.id}_${w}`]
       if (kg !== undefined) return { kg, reps: repsPerSettimana(ex, w, totale, passo) }
     }
-    return null
+    const prima = precedenti[`${client.id}_${ex.exercise_id}`]
+    return prima ? { kg: prima.kg, reps: null, scheda: prima.scheda } : null
   }
 
   const change = (exId, delta) => {
@@ -759,13 +774,19 @@ function LoadModal({ client, group, loads, notes, settimana, totale, passo, onSa
               {ex?.exercises?.name?.toUpperCase() ?? ''}
             </div>
 
-            {/* Previous load reference */}
+            {/* Il carico della volta prima. Toccandolo si scrive nel campo:
+                per rifare lo stesso peso basta un tocco, invece di + e −. */}
             {prev ? (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '3px', padding: '3px 8px', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>prec.</span>
+              <button type="button" onClick={() => setKgMap(m => ({ ...m, [ex.id]: Number(prev.kg) }))}
+                aria-label={`Usa il carico precedente, ${prev.kg} chili`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '3px', padding: '4px 8px', marginBottom: '12px', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{prev.scheda !== undefined ? 'scheda prec.' : 'prec.'}</span>
                 <span style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
-                <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
-              </div>
+                {prev.reps
+                  ? <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
+                  : prev.scheda && <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>· {prev.scheda}</span>}
+                <span style={{ color: 'var(--accento)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', letterSpacing: '1px', marginLeft: '3px' }}>USA ↵</span>
+              </button>
             ) : (
               <div style={{ height: '4px' }} />
             )}

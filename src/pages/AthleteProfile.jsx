@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { tutteLeRighe } from '../lib/tutteLeRighe'
 import Andamento, { Linetta } from '../components/Andamento'
 import { analizzaEsercizio, riassunto, numero } from '../lib/progressi'
 import { ScheletroStorico } from '../components/Scheletro'
@@ -22,12 +23,14 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
 
   async function loadHistory() {
     // Get all loads for this client
-    const { data: loads } = await run(
-      supabase
+    // A pagine: chi si allena da anni supera le mille righe che Supabase
+    // manda in una volta, e i carichi più nuovi sparivano dal grafico.
+    const { data: loads } = await tutteLeRighe(() => supabase
         .from('client_loads')
         .select('kg, week, cycle_exercise_id')
         .eq('client_id', client.id)
-        .not('kg', 'is', null),
+        .not('kg', 'is', null)
+        .order('cycle_exercise_id').order('week'),
       'Impossibile caricare lo storico dei carichi.'
     )
 

@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { raggruppaEsercizi } from '../lib/schede'
 import { conOrdineDelTurno } from '../lib/ordineDb'
+import { tutteLeRighe } from '../lib/tutteLeRighe'
+import { storicoEsercizi } from '../lib/storicoDb'
 import { elencoGiorni, GIORNI_MAX } from '../lib/giorni'
 import { settimaneDi, ogniDi, fasi, etichettaFase, repsDiFase } from '../lib/settimane'
 import { disegnaScheda, mandaImmagine } from '../lib/immagineScheda'
@@ -25,6 +27,9 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
   const [cycle, setCycle] = useState(null)
   const [clients, setClients] = useState([])
   const [loads, setLoads] = useState({}) // key: clientId_exId_week → kg
+  // L'ultimo carico nella scheda prima, per chi in questa non ne ha ancora
+  // segnati: «idPersona_idEsercizio» → { kg, settimana, scheda }.
+  const [precedenti, setPrecedenti] = useState({})
   const [loading, setLoading] = useState(true)
 
   // Selection state
@@ -67,16 +72,21 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       if (cl?.length && ex?.length) {
         const exIds = ex.map(e => e.id)
         const clIds = cl.map(c => c.id)
-        const { data: loadData } = await run(
-          supabase.from('client_loads').select('*')
-            .in('client_id', clIds).in('cycle_exercise_id', exIds),
-          'Impossibile caricare i carichi.'
-        )
+        // A pagine: tutta una scheda di un turno grande supera le mille
+        // righe che Supabase manda in una volta (vedi tutteLeRighe.js).
+        const [{ data: loadData }, { precedenti: dallaSchedaPrima }] = await Promise.all([
+          tutteLeRighe(() => supabase.from('client_loads').select('*')
+            .in('client_id', clIds).in('cycle_exercise_id', exIds)
+            .order('client_id').order('cycle_exercise_id').order('week'),
+            'Impossibile caricare i carichi.'),
+          storicoEsercizi(clIds, [...new Set(ex.map(e => e.exercise_id).filter(Boolean))], c),
+        ])
         const loadMap = {}
         loadData?.forEach(l => {
           loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
         })
         setLoads(loadMap)
+        setPrecedenti(dallaSchedaPrima)
       }
     }
     setLoading(false)
@@ -97,7 +107,13 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       // 0 kg è un carico registrato (corpo libero), non un carico mancante.
       if (kg !== undefined && kg !== null) return kg
     }
-    return null
+    // In queste settimane niente. Se in TUTTA la scheda la persona non ha
+    // ancora segnato niente su questo esercizio — una scheda appena
+    // cominciata — si manda l'ultimo carico della scheda prima: è il peso
+    // da cui ripartire, e il cliente lo ritrova scritto.
+    const nessuno = !Object.keys(loads).some(k => k.startsWith(`${clientId}_${exId}_`))
+    const ex = nessuno ? Object.values(days).flat().find(e => e.id === exId) : null
+    return (ex?.exercise_id && precedenti[`${clientId}_${ex.exercise_id}`]?.kg) ?? null
   }
 
   function generateText() {
@@ -194,7 +210,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       if (!annullato) setImmagineFallita(true)
     })
     return () => { annullato = true }
-  }, [selectedClient, selectedWeekRange, cycle, days, loads, clients])
+  }, [selectedClient, selectedWeekRange, cycle, days, loads, precedenti, clients])
 
   async function mandaComeImmagine() {
     if (!immagine) return
