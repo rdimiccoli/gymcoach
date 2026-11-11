@@ -269,11 +269,19 @@ button { cursor: pointer; }
   to   { transform: none;      opacity: 1 }
 }
 
+/* Il tutorial delle novità: con AVANTI la schermata nuova arriva da destra,
+   con INDIETRO da sinistra. Si vede in che verso si sta andando. */
+.passo-avanti   { animation: passo-avanti 260ms cubic-bezier(.2,.8,.2,1) both; }
+.passo-indietro { animation: passo-indietro 260ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes passo-avanti   { from { transform: translateX(36px);  opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes passo-indietro { from { transform: translateX(-36px); opacity: 0 } to { transform: none; opacity: 1 } }
+
 /* Chi sul telefono ha chiesto meno movimento non vede niente di tutto
    questo: le cose compaiono e basta, come prima. */
 @media (prefers-reduced-motion: reduce) {
   .salto, .lampo-salvato, .record-entra, .record-entra::after,
-  .foglio-entra, .velo-entra, .tendina-entra { animation: none !important }
+  .foglio-entra, .velo-entra, .tendina-entra,
+  .passo-avanti, .passo-indietro { animation: none !important }
 }
 
 /* ═══ IL MENU ═════════════════════════════════════════════════════════════

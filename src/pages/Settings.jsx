@@ -11,8 +11,9 @@ import AvvisoRosso from '../components/AvvisoRosso'
 import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { NOVITA } from '../lib/novita'
 
-export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili }) {
+export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili, apriNovita }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
   const [view, setView] = useState('main')
   const [coachName, setCoachName] = useState(coach.name || '')
@@ -680,6 +681,11 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
               </button>
             </div>
           </>
+        )}
+
+        <div style={titoloSezione}>L&apos;APP</div>
+        {apriNovita && (
+          <Riga etichetta="🆕 Cosa c'è di nuovo" valore={NOVITA[0]?.data} onClick={apriNovita} />
         )}
 
         <div style={titoloSezione}>ACCOUNT</div>

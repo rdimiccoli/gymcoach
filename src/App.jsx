@@ -13,6 +13,9 @@ import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
 import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
+import NovitaApp from './components/NovitaApp'
+import { novitaDaMostrare, ultimeNovita, leggiUltimaVista, segnaNovitaViste } from './lib/novita'
+import { capacita } from './lib/capacita'
 import ScegliCoach, { ConfermaCambio } from './components/ScegliCoach'
 import Notifier from './components/Notifier'
 import IndicatoreCoda from './components/IndicatoreCoda'
@@ -80,6 +83,9 @@ export default function App() {
   const [showExitModal, setShowExitModal] = useState(false)
   const [sbloccato, setSbloccato] = useState(false)
   const [intro, setIntro] = useState(introDaMostrare)
+  const [novita, setNovita] = useState(null) // { schede, aggiornata }
+  const novitaAperta = useRef(false)
+  useEffect(() => { novitaAperta.current = !!novita }, [novita])
   // I profili coach. `null` vuol dire «non ancora chiesti al database», che è
   // diverso da «non ce n'è nessuno»: il primo è un'attesa, il secondo un
   // problema da dire a schermo.
@@ -133,6 +139,14 @@ export default function App() {
     if (INITIAL_IS_RECOVERY) return
     window.history.pushState({ gymcoach: true }, '')
     const handlePopState = () => {
+      // A tutorial delle novità aperto, il tasto indietro del telefono lo
+      // chiude: altrimenti cambierebbe pagina lì sotto, senza che si veda.
+      if (novitaAperta.current) {
+        window.history.pushState({ gymcoach: true }, '')
+        segnaNovitaViste()
+        setNovita(null)
+        return
+      }
       const current = stackRef.current
       if (current.length > 1) {
         setStack(prev => prev.slice(0, -1))
@@ -202,6 +216,28 @@ export default function App() {
     ;(async () => { const e = await caricaProfili(account); if (!vivo) return e })()
     return () => { vivo = false }
   }, [session?.user?.id])
+
+  // ── Le novità dopo un aggiornamento ───────────────────────────────────────
+  // Su un telefono che entra per la prima volta c'è la presentazione: le
+  // novità di oggi si segnano come viste, per chi parte oggi non sono novità.
+  // Altrimenti, appena c'è l'accesso, si guarda se ce ne sono di non viste.
+  // Compaiono solo sopra le pagine, cioè dopo lucchetto, scelta del coach e
+  // presentazione: lo stato si prepara qui, ma si mostra più sotto.
+  useEffect(() => {
+    if (introDaMostrare()) { segnaNovitaViste(); return }
+    if (!session?.user?.id) return
+    let vivo = true
+    capacita().then(c => {
+      const schede = novitaDaMostrare({ ultimaVista: leggiUltimaVista(), capacita: c })
+      if (vivo && schede.length) setNovita({ schede, aggiornata: true })
+    })
+    return () => { vivo = false }
+  }, [session?.user?.id])
+
+  function chiudiNovita() {
+    segnaNovitaViste()
+    setNovita(null)
+  }
 
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
@@ -306,6 +342,8 @@ export default function App() {
     ricaricaProfili: () => caricaProfili(session.user.id),
     // L'elenco intero serve alla schermata che archivia un collega.
     coaches: visibili,
+    // Dalle impostazioni si rivedono le novità dell'ultimo aggiornamento.
+    apriNovita: () => capacita().then(c => setNovita({ schede: ultimeNovita(c), aggiornata: false })),
   }
 
   const pages = {
@@ -330,6 +368,9 @@ export default function App() {
           di allenamento — riusava la stessa istanza: giorno selezionato,
           carichi e gruppi aperti restavano quelli della scheda di prima. */}
       <Page key={stack.length} {...props} />
+      {novita?.schede.length > 0 && (
+        <NovitaApp schede={novita.schede} nome={coach.name} aggiornata={novita.aggiornata} onChiudi={chiudiNovita} />
+      )}
       <Notifier />
       <IndicatoreCoda />
 

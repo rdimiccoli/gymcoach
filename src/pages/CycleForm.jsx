@@ -2,7 +2,9 @@ import { comePulsante } from '../lib/stile.js'
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import { flushSync } from 'react-dom'
 import { supabase } from '../supabaseClient'
-import { run, notifyError } from '../lib/notify'
+import { run, notifyError, notifyOk } from '../lib/notify'
+import { scambiaGiorniDb, scambiaNellaMappa } from '../lib/scambiaGiorni'
+import ScambiaGiorni from '../components/ScambiaGiorni'
 import { raggruppaEsercizi, oggiLocale, isCircuito } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
@@ -95,6 +97,10 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
   // l'esercizio spariva dal giorno senza che nessuno se ne accorgesse.
   const [spostaConferma, setSpostaConferma] = useState(null) // { d, idx, a, nome }
   const [mostraImport, setMostraImport] = useState(false)
+  // Scambiare due giorni interi: si apre una finestra che mostra cosa va
+  // dove, e solo il suo pulsante conferma.
+  const [scambioAperto, setScambioAperto] = useState(false)
+  const [scambiando, setScambiando] = useState(false)
   const [usoEsercizio, setUsoEsercizio] = useState(null) // in quante schede è usato
   const [collapsedGroups, setCollapsedGroups] = useState({}) // label → bool
 
@@ -144,14 +150,14 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     setOgni(ogniDi(data))
   }
 
-  async function loadExistingCycle() {
+  async function loadExistingCycle(id = cycleId) {
     const { data: cycle } = await run(
-      supabase.from('cycles').select('*').eq('id', cycleId).single(),
+      supabase.from('cycles').select('*').eq('id', id).single(),
       'Impossibile caricare la scheda.'
     )
     if (cycle) { setCycleName(cycle.name); setStartDate(cycle.start_date || oggiLocale()); setSettimane(settimaneDi(cycle)); setOgni(ogniDi(cycle)) }
     const { data: exData } = await run(
-      supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', cycleId).order('sort_order'),
+      supabase.from('cycle_exercises').select('*, exercises(name)').eq('cycle_id', id).order('sort_order'),
       'Impossibile caricare gli esercizi della scheda.'
     )
     if (exData) {
@@ -166,7 +172,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
       // database, altrimenti nella schermata del turno quella linguetta non
       // comparirebbe e la giornata sembrerebbe persa.
       if (quanti > giorniDi(cycle) && (await capacita()).giorniScheda) {
-        await run(supabase.from('cycles').update({ giorni: quanti }).eq('id', cycleId),
+        await run(supabase.from('cycles').update({ giorni: quanti }).eq('id', id),
           'Numero di giorni non allineato.')
       }
       const map = giorniVuoti()
@@ -417,6 +423,26 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     // ma si controlla lo stesso che in quel posto ci sia ancora lui.
     if (exList[d]?.[idx]?.name !== nome) return
     await moveToDay(d, idx, a)
+  }
+
+  /** Scambia tutti gli esercizi dei giorni a e b, dopo la conferma. */
+  async function confermaScambio(a, b) {
+    // Le ripetizioni appena scritte partono prima: lo scambio non le tocca,
+    // ma così niente resta in sospeso mentre i giorni si spostano.
+    Object.keys(repsPending.current).forEach(scriviReps)
+    setScambiando(true)
+    const ids = d => (exList[d] || []).map(e => e.id).filter(Boolean)
+    const esito = await scambiaGiorniDb(ids(a), ids(b), a, b)
+    setScambiando(false)
+    setScambioAperto(false)
+    if (esito === 'fatto') {
+      setActiveGroup(null)
+      setExList(prev => scambiaNellaMappa(prev, a, b))
+      notifyOk(`Fatto: Giorno ${a} e Giorno ${b} scambiati.`)
+    } else if (esito === 'misto') {
+      // A metà strada: si mostra quello che c'è davvero nel database.
+      await loadExistingCycle(currentCycleId)
+    }
   }
 
   async function removeExercise(d, idx) {
@@ -753,6 +779,8 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
 
   const groups = getGroups()
   const fasiScheda = fasi(settimane, progressioniAttive ? ogni : null)
+  // Scambiare ha senso con almeno due giorni e qualcosa da spostare.
+  const puoScambiare = giorni > 1 && elencoGiorni({ giorni }).some(d => exList[d]?.length)
 
   return (
     <div style={{ ...page, position: 'relative' }}>
@@ -952,10 +980,21 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         )}
 
         {!readOnly && currentCycleId && (
-          <button onClick={() => setMostraImport(true)}
-            style={{ ...bigBtn, marginTop: '10px', background: 'transparent', border: '1px solid var(--bordo-forte)', color: 'var(--testo-chiaro)', fontSize: '13px', letterSpacing: '1px' }}>
-            ⬆ IMPORTA DA CSV
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: puoScambiare ? '1fr 1fr' : '1fr', gap: '7px', marginTop: '10px' }}>
+            {/* Qui in fondo, con le altre azioni sulla scheda intera: in alto,
+                nella riga dei giorni, non ci starebbe la scritta, e un
+                simbolo da solo non si capisce. */}
+            {puoScambiare && (
+              <button onClick={() => setScambioAperto(true)}
+                style={{ ...bigBtn, background: 'transparent', border: '1px solid var(--acc-bordo-forte)', color: 'var(--accento)', fontSize: '13px', letterSpacing: '1px', padding: '13px 6px' }}>
+                ⇄ SCAMBIA I GIORNI
+              </button>
+            )}
+            <button onClick={() => setMostraImport(true)}
+              style={{ ...bigBtn, background: 'transparent', border: '1px solid var(--bordo-forte)', color: 'var(--testo-chiaro)', fontSize: '13px', letterSpacing: '1px', padding: '13px 6px' }}>
+              ⬆ IMPORTA DA CSV
+            </button>
+          </div>
         )}
 
         {!readOnly && exList[day].length > 0 && (
@@ -1032,9 +1071,16 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
         <Suspense fallback={null}><ImportaCsv
           cycleId={currentCycleId}
           esistentiPerGiorno={Object.fromEntries(GIORNI_TUTTI.map(d => [d, exList[d].length]))}
-          onFatto={() => { setMostraImport(false); loadExistingCycle() }}
+          // L'id è quello della scheda aperta: su una scheda appena creata
+          // `cycleId` è vuoto e si ricaricava il niente.
+          onFatto={() => { setMostraImport(false); loadExistingCycle(currentCycleId) }}
           onClose={() => setMostraImport(false)}
         /></Suspense>
+      )}
+
+      {scambioAperto && (
+        <ScambiaGiorni giorni={giorni} mappa={exList} iniziale={day} lavorando={scambiando}
+          onConferma={confermaScambio} onAnnulla={() => setScambioAperto(false)} />
       )}
 
       {/* Conferma prima di spostare un esercizio in un altro giorno */}
