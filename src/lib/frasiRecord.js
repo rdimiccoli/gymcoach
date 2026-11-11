@@ -63,6 +63,12 @@ export const scriviKg = kg => `${String(kg).replace('.', ',')} kg`
  */
 export function componiFrase(testo, { nome = '', kg = '', esercizio = '' } = {}) {
   const valori = { nome, kg: kg === '' ? '' : scriviKg(kg), esercizio }
+  // Una frase scritta tutta in maiuscolo vuole maiuscoli anche nome,
+  // chili ed esercizio: «APPLAUSI PER MARCO!», non «APPLAUSI PER Marco!».
+  const lettere = String(testo ?? '').replace(/\{\s*\w+\s*\}/g, '').replace(/[^\p{L}]/gu, '')
+  if (lettere && lettere === lettere.toUpperCase() && lettere !== lettere.toLowerCase()) {
+    for (const k of Object.keys(valori)) valori[k] = String(valori[k]).toUpperCase()
+  }
   return String(testo ?? '').replace(/\{\s*(\w+)\s*\}/g, (tutto, parola) => {
     const chiave = parola.toLowerCase()
     return chiave in valori ? valori[chiave] : tutto

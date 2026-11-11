@@ -39,7 +39,16 @@ describe('le frasi del record', () => {
   })
 
   it('i segnaposto valgono anche nel titolo', () => {
-    expect(componiFrase('GRANDE {NOME}!', marco)).toBe('GRANDE Marco!')
+    expect(componiFrase('Grande {NOME}!', marco)).toBe('Grande Marco!')
+  })
+
+  it('una frase tutta in maiuscolo mette in maiuscolo anche nome, chili ed esercizio', () => {
+    expect(componiFrase('APPLAUSI PER {NOME}!', marco)).toBe('APPLAUSI PER MARCO!')
+    expect(componiFrase('{KG} DI {ESERCIZIO}: CHIAMATE I GIORNALI!', marco)).toBe('52,5 KG DI SQUAT: CHIAMATE I GIORNALI!')
+    expect(componiFrase('IL BILANCIERE HA CHIESTO PIETÀ. {NOME} NO.', marco)).toBe('IL BILANCIERE HA CHIESTO PIETÀ. MARCO NO.')
+    // una frase normale resta normale, e una fatta solo di segnaposto pure
+    expect(componiFrase('Applausi per {nome}!', marco)).toBe('Applausi per Marco!')
+    expect(componiFrase('{nome} + {esercizio}', marco)).toBe('Marco + Squat')
   })
 
   it('né vuote né troppo lunghe', () => {
