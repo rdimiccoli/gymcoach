@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { capacita } from '../lib/capacita'
 import { conOrdineDeiTurni, salvaOrdineTurni } from '../lib/ordineDb'
 import { spostaPerId } from '../lib/ordinePersone'
-import { useScivola } from '../lib/movimento'
+import MenuPuntini from '../components/MenuPuntini'
+import RiordinaTurni from '../components/RiordinaTurni'
 import { personeDellaScheda, senzaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
@@ -37,14 +38,13 @@ export default function Home({ navigate, goHome, session, coach }) {
   const [assegnazioni, setAssegnazioni] = useState({})  // schedaId → Set(atletaId)
   const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
   const [loading, setLoading] = useState(true)
-  // Riordinare i turni: con ⇅ RIORDINA compaiono le frecce accanto a ogni
-  // card, e finché si riordina le card non si aprono — un tocco sbagliato
-  // non deve portare dentro un turno. Solo se il database ha la colonna.
+  // Riordinare i turni: dai ⋮ in alto, «Riordina i turni». Le card diventano
+  // compatte, con una maniglia per trascinarle, e finché si riordina non si
+  // aprono — un tocco sbagliato non deve portare dentro un turno. Solo se il
+  // database ha la colonna.
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   const [riordina, setRiordina] = useState(false)
   const [spostando, setSpostando] = useState(false)
-  const elencoRef = useRef(null)
-  const ricordaPosti = useScivola(elencoRef)
   // Preferenza del singolo coach, dalle impostazioni. Chi non l'ha mai toccata
   // trova la Home identica a com'era. È del PROFILO, non dell'account: con la
   // credenziale unica Sandro e Manu condividono l'accesso ma non il modo di
@@ -68,21 +68,21 @@ export default function Home({ navigate, goHome, session, coach }) {
   useEffect(() => { loadData() }, [coach.id])
 
   /**
-   * Sposta un turno di un posto. La card si muove subito, e poi si salva:
-   * aspettare il wifi della palestra a ogni tocco sembrerebbe un pulsante
-   * che non risponde. Se il salvataggio non passa, torna dov'era (e un
-   * avviso lo dice). Finché si salva le frecce aspettano: due salvataggi
-   * incrociati potrebbero lasciare un ordine diverso da quello a schermo.
+   * Sposta un turno di `passo` posti (negativo = più su). Il nuovo ordine va
+   * a schermo subito, e poi si salva: aspettare il wifi della palestra a ogni
+   * spostamento sembrerebbe una lista che non risponde. Se il salvataggio non
+   * passa, torna com'era (e un avviso lo dice). Finché si salva le maniglie
+   * aspettano: due salvataggi incrociati potrebbero lasciare un ordine
+   * diverso da quello a schermo.
    */
-  async function muovi(turno, passo) {
+  async function muovi(id, passo) {
     const prima = turni
-    const dopo = spostaPerId(prima, turno.id, passo)
+    const dopo = spostaPerId(prima, id, passo)
     if (dopo === prima) return
     setSpostando(true)
-    ricordaPosti()
     setTurni(dopo)
     const ok = await salvaOrdineTurni(prima, dopo)
-    if (!ok) { ricordaPosti(); setTurni(prima) }
+    if (!ok) setTurni(prima)
     setSpostando(false)
   }
 
@@ -136,10 +136,19 @@ export default function Home({ navigate, goHome, session, coach }) {
 
   return (
     <div style={pagina}>
-      <div style={scorrimento}>
+      <div style={scorrimento} data-scorre>
 
         <div style={testata}>
-          <img src="/logo_OAD.png" alt="OAD" style={{ height: '30px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+            <img src="/logo_OAD.png" alt="OAD" style={{ height: '30px', mixBlendMode: 'screen', marginBottom: '10px', display: 'block' }} />
+            {/* I ⋮ in alto, come nelle schede: le azioni sulla Home stanno lì
+                dentro, invece di pulsanti sempre in vista. */}
+            {!loading && ordineAttivo && turni.length > 1 && !riordina && (
+              <MenuPuntini etichetta="Altre azioni sui turni" voci={[
+                { icona: '⇅', testo: 'Riordina i turni', azione: () => setRiordina(true) },
+              ]} />
+            )}
+          </div>
           <div style={{ color: 'var(--testo-debole)', fontSize: '12px', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '4px' }}>
             {giorno.toUpperCase()} · {data}
           </div>
@@ -154,23 +163,23 @@ export default function Home({ navigate, goHome, session, coach }) {
 
         {invitoBio && !loading && <InvitoImpronta onAttiva={() => navigate('settings')} onNo={() => { rifiutaInvito(); setInvitoBio(false) }} />}
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '11px' }}>
-          <div style={{ ...etichetta, marginBottom: 0 }}>I TUOI TURNI</div>
-          {/* Accanto al titolo dell'elenco che riordina: è di quello che parla. */}
-          {!loading && ordineAttivo && turni.length > 1 && (
-            <button type="button" onClick={() => setRiordina(r => !r)} aria-pressed={riordina} style={{
-              background: riordina ? 'var(--accento)' : 'transparent',
-              border: `1px solid ${riordina ? 'var(--accento)' : 'var(--acc-bordo-forte)'}`,
-              borderRadius: '4px', padding: '8px 12px', color: riordina ? '#fff' : 'var(--accento)',
-              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '800', letterSpacing: '1px',
-            }}>{riordina ? '✓ FATTO' : '⇅ RIORDINA'}</button>
-          )}
-        </div>
+        {!riordina && <div style={etichetta}>I TUOI TURNI</div>}
 
+        {/* In riordino il titolo dice cosa si sta facendo, e a destra c'è
+            «Fine» — una parola, non un pulsante pieno. */}
         {riordina && (
-          <div style={{ color: 'var(--testo-medio)', fontSize: '14px', lineHeight: 1.45, marginBottom: '12px' }}>
-            Tocca ▲ e ▼ per spostare un turno. L&apos;ordine si salva da solo e vale anche in TURNI e SCHEDE.
-          </div>
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '10px', marginBottom: '4px' }}>
+              <div style={{ ...etichetta, marginBottom: 0, color: 'var(--accento)' }}>RIORDINA I TURNI</div>
+              <button type="button" onClick={() => setRiordina(false)} style={{
+                background: 'none', border: 'none', padding: '6px 0 6px 12px', color: 'var(--accento)',
+                fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '1px', cursor: 'pointer',
+              }}>Fine</button>
+            </div>
+            <div style={{ color: 'var(--testo-debole)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
+              Tieni premuto ≡ e trascina. L&apos;ordine si salva da solo e vale anche in TURNI e SCHEDE.
+            </div>
+          </>
         )}
 
         {loading && <ScheletroSchede righe={3} />}
@@ -189,35 +198,8 @@ export default function Home({ navigate, goHome, session, coach }) {
           </div>
         )}
 
-        {/* ── Riordino: una card per turno, con le frecce accanto ──────
-            Le card sono le stesse di sempre — si riconosce il turno a colpo
-            d'occhio — ma una sola per turno, senza ospiti né seconde schede:
-            si sposta il turno intero. Non si aprono finché si riordina. */}
         {!loading && riordina && (
-          <div ref={elencoRef}>
-            {turni.map((turno, i) => {
-              const attive = schede[turno.id] || []
-              return (
-                <div key={turno.id} data-scivola={turno.id} style={{ display: 'flex', alignItems: 'stretch', gap: '8px' }}>
-                  <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }} aria-hidden="true">
-                    <CardTurno turno={turno} scheda={attive[0] || null}
-                      altreSchede={attive.slice(1).map(s => s.name)} atlete={atlete[turno.id] || []} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '9px', flexShrink: 0 }}>
-                    <button type="button" onClick={() => muovi(turno, -1)} disabled={i === 0 || spostando}
-                      aria-label={`Sposta il turno ${turno.name} più su`}
-                      style={{ ...freccia, opacity: i === 0 ? 0.25 : 1 }}>▲</button>
-                    <button type="button" onClick={() => muovi(turno, +1)} disabled={i === turni.length - 1 || spostando}
-                      aria-label={`Sposta il turno ${turno.name} più giù`}
-                      style={{ ...freccia, opacity: i === turni.length - 1 ? 0.25 : 1 }}>▼</button>
-                  </div>
-                </div>
-              )
-            })}
-            <button type="button" onClick={() => setRiordina(false)} style={{ ...pulsanteVuoto, width: '100%', padding: '15px', marginTop: '6px' }}>
-              ✓ FATTO
-            </button>
-          </div>
+          <RiordinaTurni turni={turni} schede={schede} occupato={spostando} onSposta={muovi} />
         )}
 
         {!loading && !riordina && turni.map((turno, i) => {
@@ -327,12 +309,6 @@ const card = {
   borderLeft: '3px solid var(--accento)',
   borderRadius: '8px', padding: '15px 14px', marginBottom: '9px',
   font: 'inherit', color: 'inherit', WebkitAppearance: 'none',
-}
-// Grandi: si toccano con il pollice, anche in piedi in sala.
-const freccia = {
-  flex: 1, width: '50px', minHeight: '46px', borderRadius: '6px',
-  background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)',
-  color: '#fff', fontSize: '18px', cursor: 'pointer',
 }
 const vuoto = {
   border: '1px dashed var(--bordo)', borderRadius: '8px',

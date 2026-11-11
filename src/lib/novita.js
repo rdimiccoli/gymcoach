@@ -38,8 +38,8 @@ export const NOVITA = [
       {
         icona: '⇅',
         titolo: 'I TURNI NELL\'ORDINE CHE VUOI',
-        testo: 'In Home puoi mettere i turni nell\'ordine che preferisci, non più per forza per orario. Lo stesso ordine vale anche in TURNI e SCHEDE.',
-        dove: ['HOME', '⇅ RIORDINA', '▲ ▼', '✓ FATTO'],
+        testo: 'In Home puoi mettere i turni nell\'ordine che preferisci, non più per forza per orario: tieni premuto ≡ e trascina. Lo stesso ordine vale anche in TURNI e SCHEDE.',
+        dove: ['HOME', '⋮ IN ALTO', 'RIORDINA I TURNI', 'TRASCINA ≡'],
         nota: 'Mentre riordini le card non si aprono: nessun tocco sbagliato.',
         serve: 'ordineTurni',
       },
