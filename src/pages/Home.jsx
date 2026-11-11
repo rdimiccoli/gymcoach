@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { capacita } from '../lib/capacita'
@@ -44,7 +44,10 @@ export default function Home({ navigate, goHome, session, coach }) {
   // database ha la colonna.
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   const [riordina, setRiordina] = useState(false)
-  const [spostando, setSpostando] = useState(false)
+  // L'ordine che il database ha davvero, e l'ultimo chiesto dal coach: vedi muovi().
+  const salvato = useRef([])
+  const voluto = useRef(null)
+  const salvando = useRef(false)
   // Preferenza del singolo coach, dalle impostazioni. Chi non l'ha mai toccata
   // trova la Home identica a com'era. È del PROFILO, non dell'account: con la
   // credenziale unica Sandro e Manu condividono l'accesso ma non il modo di
@@ -69,34 +72,59 @@ export default function Home({ navigate, goHome, session, coach }) {
 
   /**
    * Sposta un turno di `passo` posti (negativo = più su). Il nuovo ordine va
-   * a schermo subito, e poi si salva: aspettare il wifi della palestra a ogni
-   * spostamento sembrerebbe una lista che non risponde. Se il salvataggio non
-   * passa, torna com'era (e un avviso lo dice). Finché si salva le maniglie
-   * aspettano: due salvataggi incrociati potrebbero lasciare un ordine
-   * diverso da quello a schermo.
+   * a schermo subito, e si salva dietro: aspettare il wifi della palestra a
+   * ogni tocco sembrerebbe una lista che non risponde.
+   *
+   * Si può toccare ▲ cinque volte di fila: i salvataggi non si incrociano,
+   * partono uno alla volta e ognuno porta il database dall'ultimo ordine
+   * salvato all'ultimo ordine chiesto — i tocchi fatti nel frattempo si
+   * salvano insieme. Se un salvataggio non passa (un avviso lo dice) si
+   * rilegge l'ordine vero dal database, invece di mostrarne uno inventato.
    */
-  async function muovi(id, passo) {
-    const prima = turni
-    const dopo = spostaPerId(prima, id, passo)
-    if (dopo === prima) return
-    setSpostando(true)
+  function muovi(id, passo) {
+    const dopo = spostaPerId(turni, id, passo)
+    if (dopo === turni) return
     setTurni(dopo)
-    const ok = await salvaOrdineTurni(prima, dopo)
-    if (!ok) setTurni(prima)
-    setSpostando(false)
+    voluto.current = dopo
+    if (!salvando.current) salvaInOrdine()
+  }
+
+  async function salvaInOrdine() {
+    salvando.current = true
+    while (voluto.current && voluto.current !== salvato.current) {
+      const obiettivo = voluto.current
+      if (!(await salvaOrdineTurni(salvato.current, obiettivo))) {
+        voluto.current = null
+        await ricaricaTurni()
+        break
+      }
+      salvato.current = obiettivo
+    }
+    salvando.current = false
+  }
+
+  async function leggiTurni() {
+    // Il filtro per coach qui è diventato l'UNICA cosa che tiene separati i
+    // due coach: dalla credenziale unica in poi il database lascia passare
+    // tutto a chi è entrato, perché è quello che i coach hanno chiesto.
+    // Prima erano due barriere, ora è una sola — e sta qui.
+    // L'ordine è quello scelto in «Riordina i turni»; finché non c'è, per orario.
+    const { data } = await run(
+      await conOrdineDeiTurni(supabase.from('turns').select('*').eq('coach_id', coach.id)),
+      'Impossibile caricare i turni.'
+    )
+    if (data) salvato.current = data
+    return data
+  }
+
+  async function ricaricaTurni() {
+    const t = await leggiTurni()
+    if (t) setTurni(t)
   }
 
   async function loadData() {
     setLoading(true)
-    const { data: t } = await run(
-      // Il filtro per coach qui è diventato l'UNICA cosa che tiene separati i
-      // due coach: dalla credenziale unica in poi il database lascia passare
-      // tutto a chi è entrato, perché è quello che i coach hanno chiesto.
-      // Prima erano due barriere, ora è una sola — e sta qui.
-      // L'ordine è quello scelto con ⇅ RIORDINA; finché non c'è, per orario.
-      await conOrdineDeiTurni(supabase.from('turns').select('*').eq('coach_id', coach.id)),
-      'Impossibile caricare i turni.'
-    )
+    const t = await leggiTurni()
     setTurni(t || [])
     setOrdineAttivo((await capacita()).ordineTurni)
 
@@ -177,7 +205,7 @@ export default function Home({ navigate, goHome, session, coach }) {
               }}>Fine</button>
             </div>
             <div style={{ color: 'var(--testo-debole)', fontSize: '13px', lineHeight: 1.45, marginBottom: '12px' }}>
-              Tieni premuto ≡ e trascina. L&apos;ordine si salva da solo e vale anche in TURNI e SCHEDE.
+              Tocca ▲ ▼ per spostare di un posto, oppure tieni premuto ≡ e trascina. L&apos;ordine si salva da solo e vale anche in TURNI e SCHEDE.
             </div>
           </>
         )}
@@ -199,7 +227,7 @@ export default function Home({ navigate, goHome, session, coach }) {
         )}
 
         {!loading && riordina && (
-          <RiordinaTurni turni={turni} schede={schede} occupato={spostando} onSposta={muovi} />
+          <RiordinaTurni turni={turni} schede={schede} onSposta={muovi} />
         )}
 
         {!loading && !riordina && turni.map((turno, i) => {

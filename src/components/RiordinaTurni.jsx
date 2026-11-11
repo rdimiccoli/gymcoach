@@ -2,17 +2,19 @@ import { useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { settimanaDaCalendario } from '../lib/schede'
 import { settimaneDi } from '../lib/settimane'
-import { riduciMovimento } from '../lib/movimento'
+import { riduciMovimento, useScivola } from '../lib/movimento'
 import { tocco } from '../lib/aptico'
 
 /**
- * I turni da mettere in ordine, trascinandoli.
+ * I turni da mettere in ordine: con le frecce, o trascinandoli.
  *
  * Come le liste del telefono in modifica: card compatte, e a destra una
  * maniglia ≡. Si tiene premuta la maniglia e si trascina; le altre card si
  * fanno da parte mentre si passa, e lasciando il dito il turno resta lì.
  *
- * Prima c'erano due pulsantoni ▲ ▼ accanto a ogni card: funzionavano, ma
+ * Accanto, due frecce piccole ▲ ▼ per spostare di un posto alla volta:
+ * con tanti turni trascinare per tutta la pagina è scomodo, e un tocco è
+ * sempre preciso. Piccole e tonde, non i pulsantoni di prima, che
  * appesantivano la schermata più vista dell'app.
  *
  * Solo la maniglia trascina: il resto della card lascia scorrere la pagina
@@ -22,15 +24,24 @@ import { tocco } from '../lib/aptico'
  * aggiornamento sincrono, così il nuovo ordine è già a schermo quando le
  * card tornano al loro posto, senza scatti.
  */
-export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
+export default function RiordinaTurni({ turni, schede, onSposta }) {
   const righe = useRef({})
   const stato = useRef(null)
   const [preso, setPreso] = useState(null)
+  // Con le frecce la card scivola nel posto nuovo, invece di saltarci.
+  const elenco = useRef(null)
+  const ricorda = useScivola(elenco)
+
+  function unPasso(id, passo) {
+    ricorda()
+    tocco()
+    onSposta(id, passo)
+  }
 
   const riga = id => righe.current[id]
 
   function prendi(e, id, da) {
-    if (occupato || e.button > 0) return
+    if (e.button > 0) return
     e.preventDefault()
     e.currentTarget.setPointerCapture?.(e.pointerId)
     const el = riga(id)
@@ -96,12 +107,12 @@ export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
 
   // Dalla tastiera (su un computer): frecce su e giù sulla maniglia.
   function tasto(e, id, i) {
-    if (e.key === 'ArrowUp' && i > 0) { e.preventDefault(); onSposta(id, -1) }
-    if (e.key === 'ArrowDown' && i < turni.length - 1) { e.preventDefault(); onSposta(id, +1) }
+    if (e.key === 'ArrowUp' && i > 0) { e.preventDefault(); unPasso(id, -1) }
+    if (e.key === 'ArrowDown' && i < turni.length - 1) { e.preventDefault(); unPasso(id, +1) }
   }
 
   return (
-    <div>
+    <div ref={elenco}>
       {turni.map((turno, i) => {
         const scheda = (schede[turno.id] || [])[0] || null
         const settimana = settimanaDaCalendario(scheda)
@@ -109,7 +120,7 @@ export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
         const tipo = turno.type || turno.name?.split('—')[1]?.trim() || ''
         const lui = preso === turno.id
         return (
-          <div key={turno.id} ref={el => { righe.current[turno.id] = el }}
+          <div key={turno.id} ref={el => { righe.current[turno.id] = el }} data-scivola={turno.id}
             style={{
               ...card,
               position: 'relative', zIndex: lui ? 2 : 1,
@@ -125,13 +136,21 @@ export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
             <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--sup-alta)', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: scheda ? '#fff' : 'var(--testo-medio)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {scheda ? scheda.name : 'Nessuna scheda attiva'}
+                {scheda ? scheda.name : 'Senza scheda'}
               </div>
               {settimana && (
                 <div style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', letterSpacing: '0.5px', marginTop: '2px' }}>
                   SETTIMANA {settimana} DI {settimaneDi(scheda)}
                 </div>
               )}
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <button type="button" onClick={() => unPasso(turno.id, -1)} disabled={i === 0}
+                aria-label={`Sposta il turno ${turno.name} più su`}
+                style={{ ...freccina, opacity: i === 0 ? 0.25 : 1 }}>▲</button>
+              <button type="button" onClick={() => unPasso(turno.id, +1)} disabled={i === turni.length - 1}
+                aria-label={`Sposta il turno ${turno.name} più giù`}
+                style={{ ...freccina, opacity: i === turni.length - 1 ? 0.25 : 1 }}>▼</button>
             </div>
             <button type="button"
               aria-label={`Sposta il turno ${turno.name}: tieni premuto e trascina`}
@@ -145,7 +164,6 @@ export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
                 background: 'none', border: 'none', padding: 0,
                 cursor: lui ? 'grabbing' : 'grab', touchAction: 'none',
-                opacity: occupato && !lui ? 0.4 : 1,
               }}>
               {[0, 1, 2].map(k => (
                 <span key={k} style={{ width: '18px', height: '2px', borderRadius: '1px', background: lui ? 'var(--accento)' : 'var(--testo-medio)' }} />
@@ -160,8 +178,16 @@ export default function RiordinaTurni({ turni, schede, occupato, onSposta }) {
 
 const SCIVOLA = 'transform 180ms cubic-bezier(.2,.8,.2,1)'
 
+// Piccole e tonde, senza bordo: si vedono, ma non pesano.
+const freccina = {
+  width: '34px', height: '34px', borderRadius: '50%', padding: 0,
+  background: 'var(--sup-alta)', border: 'none',
+  color: 'var(--testo-chiaro)', fontSize: '11px', lineHeight: 1, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+}
+
 const card = {
-  display: 'flex', alignItems: 'center', gap: '14px',
+  display: 'flex', alignItems: 'center', gap: '12px',
   background: 'var(--sup)', border: '1px solid var(--sup-alta)',
   borderLeft: '3px solid var(--accento)',
   borderRadius: '8px', padding: '11px 14px', marginBottom: '8px',
