@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { riduciMovimento } from '../lib/movimento'
-import { componiFrase, scriviKg } from '../lib/frasiRecord'
+import { componiFrase, scriviKg, EMOJI_DI_SERIE, TITOLO_DI_SERIE } from '../lib/frasiRecord'
 
 /**
  * La festa per un record: coriandoli su tutta la schermata, un bagliore
@@ -15,7 +15,8 @@ import { componiFrase, scriviKg } from '../lib/frasiRecord'
  * piove dall'alto. Chi sul telefono ha chiesto meno movimento vede solo la
  * scritta, ferma.
  *
- * `festa`: { nome, kg, esercizio, prima, frase }.
+ * `festa`: { nome, kg, esercizio, prima, emoji, titolo, frase }. Emoji e
+ * titolo vuoti valgono 🏆 e «NUOVO RECORD!»; una frase vuota non si mostra.
  */
 const DURATA = 3300
 const COLORI = ['#D95C1A', '#F5B82E', '#FFFFFF', '#FF8A4C', '#22C55E', '#FFD27A']
@@ -98,7 +99,9 @@ export default function FestaRecord({ festa, onFine }) {
     return () => cancelAnimationFrame(id)
   }, [festa])
 
-  const frase = componiFrase(festa.frase, festa)
+  const frase = componiFrase(festa.frase, festa).trim()
+  const titolo = componiFrase(festa.titolo, festa).trim() || TITOLO_DI_SERIE
+  const emoji = (festa.emoji || '').trim() || EMOJI_DI_SERIE
   return (
     <div className="festa-velo" aria-live="assertive" role="status" style={{
       position: 'fixed', inset: 0, zIndex: 2700, pointerEvents: 'none',
@@ -111,13 +114,16 @@ export default function FestaRecord({ festa, onFine }) {
         borderRadius: '18px', padding: '22px 20px 20px',
         boxShadow: '0 20px 60px rgba(0,0,0,.6), 0 0 80px rgba(217,92,26,.35)',
       }}>
-        <div className="festa-coppa" style={{ fontSize: '56px', lineHeight: 1 }} aria-hidden="true">🏆</div>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '40px', fontWeight: '900', color: 'var(--accento)', letterSpacing: '1px', lineHeight: 1, marginTop: '8px' }}>
-          NUOVO RECORD!
+        <div className="festa-coppa" style={{ fontSize: '56px', lineHeight: 1 }} aria-hidden="true">{emoji}</div>
+        {/* Un titolo lungo scende di misura invece di andare su tre righe. */}
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: titolo.length > 18 ? '32px' : '40px', fontWeight: '900', color: 'var(--accento)', letterSpacing: '1px', lineHeight: 1.05, marginTop: '8px', overflowWrap: 'anywhere' }}>
+          {titolo}
         </div>
-        <div style={{ color: '#fff', fontSize: '21px', fontWeight: '700', lineHeight: 1.3, marginTop: '12px' }}>
-          {frase}
-        </div>
+        {frase && (
+          <div style={{ color: '#fff', fontSize: '21px', fontWeight: '700', lineHeight: 1.3, marginTop: '12px', overflowWrap: 'anywhere' }}>
+            {frase}
+          </div>
+        )}
         <div style={{ color: 'var(--testo-forte)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', letterSpacing: '0.5px', marginTop: '12px' }}>
           {festa.nome?.toUpperCase()} · {scriviKg(festa.kg)} · {festa.esercizio}
         </div>

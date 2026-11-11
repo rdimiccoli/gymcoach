@@ -1,18 +1,23 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  LE FRASI DELLA FESTA PER I RECORD
 --
---  Quando un cliente batte il suo record, l'app fa festa e mostra una frase
---  divertente presa a caso. Con questo script le frasi stanno nel database e
---  valgono su tutti i telefoni.
+--  Quando un cliente batte il suo record, l'app fa festa: un'emoji, un
+--  titolo grande e una frase divertente, presi a caso fra le righe di questa
+--  tabella. Le righe stanno nel database e valgono su tutti i telefoni.
 --
---  Le frasi le gestisce SOLO chi amministra Supabase, dal pannello (Table
---  Editor → frasi_record), che non è soggetto alle regole qui sotto. Dall'app
---  i coach possono soltanto leggerle: il database rifiuta ogni modifica.
+--  Ogni riga è una festa:
+--    emoji   — vuota: 🏆
+--    titolo  — vuoto: «NUOVO RECORD!»          (al massimo 30 caratteri)
+--    testo   — vuoto: nessuna frase sotto       (al massimo 140 caratteri)
+--  Almeno uno fra titolo e testo dev'esserci. In titolo e testo si possono
+--  scrivere {nome}, {kg} e {esercizio}: l'app li sostituisce.
 --
---  Crea una tabella nuova, `frasi_record`, e ci mette le frasi di serie
---  (le stesse che l'app usa finché lo script non c'è). Le frasi di serie si
---  mettono SOLO se la tabella è vuota: rilanciando lo script non si
---  duplicano, e non tornano quelle che hai tolto.
+--  Le righe le gestisce SOLO chi amministra Supabase (SQL Editor o Table
+--  Editor), che non è soggetto alle regole qui sotto. Dall'app i coach
+--  possono soltanto leggerle: il database rifiuta ogni modifica.
+--
+--  Le frasi di serie si mettono SOLO se la tabella è vuota: rilanciando lo
+--  script non si duplicano, e non tornano quelle che hai tolto.
 --
 --  🔒  NON CANCELLA NIENTE. Una tabella nuova; nessuna riga di altre tabelle
 --      toccata. Si rilancia quante volte si vuole.
@@ -23,29 +28,47 @@
 
 create table if not exists frasi_record (
   id uuid primary key default gen_random_uuid(),
-  testo text not null,
+  emoji text,
+  titolo text,
+  testo text,
   created_at timestamptz not null default now()
 );
 
--- Un paracadute: l'app manda frasi fra 1 e 140 caratteri.
+-- Se la tabella c'era già nella prima versione (solo testo, obbligatorio).
+alter table frasi_record add column if not exists emoji text;
+alter table frasi_record add column if not exists titolo text;
+alter table frasi_record alter column testo drop not null;
+alter table frasi_record drop constraint if exists frasi_record_lunghezza;
+
+-- I paracadute: una riga deve dire qualcosa, e starci sullo schermo.
 do $$
 begin
-  alter table frasi_record add constraint frasi_record_lunghezza
-    check (char_length(btrim(testo)) between 1 and 140);
+  alter table frasi_record add constraint frasi_record_dice_qualcosa
+    check (coalesce(btrim(titolo), '') <> '' or coalesce(btrim(testo), '') <> '');
 exception
   when duplicate_object then null;  -- c'è già: si rilancia senza danni
 end $$;
 
+do $$
+begin
+  alter table frasi_record add constraint frasi_record_lunghezze
+    check (char_length(coalesce(titolo, '')) <= 30
+       and char_length(coalesce(testo, '')) <= 140
+       and char_length(coalesce(emoji, '')) <= 16);
+exception
+  when duplicate_object then null;
+end $$;
+
 -- Dall'app solo lettura: c'è la regola per leggere e nessuna per scrivere,
--- quindi aggiungere, cambiare o togliere una frase dall'app viene rifiutato.
--- Il pannello di Supabase non passa da queste regole: lì si modifica.
+-- quindi aggiungere, cambiare o togliere una riga dall'app viene rifiutato.
 alter table frasi_record enable row level security;
 drop policy if exists "frasi del record: di chi è entrato" on frasi_record;
 drop policy if exists "frasi del record: le leggono i coach" on frasi_record;
 create policy "frasi del record: le leggono i coach" on frasi_record
   for select to authenticated using (true);
 
--- Le frasi di serie, solo la prima volta (tabella vuota).
+-- Le frasi di serie, solo la prima volta (tabella vuota). Senza emoji e
+-- senza titolo: valgono 🏆 e «NUOVO RECORD!».
 insert into frasi_record (testo)
 select testo from unnest(array[
   '{nome} ha appena fatto arrabbiare la gravità!',
@@ -69,8 +92,8 @@ order by n;
 
 
 -- ═══ VERIFICA ═════════════════════════════════════════════════════════════
--- Ci si aspetta «true» e, la prima volta, 15 frasi.
+-- Ci si aspetta «true» e, la prima volta, 15 righe.
 select
-  (select count(*) from information_schema.tables
-    where table_name = 'frasi_record') > 0 as frasi_pronte,
-  (select count(*) from frasi_record)      as frasi_in_tutto;
+  (select count(*) from information_schema.columns
+    where table_name = 'frasi_record' and column_name = 'titolo') > 0 as frasi_pronte,
+  (select count(*) from frasi_record)                                 as frasi_in_tutto;

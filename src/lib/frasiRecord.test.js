@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { FRASI_DI_SERIE, FRASE_SEMPLICE, componiFrase, scegliFrase, fraseValida, LUNGHEZZA_MASSIMA } from './frasiRecord'
+import { FRASI_DI_SERIE, FRASE_SEMPLICE, componiFrase, scegliFrase, fraseValida, variante, LUNGHEZZA_MASSIMA } from './frasiRecord'
 
 const marco = { nome: 'Marco', kg: 52.5, esercizio: 'Squat' }
 
@@ -18,13 +18,28 @@ describe('le frasi del record', () => {
   })
 
   it('a caso, ma mai due volte di fila la stessa', () => {
-    const elenco = ['a', 'b']
-    for (let i = 0; i < 20; i++) expect(scegliFrase(elenco, 'a', Math.random)).toBe('b')
+    const elenco = [{ titolo: 'BOOM!', testo: 'a' }, { testo: 'b' }]
+    const prima = scegliFrase(elenco, null, () => 0)
+    for (let i = 0; i < 20; i++) expect(scegliFrase(elenco, prima, Math.random).testo).toBe('b')
   })
 
   it('senza frasi la festa c è lo stesso', () => {
-    expect(scegliFrase([])).toBe(FRASE_SEMPLICE)
-    expect(scegliFrase(['   '])).toBe(FRASE_SEMPLICE)
+    expect(scegliFrase([]).testo).toBe(FRASE_SEMPLICE)
+    expect(scegliFrase(['   ', { emoji: '🔥' }]).testo).toBe(FRASE_SEMPLICE)
+  })
+
+  it('ogni riga può avere emoji, titolo e testo; i vuoti restano vuoti', () => {
+    expect(variante({ emoji: ' 🚀 ', titolo: 'DECOLLO!', testo: '' })).toEqual({ emoji: '🚀', titolo: 'DECOLLO!', testo: null })
+    expect(variante('Solo testo')).toEqual({ emoji: null, titolo: null, testo: 'Solo testo' })
+  })
+
+  it('solo il titolo va bene; né titolo né testo no', () => {
+    expect(variante({ titolo: 'MOSTRO {nome}!' })).toMatchObject({ titolo: 'MOSTRO {nome}!', testo: null })
+    expect(variante({ emoji: '🏆', titolo: '  ', testo: null })).toBeNull()
+  })
+
+  it('i segnaposto valgono anche nel titolo', () => {
+    expect(componiFrase('GRANDE {NOME}!', marco)).toBe('GRANDE Marco!')
   })
 
   it('né vuote né troppo lunghe', () => {
@@ -35,6 +50,8 @@ describe('le frasi del record', () => {
 
   it('le frasi di serie sono valide e stanno tutte nello script SQL', () => {
     const sql = readFileSync(new URL('../../supabase/migrazione-frasi-record.sql', import.meta.url), 'utf8')
+    expect(sql).toContain('emoji text')
+    expect(sql).toContain('titolo text')
     for (const f of FRASI_DI_SERIE) {
       expect(fraseValida(f)).toBe(true)
       expect(sql).toContain(`'${f.replace(/'/g, "''")}'`)

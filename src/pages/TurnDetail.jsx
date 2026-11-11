@@ -304,7 +304,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     ultimaFrase.current = frase
     setFeste(prev => [...prev, {
       id: `${chiave}_${kg}_${Date.now()}`, nome: client.name, kg, prima: massimo,
-      esercizio: ex?.exercises?.name ?? '', frase,
+      esercizio: ex?.exercises?.name ?? '',
+      emoji: frase.emoji, titolo: frase.titolo, frase: frase.testo,
     }])
   }
 

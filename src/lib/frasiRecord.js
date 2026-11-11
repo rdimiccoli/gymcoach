@@ -9,7 +9,12 @@
  * leggono e basta. Così si cambiano senza toccare il codice e senza un
  * nuovo rilascio.
  *
- * Nelle frasi si possono mettere tre parole fra graffe, che l'app sostituisce:
+ * Ogni riga è una festa: un'emoji (vuota: 🏆), un titolo (vuoto: «NUOVO
+ * RECORD!») e un testo (vuoto: niente sotto il titolo). Almeno uno fra
+ * titolo e testo.
+ *
+ * In titolo e testo si possono mettere tre parole fra graffe, che l'app
+ * sostituisce:
  *   {nome}       il nome del cliente          → Marco
  *   {kg}         il carico del record          → 52,5 kg
  *   {esercizio}  l'esercizio                   → Squat
@@ -39,7 +44,11 @@ export const FRASI_DI_SERIE = [
   '{nome} ha appena alzato l\'asticella. Letteralmente.',
 ]
 
-/** Quando i coach hanno tolto tutte le frasi: la festa c'è lo stesso. */
+/** Quello che compare quando la riga lascia vuoto un campo. */
+export const EMOJI_DI_SERIE = '🏆'
+export const TITOLO_DI_SERIE = 'NUOVO RECORD!'
+
+/** Quando le frasi sono state tolte tutte: la festa c'è lo stesso. */
 export const FRASE_SEMPLICE = 'Nuovo record per {nome}!'
 
 export const SEGNAPOSTO = ['nome', 'kg', 'esercizio']
@@ -48,9 +57,9 @@ export const SEGNAPOSTO = ['nome', 'kg', 'esercizio']
 export const scriviKg = kg => `${String(kg).replace('.', ',')} kg`
 
 /**
- * La frase con i segnaposto sostituiti. Accetta anche maiuscole e spazi
- * («{ Nome }»): chi scrive dal telefono non deve indovinare la grafia esatta.
- * Una parola fra graffe che non è un segnaposto resta com'è.
+ * Il testo con i segnaposto sostituiti. Accetta anche maiuscole e spazi
+ * («{ Nome }»): chi scrive non deve indovinare la grafia esatta. Una parola
+ * fra graffe che non è un segnaposto resta com'è.
  */
 export function componiFrase(testo, { nome = '', kg = '', esercizio = '' } = {}) {
   const valori = { nome, kg: kg === '' ? '' : scriviKg(kg), esercizio }
@@ -61,18 +70,34 @@ export function componiFrase(testo, { nome = '', kg = '', esercizio = '' } = {})
 }
 
 /**
- * Una frase a caso, ma mai la stessa di prima: due record di fila con la
- * stessa battuta la smontano. `caso` si passa nei test.
+ * Una riga della tabella (o una frase di serie, che è solo testo) come festa:
+ * { emoji, titolo, testo }, con i campi vuoti a null. null se non dice niente
+ * — né titolo né testo — e allora non si usa.
+ */
+export function variante(riga) {
+  const r = typeof riga === 'string' ? { testo: riga } : (riga || {})
+  const pulito = v => (v == null ? null : String(v).trim() || null)
+  const v = { emoji: pulito(r.emoji), titolo: pulito(r.titolo), testo: pulito(r.testo) }
+  return v.titolo || v.testo ? v : null
+}
+
+const chiave = v => `${v.emoji}|${v.titolo}|${v.testo}`
+
+/**
+ * Una festa a caso fra le righe, ma mai la stessa di prima: due record di
+ * fila con la stessa battuta la smontano. `caso` si passa nei test.
  */
 export function scegliFrase(elenco, precedente = null, caso = Math.random) {
-  const frasi = (elenco || []).filter(f => f && String(f).trim())
-  if (!frasi.length) return FRASE_SEMPLICE
-  const tra = frasi.length > 1 ? frasi.filter(f => f !== precedente) : frasi
-  return tra[Math.floor(caso() * tra.length) % tra.length]
+  const valide = (elenco || []).map(variante).filter(Boolean)
+  if (!valide.length) return { emoji: null, titolo: null, testo: FRASE_SEMPLICE }
+  const tra = valide.length > 1 && precedente ? valide.filter(v => chiave(v) !== chiave(precedente)) : valide
+  const scelte = tra.length ? tra : valide
+  return scelte[Math.floor(caso() * scelte.length) % scelte.length]
 }
 
 /** Il testo è accettabile? Né vuoto né lunghissimo (sullo schermo deve starci). */
 export const LUNGHEZZA_MASSIMA = 140
+export const LUNGHEZZA_TITOLO = 30
 export function fraseValida(testo) {
   const t = String(testo ?? '').trim()
   return t.length > 0 && t.length <= LUNGHEZZA_MASSIMA

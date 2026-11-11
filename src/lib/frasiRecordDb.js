@@ -17,7 +17,9 @@ import { FRASI_DI_SERIE } from './frasiRecord'
 export async function caricaFrasi() {
   const { frasiRecord } = await capacita()
   if (!frasiRecord) return FRASI_DI_SERIE
-  const { data, error } = await supabase.from('frasi_record').select('testo').order('created_at')
+  // «*» e non le colonne per nome: emoji e titolo sono arrivati dopo il
+  // testo, e una tabella della prima versione non le ha.
+  const { data, error } = await supabase.from('frasi_record').select('*').order('created_at')
   if (error || !data) return FRASI_DI_SERIE
-  return data.map(r => r.testo).filter(Boolean)
+  return data.map(r => ({ emoji: r.emoji, titolo: r.titolo, testo: r.testo }))
 }
