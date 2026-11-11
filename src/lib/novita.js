@@ -36,6 +36,14 @@ export const NOVITA = [
         nota: 'Prima ti mostra cosa va dove e chiede conferma. I carichi dei clienti non si perdono.',
       },
       {
+        icona: '⇅',
+        titolo: 'I TURNI NELL\'ORDINE CHE VUOI',
+        testo: 'In Home puoi mettere i turni nell\'ordine che preferisci, non più per forza per orario. Lo stesso ordine vale anche in TURNI e SCHEDE.',
+        dove: ['HOME', '⇅ RIORDINA', '▲ ▼', '✓ FATTO'],
+        nota: 'Mentre riordini le card non si aprono: nessun tocco sbagliato.',
+        serve: 'ordineTurni',
+      },
+      {
         icona: '🔁',
         titolo: 'LE RIPETIZIONI CAMBIANO QUANDO VUOI TU',
         testo: 'Non più per forza ogni due settimane: scegli ogni quante cambiano. Ogni settimana, ogni due, ogni tre… Le caselle delle ripetizioni si adeguano da sole.',

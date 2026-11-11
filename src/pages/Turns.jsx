@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
 import { capacita } from '../lib/capacita'
-import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
+import { conOrdineDelTurno, conOrdineDeiTurni, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
 import { perditePersona, perditeTurno } from '../lib/contaDanni'
 import AvvisoRosso from '../components/AvvisoRosso'
@@ -65,7 +65,9 @@ export default function Turns({ navigate, goHome, coach }) {
       // protegge davvero — un filtro nel browser si aggira — ma il 29/9/2026
       // due coach si sono ritrovati i turni a vicenda, e con una barriera sola
       // non c'era niente dietro. Da qui ogni coach chiede solo i propri.
-      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
+      // Nell'ordine scelto in Home con ⇅ RIORDINA (per orario finché non
+      // lo si sceglie): lo stesso ordine in tutte le schermate.
+      await conOrdineDeiTurni(supabase.from('turns').select('*').eq('coach_id', coach.id)),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])

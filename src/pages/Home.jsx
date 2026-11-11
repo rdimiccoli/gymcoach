@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
 import { capacita } from '../lib/capacita'
+import { conOrdineDeiTurni, salvaOrdineTurni } from '../lib/ordineDb'
+import { spostaPerId } from '../lib/ordinePersone'
+import { useScivola } from '../lib/movimento'
 import { personeDellaScheda, senzaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
@@ -34,6 +37,14 @@ export default function Home({ navigate, goHome, session, coach }) {
   const [assegnazioni, setAssegnazioni] = useState({})  // schedaId → Set(atletaId)
   const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
   const [loading, setLoading] = useState(true)
+  // Riordinare i turni: con ⇅ RIORDINA compaiono le frecce accanto a ogni
+  // card, e finché si riordina le card non si aprono — un tocco sbagliato
+  // non deve portare dentro un turno. Solo se il database ha la colonna.
+  const [ordineAttivo, setOrdineAttivo] = useState(false)
+  const [riordina, setRiordina] = useState(false)
+  const [spostando, setSpostando] = useState(false)
+  const elencoRef = useRef(null)
+  const ricordaPosti = useScivola(elencoRef)
   // Preferenza del singolo coach, dalle impostazioni. Chi non l'ha mai toccata
   // trova la Home identica a com'era. È del PROFILO, non dell'account: con la
   // credenziale unica Sandro e Manu condividono l'accesso ma non il modo di
@@ -56,6 +67,25 @@ export default function Home({ navigate, goHome, session, coach }) {
   // ricarica da capo con i turni dell'altro coach.
   useEffect(() => { loadData() }, [coach.id])
 
+  /**
+   * Sposta un turno di un posto. La card si muove subito, e poi si salva:
+   * aspettare il wifi della palestra a ogni tocco sembrerebbe un pulsante
+   * che non risponde. Se il salvataggio non passa, torna dov'era (e un
+   * avviso lo dice). Finché si salva le frecce aspettano: due salvataggi
+   * incrociati potrebbero lasciare un ordine diverso da quello a schermo.
+   */
+  async function muovi(turno, passo) {
+    const prima = turni
+    const dopo = spostaPerId(prima, turno.id, passo)
+    if (dopo === prima) return
+    setSpostando(true)
+    ricordaPosti()
+    setTurni(dopo)
+    const ok = await salvaOrdineTurni(prima, dopo)
+    if (!ok) { ricordaPosti(); setTurni(prima) }
+    setSpostando(false)
+  }
+
   async function loadData() {
     setLoading(true)
     const { data: t } = await run(
@@ -63,10 +93,12 @@ export default function Home({ navigate, goHome, session, coach }) {
       // due coach: dalla credenziale unica in poi il database lascia passare
       // tutto a chi è entrato, perché è quello che i coach hanno chiesto.
       // Prima erano due barriere, ora è una sola — e sta qui.
-      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
+      // L'ordine è quello scelto con ⇅ RIORDINA; finché non c'è, per orario.
+      await conOrdineDeiTurni(supabase.from('turns').select('*').eq('coach_id', coach.id)),
       'Impossibile caricare i turni.'
     )
     setTurni(t || [])
+    setOrdineAttivo((await capacita()).ordineTurni)
 
     if (t?.length) {
       const ids = t.map(x => x.id)
@@ -122,7 +154,24 @@ export default function Home({ navigate, goHome, session, coach }) {
 
         {invitoBio && !loading && <InvitoImpronta onAttiva={() => navigate('settings')} onNo={() => { rifiutaInvito(); setInvitoBio(false) }} />}
 
-        <div style={etichetta}>I TUOI TURNI</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '11px' }}>
+          <div style={{ ...etichetta, marginBottom: 0 }}>I TUOI TURNI</div>
+          {/* Accanto al titolo dell'elenco che riordina: è di quello che parla. */}
+          {!loading && ordineAttivo && turni.length > 1 && (
+            <button type="button" onClick={() => setRiordina(r => !r)} aria-pressed={riordina} style={{
+              background: riordina ? 'var(--accento)' : 'transparent',
+              border: `1px solid ${riordina ? 'var(--accento)' : 'var(--acc-bordo-forte)'}`,
+              borderRadius: '4px', padding: '8px 12px', color: riordina ? '#fff' : 'var(--accento)',
+              fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '800', letterSpacing: '1px',
+            }}>{riordina ? '✓ FATTO' : '⇅ RIORDINA'}</button>
+          )}
+        </div>
+
+        {riordina && (
+          <div style={{ color: 'var(--testo-medio)', fontSize: '14px', lineHeight: 1.45, marginBottom: '12px' }}>
+            Tocca ▲ e ▼ per spostare un turno. L&apos;ordine si salva da solo e vale anche in TURNI e SCHEDE.
+          </div>
+        )}
 
         {loading && <ScheletroSchede righe={3} />}
 
@@ -140,7 +189,38 @@ export default function Home({ navigate, goHome, session, coach }) {
           </div>
         )}
 
-        {!loading && turni.map((turno, i) => {
+        {/* ── Riordino: una card per turno, con le frecce accanto ──────
+            Le card sono le stesse di sempre — si riconosce il turno a colpo
+            d'occhio — ma una sola per turno, senza ospiti né seconde schede:
+            si sposta il turno intero. Non si aprono finché si riordina. */}
+        {!loading && riordina && (
+          <div ref={elencoRef}>
+            {turni.map((turno, i) => {
+              const attive = schede[turno.id] || []
+              return (
+                <div key={turno.id} data-scivola={turno.id} style={{ display: 'flex', alignItems: 'stretch', gap: '8px' }}>
+                  <div style={{ flex: 1, minWidth: 0, pointerEvents: 'none' }} aria-hidden="true">
+                    <CardTurno turno={turno} scheda={attive[0] || null}
+                      altreSchede={attive.slice(1).map(s => s.name)} atlete={atlete[turno.id] || []} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '9px', flexShrink: 0 }}>
+                    <button type="button" onClick={() => muovi(turno, -1)} disabled={i === 0 || spostando}
+                      aria-label={`Sposta il turno ${turno.name} più su`}
+                      style={{ ...freccia, opacity: i === 0 ? 0.25 : 1 }}>▲</button>
+                    <button type="button" onClick={() => muovi(turno, +1)} disabled={i === turni.length - 1 || spostando}
+                      aria-label={`Sposta il turno ${turno.name} più giù`}
+                      style={{ ...freccia, opacity: i === turni.length - 1 ? 0.25 : 1 }}>▼</button>
+                  </div>
+                </div>
+              )
+            })}
+            <button type="button" onClick={() => setRiordina(false)} style={{ ...pulsanteVuoto, width: '100%', padding: '15px', marginTop: '6px' }}>
+              ✓ FATTO
+            </button>
+          </div>
+        )}
+
+        {!loading && !riordina && turni.map((turno, i) => {
           const attive = schede[turno.id] || []
           const gruppo = atlete[turno.id] || []
           const fuori = senzaScheda(gruppo, attive, assegnazioni).length
@@ -247,6 +327,12 @@ const card = {
   borderLeft: '3px solid var(--accento)',
   borderRadius: '8px', padding: '15px 14px', marginBottom: '9px',
   font: 'inherit', color: 'inherit', WebkitAppearance: 'none',
+}
+// Grandi: si toccano con il pollice, anche in piedi in sala.
+const freccia = {
+  flex: 1, width: '50px', minHeight: '46px', borderRadius: '6px',
+  background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)',
+  color: '#fff', fontSize: '18px', cursor: 'pointer',
 }
 const vuoto = {
   border: '1px dashed var(--bordo)', borderRadius: '8px',

@@ -6,7 +6,7 @@ import { settimaneDi, ogniDi, rimappaCaselle, stessaDivisione, colonneReps } fro
 import { isCircuito } from '../lib/schede'
 import SceltaSettimane from '../components/SceltaSettimane'
 import { capacita } from '../lib/capacita'
-import { conOrdineDelTurno } from '../lib/ordineDb'
+import { conOrdineDelTurno, conOrdineDeiTurni } from '../lib/ordineDb'
 import { caricaAssegnazioni, salvaAssegnazioni } from '../lib/assegnazioniDb'
 import ScegliPersone, { sceltaValida } from '../components/ScegliPersone'
 import { ScheletroElenco } from '../components/Scheletro'
@@ -57,7 +57,9 @@ export default function CyclesList({ navigate, goHome, coach }) {
     const { data: t } = await run(
       // Dalla credenziale unica in poi questo filtro e l'unica cosa che
       // tiene separati i due coach: il database lascia passare tutto.
-      supabase.from('turns').select('*').eq('coach_id', coach.id).order('time'),
+      // Nell'ordine scelto in Home con ⇅ RIORDINA (per orario finché non
+      // lo si sceglie): lo stesso ordine in tutte le schermate.
+      await conOrdineDeiTurni(supabase.from('turns').select('*').eq('coach_id', coach.id)),
       'Impossibile caricare i turni.'
     )
     setTurns(t || [])

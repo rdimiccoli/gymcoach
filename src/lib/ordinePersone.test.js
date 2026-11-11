@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { numeraDaCapo, spostaDi, daSalvare, ordinate, ordinaElenco } from './ordinePersone'
+import { numeraDaCapo, spostaDi, daSalvare, ordinate, ordinaElenco, ordinaTurni, spostaPerId } from './ordinePersone'
 
 const p = (id, surname, sort_order = null) => ({ id, surname, name: 'X', sort_order })
 
@@ -78,5 +78,32 @@ describe('ordine delle persone di un turno', () => {
     }
     expect(ordinaElenco(finta(), false).chiamate).toEqual(['surname', 'name'])
     expect(ordinaElenco(finta(), true).chiamate).toEqual(['sort_order', 'surname', 'name'])
+  })
+})
+
+describe('l ordine dei turni in Home', () => {
+  const t = (id, time, sort_order = null) => ({ id, time, sort_order })
+
+  it('la prima volta numera tutti, così nessuno finisce in fondo', () => {
+    const dopo = spostaPerId([t('a', '09:00'), t('b', '13:30'), t('c', '18:00')], 'c', -1)
+    expect(dopo.map(x => [x.id, x.sort_order])).toEqual([['a', 1], ['c', 2], ['b', 3]])
+    // e si salvano tutti e tre, perché prima nessuno aveva un numero
+    expect(daSalvare([t('a'), t('b'), t('c')], dopo)).toHaveLength(3)
+  })
+
+  it('il primo non sale e l ultimo non scende', () => {
+    const elenco = [t('a'), t('b')]
+    expect(spostaPerId(elenco, 'a', -1)).toBe(elenco)
+    expect(spostaPerId(elenco, 'b', +1)).toBe(elenco)
+  })
+
+  it('senza la colonna si ordina per orario come sempre, con la colonna prima il numero', () => {
+    const fatte = []
+    const q = { order(k, o) { fatte.push([k, o?.nullsFirst]); return q } }
+    ordinaTurni(q, false)
+    expect(fatte).toEqual([['time', undefined]])
+    fatte.length = 0
+    ordinaTurni(q, true)
+    expect(fatte).toEqual([['sort_order', false], ['time', undefined]])
   })
 })

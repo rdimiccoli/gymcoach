@@ -12,7 +12,7 @@
 import { supabase } from '../supabaseClient'
 import { run } from './notify'
 import { capacita } from './capacita'
-import { ordinaElenco, numeraDaCapo, spostaDi, daSalvare } from './ordinePersone'
+import { ordinaElenco, ordinaTurni, numeraDaCapo, spostaDi, daSalvare } from './ordinePersone'
 
 export async function conOrdineDelTurno(query) {
   const { ordinePersone } = await capacita()
@@ -30,10 +30,10 @@ export async function conOrdineDelTurno(query) {
  * Torna `false` se qualcosa non è passato, così chi chiama può rimettere
  * l'elenco com'era invece di mostrare un ordine che il database non ha.
  */
-export async function salvaOrdine(righe) {
+export async function salvaOrdine(righe, tabella = 'clients') {
   for (const r of righe) {
     const { error } = await run(
-      supabase.from('clients').update({ sort_order: r.sort_order }).eq('id', r.id),
+      supabase.from(tabella).update({ sort_order: r.sort_order }).eq('id', r.id),
       'Ordine non salvato.')
     if (error) return false
   }
@@ -63,4 +63,23 @@ export async function spostaAccanto(tutte, id, idVicino) {
   if (da < 0 || a < 0 || da === a) return tutte
   const dopo = spostaDi(numerati, da, a - da)
   return await salvaOrdine(daSalvare(tutte, dopo)) ? dopo : tutte
+}
+
+// ── I turni ─────────────────────────────────────────────────────────────────
+
+/**
+ * I turni di un coach nell'ordine che ha scelto lui. Prima della migrazione
+ * — o finché nessuno li ha mai spostati — per orario, come sempre.
+ */
+export async function conOrdineDeiTurni(query) {
+  const { ordineTurni } = await capacita()
+  return ordinaTurni(query, ordineTurni)
+}
+
+/**
+ * Salva il nuovo ordine dei turni: solo le righe a cui il numero è cambiato
+ * (tutte, la prima volta). Torna `false` se qualcosa non è passato.
+ */
+export function salvaOrdineTurni(prima, dopo) {
+  return salvaOrdine(daSalvare(prima, dopo), 'turns')
 }

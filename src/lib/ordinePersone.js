@@ -74,3 +74,23 @@ export function ordinaElenco(query, conOrdine) {
   const q = conOrdine ? query.order('sort_order', { nullsFirst: false }) : query
   return q.order('surname').order('name')
 }
+
+/**
+ * Lo stesso, per i turni: chi non ha un numero va in fondo, per orario.
+ * Senza la colonna (prima della migrazione) solo per orario, come sempre.
+ */
+export function ordinaTurni(query, conOrdine) {
+  const q = conOrdine ? query.order('sort_order', { nullsFirst: false }) : query
+  return q.order('time')
+}
+
+/**
+ * Sposta di un posto l'elemento con quell'id, e numera tutti da capo: la
+ * prima volta nessuno ha un numero, e numerarne solo due manderebbe gli
+ * altri in fondo. Se non c'è niente da fare torna lo stesso elenco.
+ */
+export function spostaPerId(elenco, id, passo) {
+  const numerati = numeraDaCapo(elenco)
+  const dopo = spostaDi(numerati, numerati.findIndex(x => x.id === id), passo)
+  return dopo === numerati ? elenco : dopo
+}
