@@ -15,6 +15,9 @@ import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
+import { FRASI_DI_SERIE, scegliFrase } from '../lib/frasiRecord'
+import { caricaFrasi } from '../lib/frasiRecordDb'
+import FestaRecord from '../components/FestaRecord'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -57,6 +60,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const [saltelli, setSaltelli] = useState({})     // il numero cambiato con + / −
   const [salvati, setSalvati] = useState({})       // il server ha detto sì
   const [recordAppena, setRecordAppena] = useState({}) // record battuto adesso
+  // Le feste per i record, in fila: due record nello stesso salvataggio (una
+  // superserie) fanno due feste una dopo l'altra, non una sopra l'altra.
+  const [feste, setFeste] = useState([])
+  // Le frasi si rileggono a ogni apertura: una frase aggiunta su Supabase
+  // vale dal turno dopo. Intanto, quelle di serie.
+  const frasi = useRef(FRASI_DI_SERIE)
+  const ultimaFrase = useRef(null)
+  useEffect(() => { caricaFrasi().then(f => { frasi.current = f }) }, [])
   const elencoRef = useRef(null)
   const ricordaPosti = useScivola(elencoRef)
   const [ordineAttivo, setOrdineAttivo] = useState(false)
@@ -288,7 +299,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     setRecord(prev => ({ ...prev, [chiave]: kg }))
     setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     festa()
-    notifyOk(`🏆 Record di ${client.name}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${massimo})`)
+    // La festa a tutto schermo, con una frase a caso (mai la stessa di prima).
+    const frase = scegliFrase(frasi.current, ultimaFrase.current)
+    ultimaFrase.current = frase
+    setFeste(prev => [...prev, {
+      id: `${chiave}_${kg}_${Date.now()}`, nome: client.name, kg, prima: massimo,
+      esercizio: ex?.exercises?.name ?? '', frase,
+    }])
   }
 
   async function scriviCarico(chiave) {
@@ -666,6 +683,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           onSave={(updates) => saveLoads(editModal.client.id, settimana, updates)}
           onClose={() => setEditModal(null)}
         />
+      )}
+
+      {feste[0] && (
+        <FestaRecord key={feste[0].id} festa={feste[0]} onFine={() => setFeste(prev => prev.slice(1))} />
       )}
 
       <BottomNav active="home" navigate={navigate} goHome={goHome} />

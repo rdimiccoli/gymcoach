@@ -65,7 +65,7 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, frasiRecord] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -79,6 +79,7 @@ export function capacita() {
       presente('cycles', 'ogni'),
       presente('cycle_exercises', 'reps_fasi'),
       presente('turns', 'sort_order'),
+      presente('frasi_record', 'id'),
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
     // ospiti. Si accende solo se ci sono entrambi i pezzi.
@@ -87,7 +88,9 @@ export function capacita() {
       // la scelta sulla scheda e le caselle sugli esercizi.
       progressioni: colonnaOgni && colonnaFasi,
       // I turni in Home nell'ordine scelto dal coach.
-      ordineTurni }
+      ordineTurni,
+      // Le frasi della festa per i record, scritte nel database.
+      frasiRecord }
   })()
   return richiesta
 }

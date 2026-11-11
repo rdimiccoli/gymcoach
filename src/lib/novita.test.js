@@ -13,8 +13,20 @@ describe('quando mostrare le novità', () => {
     expect(novitaDaMostrare({ introDaFare: true, elenco })).toEqual([])
   })
 
-  it('chi usava già l app e non ha mai visto novità vede solo l ultimo aggiornamento', () => {
-    expect(titoli(novitaDaMostrare({ elenco }))).toEqual(['C'])
+  it('chi usava già l app e non ha mai visto novità vede le più recenti', () => {
+    expect(titoli(novitaDaMostrare({ elenco }))).toEqual(['C', 'B', 'A'])
+  })
+
+  it('al massimo otto schermate, tenendo le più nuove', () => {
+    const tante = Array.from({ length: 12 }, (_, i) => ({ id: `2026-01-${String(30 - i).padStart(2, '0')}`, schede: [{ titolo: `N${i}` }] }))
+    const viste = titoli(novitaDaMostrare({ elenco: tante }))
+    expect(viste).toHaveLength(8)
+    expect(viste[0]).toBe('N0')
+  })
+
+  it('un secondo rilascio nello stesso giorno arriva anche a chi ha visto il primo', () => {
+    const due = [{ id: '2026-12-01-2', schede: [{ titolo: 'E' }] }, ...elenco]
+    expect(titoli(novitaDaMostrare({ ultimaVista: '2026-12-01', elenco: due }))).toEqual(['E'])
   })
 
   it('chi ha saltato più aggiornamenti li vede tutti, dal più recente', () => {
@@ -27,11 +39,13 @@ describe('quando mostrare le novità', () => {
 
   it('una novità che il database non sa ancora fare non si annuncia', () => {
     expect(titoli(novitaDaMostrare({ elenco }))).not.toContain('D')
-    expect(titoli(novitaDaMostrare({ elenco, capacita: { nuovaColonna: true } }))).toEqual(['C', 'D'])
+    expect(titoli(novitaDaMostrare({ ultimaVista: '2026-11-11', elenco, capacita: { nuovaColonna: true } }))).toEqual(['C', 'D'])
   })
 
-  it('dalle impostazioni si rivede l ultimo aggiornamento', () => {
+  it('dalle impostazioni si rivede l ultimo aggiornamento, anche se uscito in due volte', () => {
     expect(titoli(ultimeNovita({}, elenco))).toEqual(['C'])
+    const due = [{ id: '2026-12-01-2', schede: [{ titolo: 'E' }] }, ...elenco]
+    expect(titoli(ultimeNovita({}, due))).toEqual(['E', 'C'])
   })
 })
 

@@ -9,8 +9,10 @@
  * ── PER CHI MODIFICA L'APP ─────────────────────────────────────────────────
  * Ogni modifica che il coach vede → una voce nuova IN CIMA, con un `id`
  * nuovo (la data, AAAA-MM-GG: si confrontano come testo, quindi l'ordine
- * delle date è anche l'ordine delle versioni). Le correzioni invisibili non
- * servono: il tutorial è per le cose da imparare.
+ * delle date è anche l'ordine delle versioni). Due rilasci nello stesso
+ * giorno: «AAAA-MM-GG-2», «-3»… (vengono dopo la data semplice). Una voce
+ * già pubblicata non si allunga: chi l'ha vista non la rivedrebbe. Le
+ * correzioni invisibili non servono: il tutorial è per le cose da imparare.
  *
  * Ogni schermata:
  *   icona   — un'emoji grande
@@ -76,7 +78,7 @@ export const NOVITA = [
 ]
 
 /** Al massimo tante schermate in una volta: oltre, nessuno le legge. */
-const MASSIMO = 6
+const MASSIMO = 8
 
 /**
  * Le schermate da mostrare adesso.
@@ -89,15 +91,18 @@ const MASSIMO = 6
  */
 export function novitaDaMostrare({ ultimaVista = null, introDaFare = false, capacita = {}, elenco = NOVITA } = {}) {
   if (introDaFare || !elenco.length) return []
-  // Mai viste niente, ma l'app la usava già: si mostra solo l'ultima, non
-  // tutta la storia.
-  const nuove = ultimaVista ? elenco.filter(n => n.id > ultimaVista) : elenco.slice(0, 1)
+  // Mai viste niente, ma l'app la usava già: le più recenti, fino al
+  // massimo (l'elenco va dalla più nuova, quindi le vecchie restano fuori).
+  const nuove = ultimaVista ? elenco.filter(n => n.id > ultimaVista) : elenco
   return schermateDi(nuove, capacita)
 }
 
 /** Le schermate dell'ultimo aggiornamento, per rivederle dalle impostazioni. */
 export function ultimeNovita(capacita = {}, elenco = NOVITA) {
-  return schermateDi(elenco.slice(0, 1), capacita)
+  // Tutte quelle dello stesso giorno dell'ultima: due rilasci in un giorno
+  // sono, per chi usa l'app, lo stesso aggiornamento.
+  const giorno = elenco[0]?.id.slice(0, 10)
+  return schermateDi(elenco.filter(n => n.id.slice(0, 10) === giorno), capacita)
 }
 
 function schermateDi(versioni, capacita) {
