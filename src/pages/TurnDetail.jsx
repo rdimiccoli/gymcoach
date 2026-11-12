@@ -584,7 +584,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                     </div>
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                    <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>
+                                    <span style={{ color: 'var(--testo-chiaro)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600' }}>
                                       × {repsPerSettimana(ex, settimana, totale, passo)}
                                     </span>
                                     {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
@@ -597,15 +597,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                       </span>
                                     )}
                                     {prevKg !== undefined && (
-                                      // Dalla scheda prima: lo si dice, e un po' più
-                                      // in vista — è il numero da cui ripartire.
+                                      // Il carico della volta prima è il numero da cui il
+                                      // coach riparte: prima era scritto a 12 pixel in un
+                                      // grigio quasi trasparente, e chi ci vede meno non lo
+                                      // leggeva. Ora sta in un riquadro, con il numero
+                                      // grande e bianco. Arancione se viene dalla scheda prima.
                                       <span title={daPrima ? `Ultimo carico nella scheda «${daPrima.scheda}», settimana ${daPrima.settimana}` : undefined}
-                                        style={{ color: daPrima ? 'var(--acc-testo-tenue)' : 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: daPrima ? '700' : '400' }}>
-                                        {daPrima ? 'scheda prec.' : 'prec.'} {prevKg}
+                                        style={{
+                                          display: 'inline-flex', alignItems: 'baseline', gap: '4px',
+                                          background: daPrima ? 'var(--acc-fondo-forte)' : 'var(--sup-alta)',
+                                          border: `1px solid ${daPrima ? 'var(--acc-bordo-forte)' : 'var(--bordo-forte)'}`,
+                                          borderRadius: '5px', padding: '1px 7px 2px', fontFamily: 'Barlow Condensed, sans-serif',
+                                        }}>
+                                        <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', color: daPrima ? 'var(--accento)' : 'var(--testo-chiaro)' }}>
+                                          {daPrima ? 'SCHEDA PREC.' : 'PREC.'}
+                                        </span>
+                                        <span style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>{prevKg}</span>
+                                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--testo-chiaro)' }}>kg</span>
                                       </span>
                                     )}
                                     {diff !== null && diff !== 0 && (
-                                      <span style={{ fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
+                                      <span style={{ fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
                                         {diff > 0 ? `↑+${diff}` : `↓${diff}`}
                                       </span>
                                     )}
@@ -801,13 +813,13 @@ function LoadModal({ client, group, loads, precedenti = {}, notes, settimana, to
             {prev ? (
               <button type="button" onClick={() => setKgMap(m => ({ ...m, [ex.id]: Number(prev.kg) }))}
                 aria-label={`Usa il carico precedente, ${prev.kg} chili`}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', background: 'var(--acc-fondo)', border: '1px solid var(--acc-riempimento-forte)', borderRadius: '3px', padding: '4px 8px', marginBottom: '12px', cursor: 'pointer', textAlign: 'left' }}>
-                <span style={{ color: 'var(--testo-debole)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>{prev.scheda !== undefined ? 'scheda prec.' : 'prec.'}</span>
-                <span style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{prev.kg}kg</span>
+                style={{ display: 'inline-flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap', background: 'var(--acc-fondo-forte)', border: '1px solid var(--acc-bordo-forte)', borderRadius: '5px', padding: '6px 10px', marginBottom: '12px', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ color: 'var(--testo-chiaro)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px' }}>{prev.scheda !== undefined ? 'SCHEDA PREC.' : 'PREC.'}</span>
+                <span style={{ color: '#fff', fontSize: '20px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>{prev.kg} kg</span>
                 {prev.reps
-                  ? <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
-                  : prev.scheda && <span style={{ color: 'var(--testo-fioco)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif' }}>· {prev.scheda}</span>}
-                <span style={{ color: 'var(--accento)', fontSize: '11px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', letterSpacing: '1px', marginLeft: '3px' }}>USA ↵</span>
+                  ? <span style={{ color: 'var(--testo-chiaro)', fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif' }}>× {prev.reps}</span>
+                  : prev.scheda && <span style={{ color: 'var(--testo-chiaro)', fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif' }}>· {prev.scheda}</span>}
+                <span style={{ color: 'var(--accento)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', letterSpacing: '1px', marginLeft: '4px' }}>USA ↵</span>
               </button>
             ) : (
               <div style={{ height: '4px' }} />
@@ -819,7 +831,7 @@ function LoadModal({ client, group, loads, precedenti = {}, notes, settimana, to
                 type="number" value={val} inputMode="decimal"
                 placeholder={prev ? String(prev.kg) : '—'}
                 onChange={e => handleManualInput(ex.id, e.target.value)}
-                style={{ flex: 1, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
+                style={{ flex: 1, minWidth: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', padding: '12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '28px', fontWeight: '900', textAlign: 'center', outline: 'none' }}
               />
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', color: 'var(--testo-debole)', fontWeight: '700' }}>KG</div>
             </div>

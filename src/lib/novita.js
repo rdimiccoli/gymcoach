@@ -27,6 +27,18 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-12',
+    data: '12 novembre',
+    schede: [
+      {
+        icona: '🔍',
+        titolo: 'IL CARICO DI PRIMA SI LEGGE MEGLIO',
+        testo: 'Accanto a ogni carico, quello della volta prima ora è grande e in un riquadro: «PREC. 52.5 kg». Se viene dalla scheda prima, il riquadro è arancione: «SCHEDA PREC.».',
+        dove: ['APRI UN TURNO', 'TOCCA UN ESERCIZIO', 'PREC.'],
+      },
+    ],
+  },
+  {
     id: '2026-11-11',
     data: '11 novembre',
     schede: [
