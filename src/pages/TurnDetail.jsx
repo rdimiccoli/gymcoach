@@ -443,26 +443,23 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       )}
 
       {!incorporato && (<>
-      {/* Le schede del turno, in evidenza sopra i giorni: un tocco e si
-          passa all'altra. Con una scheda sola non c'è niente da scegliere. */}
+      {/* Le schede del turno sopra i giorni: un tocco e si passa all'altra.
+          Linguette di solo testo su una fascia scura, con quella aperta
+          sottolineata in arancione — diverse a colpo d'occhio dai pulsanti
+          pieni dei giorni, che stanno sotto. Con una scheda sola non c'è. */}
       {schedeTurno.length > 1 && (
-        <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
-          <div style={{ color: 'var(--testo-medio)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', marginBottom: '6px' }}>
-            SCHEDE DEL TURNO · {schedeTurno.length}
-          </div>
-          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div style={{ background: '#050505', borderBottom: '1px solid var(--sup-alta)', flexShrink: 0 }}>
+          <div role="tablist" aria-label="Schede del turno" style={{ display: 'flex', overflowX: 'auto', padding: '0 8px' }}>
             {schedeTurno.map(s => {
               const attiva = s.id === cycle.id
               return (
-                <button key={s.id} type="button" onClick={() => cambiaScheda(s)} aria-pressed={attiva} style={{
-                  flex: schedeTurno.length <= 3 ? '1 1 0' : '0 0 auto', minWidth: 0, maxWidth: '100%',
-                  padding: '11px 12px', borderRadius: '6px',
-                  border: `1px solid ${attiva ? 'var(--accento)' : 'var(--bordo-forte)'}`,
-                  background: attiva ? 'var(--acc-riempimento-forte)' : 'var(--sup)',
-                  color: attiva ? '#fff' : 'var(--testo-chiaro)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '0.3px',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  boxShadow: attiva ? 'inset 0 -3px 0 var(--accento)' : 'none',
+                <button key={s.id} type="button" role="tab" aria-selected={attiva} onClick={() => cambiaScheda(s)} style={{
+                  flex: schedeTurno.length <= 3 ? '1 1 0' : '0 0 auto', minWidth: 0,
+                  padding: '13px 10px 11px', background: 'none', border: 'none',
+                  borderBottom: `3px solid ${attiva ? 'var(--accento)' : 'transparent'}`,
+                  color: attiva ? '#fff' : 'var(--testo-medio)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: attiva ? '800' : '600', letterSpacing: '0.3px',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer',
                 }}>{s.name}</button>
               )
             })}
