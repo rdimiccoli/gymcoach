@@ -27,6 +27,18 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-16-2',
+    data: '16 novembre',
+    schede: [
+      {
+        icona: '🔀',
+        titolo: 'PASSA DA UNA SCHEDA ALL\'ALTRA',
+        testo: 'Se il turno ha più schede attive, in cima alla seduta trovi i loro nomi: un tocco e passi all\'altra, senza tornare in Home. Il giorno che stavi guardando resta lo stesso.',
+        dove: ['HOME', 'APRI UN TURNO', 'IN ALTO: SCHEDE DEL TURNO'],
+      },
+    ],
+  },
+  {
     id: '2026-11-16',
     data: '16 novembre',
     schede: [

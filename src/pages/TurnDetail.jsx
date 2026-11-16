@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
@@ -42,13 +42,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // Serve in due casi — gli ospiti Silver venuti da un altro turno (e allora
   // `cycle` è la LORO scheda, `turn` è il turno che li ospita) e la singola
   // persona aperta dall'elenco, quando il coach apre i turni per atleta.
-  const { turn, cycle, soloAtleti, sottotitolo } = params
+  const { turn, soloAtleti, sottotitolo } = params
   // Il giorno può arrivare da chi ci manda qui: sceglierlo sull'elenco del
   // turno e ritrovare il Giorno 1 aprendo una persona sarebbe un tocco perso.
   const [day, setDay] = useState(params.giorno || 1)
   // Incorporata, il giorno lo sceglie il turno: seguirlo invece di tenerne
   // uno proprio, o toccare GIORNO 2 nell'elenco non cambierebbe il pannello.
   useEffect(() => { if (incorporato && params.giorno) setDay(params.giorno) }, [incorporato, params.giorno])
+  // Le schede attive del turno, per passare dall'una all'altra senza tornare
+  // in Home: alle 13:30 Manu ha tre programmi, e prima per cambiarne uno
+  // doveva uscire, aprire l'altro, uscire, aprire il terzo. Solo nella
+  // schermata vera del turno — non per un ospite né dentro il pannello della
+  // vista per atleta, che hanno già la loro scheda.
+  const [schedeTurno, setSchedeTurno] = useState([])
+  const [schedaScelta, setSchedaScelta] = useState(null)
+  const cycle = (!incorporato && schedaScelta) || params.cycle
+  const cambiaScheda = useCallback(s => {
+    if (!s || s.id === cycle?.id) return
+    setSchedaScelta(s)
+    // Il giorno resta quello che si stava guardando, se la scheda ce l'ha.
+    setDay(d => (d <= giorniDi(s) ? d : 1))
+  }, [cycle?.id])
   const [exercises, setExercises] = useState([])
   const [clients, setClients] = useState([])
   // Tutte le persone del turno, non solo quelle che seguono questa scheda:
@@ -97,6 +111,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const carichiPendenti = useRef({})
 
   useEffect(() => { if (cycle) loadData(); else setLoading(false) }, [day, cycle])
+  useEffect(() => {
+    if (incorporato || soloAtleti?.length || !turn?.id) return
+    // Stesso ordine delle card in Home: la più recente prima.
+    supabase.from('cycles').select('*').eq('turn_id', turn.id).eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setSchedeTurno(data || []))
+  }, [turn?.id, incorporato, soloAtleti?.length])
 
   /**
    * La settimana è della SCHEDA, non della singola atleta.
@@ -422,6 +443,32 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       )}
 
       {!incorporato && (<>
+      {/* Le schede del turno, in evidenza sopra i giorni: un tocco e si
+          passa all'altra. Con una scheda sola non c'è niente da scegliere. */}
+      {schedeTurno.length > 1 && (
+        <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
+          <div style={{ color: 'var(--testo-medio)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1.5px', marginBottom: '6px' }}>
+            SCHEDE DEL TURNO · {schedeTurno.length}
+          </div>
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+            {schedeTurno.map(s => {
+              const attiva = s.id === cycle.id
+              return (
+                <button key={s.id} type="button" onClick={() => cambiaScheda(s)} aria-pressed={attiva} style={{
+                  flex: schedeTurno.length <= 3 ? '1 1 0' : '0 0 auto', minWidth: 0, maxWidth: '100%',
+                  padding: '11px 12px', borderRadius: '6px',
+                  border: `1px solid ${attiva ? 'var(--accento)' : 'var(--bordo-forte)'}`,
+                  background: attiva ? 'var(--acc-riempimento-forte)' : 'var(--sup)',
+                  color: attiva ? '#fff' : 'var(--testo-chiaro)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '800', letterSpacing: '0.3px',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  boxShadow: attiva ? 'inset 0 -3px 0 var(--accento)' : 'none',
+                }}>{s.name}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {elencoGiorni(cycle).map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
