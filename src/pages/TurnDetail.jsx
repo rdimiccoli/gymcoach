@@ -79,6 +79,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // Le feste per i record, in fila: due record nello stesso salvataggio (una
   // superserie) fanno due feste una dopo l'altra, non una sopra l'altra.
   const [feste, setFeste] = useState([])
+  // Vedi controllaRecord: le feste in attesa che il coach finisca di
+  // toccare, chi ha già avuto la sua, e il record sempre aggiornato (le
+  // scritture partono da timer, e lo stato letto lì potrebbe essere vecchio).
+  const festaInAttesa = useRef({})
+  const giaFesteggiati = useRef(new Set())
+  const recordRef = useRef({})
+  useEffect(() => () => Object.values(festaInAttesa.current).forEach(a => clearTimeout(a.timer)), [])
   // Le frasi si rileggono a ogni apertura: una frase aggiunta su Supabase
   // vale dal turno dopo. Intanto, quelle di serie.
   const frasi = useRef(FRASI_DI_SERIE)
@@ -204,6 +211,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
         if (r.kg != null && (massimi[chiave] === undefined || r.kg > massimi[chiave])) massimi[chiave] = r.kg
       })
       setRecord(massimi)
+      recordRef.current = massimi
       setPrecedenti(dallaSchedaPrima)
 
       const noteMap = {}
@@ -280,7 +288,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     conCarico.forEach(({ cycleExId, kg }) => {
       const ex = exercises.find(e => e.id === cycleExId)
       const cliente = clients.find(c => c.id === clientId)
-      if (ex && cliente) controllaRecord(cliente, ex, kg)
+      if (ex && cliente) controllaRecord(cliente, ex, kg, true)
     })
     conferma()
     notifyOk(!righe.length ? 'Salvato' : differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
@@ -292,6 +300,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
     tocco() // conferma il tocco senza obbligare a guardare lo schermo
+    rimandaFesta(client, ex)
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])
     // Settimana nuova, ancora vuota: si parte dal carico della volta prima,
@@ -312,29 +321,58 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   }
 
   /**
-   * Se il carico appena messo supera il massimo di sempre su quell'esercizio,
-   * lo si dice. I dati c'erano già: mancava solo il confronto.
+   * Se il carico appena salvato supera il massimo di sempre su quell'esercizio,
+   * lo si dice: subito con «🏆 RECORD» sulla riga, e con la festa a tutto
+   * schermo — ma con giudizio.
    *
-   * Il record si aggiorna subito in memoria, altrimenti toccando + due volte
-   * l'app griderebbe «record» due volte per la stessa serie.
+   * Prima la festa partiva a ogni salvataggio sopra il record, e il
+   * salvataggio parte un attimo dopo ogni tocco: chi segnava 10 kg toccando +
+   * con calma si prendeva dieci feste. Ora:
+   *  - la festa aspetta che il coach abbia finito di toccare (ATTESA_FESTA
+   *    dopo l'ultimo salvataggio; un nuovo tocco la rimanda) e mostra il peso
+   *    finale;
+   *  - una festa sola per persona ed esercizio in tutta la seduta;
+   *  - si confronta con il massimo di PRIMA di oggi, e da zero non si fa
+   *    festa: 0 kg è corpo libero o un carico mai segnato davvero, e 1, 2,
+   *    3 kg sopra lo zero non sono un traguardo.
+   * `subito`: dai DETTAGLI, dove il peso si scrive tutto in una volta.
    */
-  function controllaRecord(client, ex, kg) {
+  function controllaRecord(client, ex, kg, subito = false) {
     if (kg == null || !ex?.exercise_id) return
     const chiave = `${client.id}_${ex.exercise_id}`
-    const massimo = record[chiave]
+    const massimo = recordRef.current[chiave]
     // Il primo carico in assoluto non è un record: è solo il primo.
-    if (massimo === undefined || kg <= massimo) return
-    setRecord(prev => ({ ...prev, [chiave]: kg }))
-    setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
-    festa()
-    // La festa a tutto schermo, con una frase a caso (mai la stessa di prima).
-    const frase = scegliFrase(frasi.current, ultimaFrase.current)
-    ultimaFrase.current = frase
-    setFeste(prev => [...prev, {
-      id: `${chiave}_${kg}_${Date.now()}`, nome: client.name, kg, prima: massimo,
-      esercizio: ex?.exercises?.name ?? '',
-      emoji: frase.emoji, titolo: frase.titolo, frase: frase.testo,
-    }])
+    if (massimo !== undefined && kg > massimo) {
+      recordRef.current = { ...recordRef.current, [chiave]: kg }
+      setRecord(prev => ({ ...prev, [chiave]: kg }))
+      setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
+    }
+    if (giaFesteggiati.current.has(chiave)) return
+    const inAttesa = festaInAttesa.current[chiave]
+    const prima = inAttesa ? inAttesa.prima : massimo
+    clearTimeout(inAttesa?.timer)
+    delete festaInAttesa.current[chiave]
+    if (prima === undefined || !(prima > 0) || kg <= prima) return
+    const timer = setTimeout(() => {
+      delete festaInAttesa.current[chiave]
+      giaFesteggiati.current.add(chiave)
+      festa()
+      // La festa a tutto schermo, con una frase a caso (mai la stessa di prima).
+      const frase = scegliFrase(frasi.current, ultimaFrase.current)
+      ultimaFrase.current = frase
+      setFeste(prev => [...prev, {
+        id: `${chiave}_${kg}_${Date.now()}`, nome: client.name, kg, prima,
+        esercizio: ex?.exercises?.name ?? '',
+        emoji: frase.emoji, titolo: frase.titolo, frase: frase.testo,
+      }])
+    }, subito ? 0 : ATTESA_FESTA)
+    festaInAttesa.current[chiave] = { timer, prima }
+  }
+
+  /** Un nuovo tocco sullo stesso esercizio rimanda la festa in attesa. */
+  function rimandaFesta(client, ex) {
+    const inAttesa = festaInAttesa.current[`${client.id}_${ex?.exercise_id}`]
+    if (inAttesa) clearTimeout(inAttesa.timer)
   }
 
   async function scriviCarico(chiave) {
@@ -977,6 +1015,10 @@ const pannello = { display: 'flex', flexDirection: 'column', height: '100%', min
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
 const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
+
+// Quanto aspetta la festa dopo l'ultimo salvataggio (che a sua volta parte
+// quasi un secondo dopo l'ultimo tocco): il tempo di finire di segnare.
+const ATTESA_FESTA = 1500
 
 // «G1 · G3» accanto al nome: i giorni che la persona fa di questa scheda.
 const distintivoGiorni = {
