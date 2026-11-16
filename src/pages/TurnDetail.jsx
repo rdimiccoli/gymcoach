@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, Fragment } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
@@ -18,6 +18,8 @@ import { storicoEsercizi } from '../lib/storicoDb'
 import { FRASI_DI_SERIE, scegliFrase } from '../lib/frasiRecord'
 import { caricaFrasi } from '../lib/frasiRecordDb'
 import FestaRecord from '../components/FestaRecord'
+import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
+import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
 const TimerCircuito = lazy(() => import('../components/TimerCircuito'))
 import { ScheletroElenco } from '../components/Scheletro'
@@ -84,6 +86,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // carico nelle schede prima di questa (vedi carichiPrecedenti.js). Serve
   // alla prima settimana di una scheda nuova, che di suo non ha un «prec.».
   const [precedenti, setPrecedenti] = useState({})
+  // giorniPersone[clientId] = [1, 3]: i giorni che fa (vedi giorniPersona.js).
+  // Chi non c'è fa tutti i giorni.
+  const [giorniPersone, setGiorniPersone] = useState({})
   const [expanded, setExpanded] = useState({})
   const [editModal, setEditModal] = useState(null)
   const [timer, setTimer] = useState(null)
@@ -142,6 +147,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     setExercises(exData || [])
     setClients(cl)
     setTuttiDelTurno(tutti || [])
+    caricaGiorniPersona([cycle.id]).then(perScheda =>
+      setGiorniPersone(mappaGiorni(perScheda[cycle.id], giorniDi(cycle))))
 
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
@@ -330,9 +337,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
    * restano dove sono, altrimenti premendo la freccia non succederebbe
    * niente di visibile.
    */
-  async function spostaPersona(client, verso) {
-    const i = clients.findIndex(c => c.id === client.id)
-    const vicino = clients[i + verso]
+  async function spostaPersona(client, verso, elenco = clients) {
+    // `elenco`: quello che si vede — chi è previsto oggi. Chi oggi non c'è sta
+    // in fondo, e scambiarsi con lui non si vedrebbe.
+    const i = elenco.findIndex(c => c.id === client.id)
+    const vicino = elenco[i + verso]
     if (!vicino) return
     const dopo = await spostaAccanto(tuttiDelTurno, client.id, vicino.id)
     if (dopo === tuttiDelTurno) return
@@ -364,6 +373,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   }
 
   const groups = raggruppaEsercizi(exercises)
+  // Prima chi fa questo giorno, poi — in grigio, sotto «Oggi non previsti» —
+  // chi di solito fa altri giorni. Non sparisce: se viene lo stesso, c'è.
+  const { previsti, altri } = dividiPerGiorno(clients, day, c => giorniPersone[c.id])
+  const inOrdine = [...previsti, ...altri]
 
   // Incorporata su una persona sola, il pannello parla già di lei: ripeterne
   // il nome sotto ognuno dei sei esercizi è la stessa riga scritta sei volte.
@@ -396,6 +409,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
               {unaPersona.surname} {unaPersona.name}
+              {etichettaGiorni(giorniPersone[unaPersona.id]) && (
+                <span style={distintivoGiorni}>{etichettaGiorni(giorniPersone[unaPersona.id])}</span>
+              )}
             </span>
             <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
               {cycle.name} · settimana {settimana} di {totale}
@@ -500,9 +516,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
 
               {isExpanded && (
                 <div style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${group.type === 'superset' ? 'var(--acc-riempimento)' : 'var(--sup-alta)'}`, borderTop: 'none', borderRadius: '0 0 6px 6px' }}>
-                  {clients.map((client, indiceCliente) => {
+                  {inOrdine.map((client, indiceCliente) => {
+                    const nonPrevisto = indiceCliente >= previsti.length
                     return (
-                      <div key={client.id} data-scivola={`${groupKey}:${client.id}`} style={{ position: 'relative', borderTop: '1px solid var(--sup)', padding: '10px 14px' }}>
+                      <Fragment key={client.id}>
+                      {indiceCliente === previsti.length && (
+                        <div style={separatoreNonPrevisti}>OGGI NON PREVISTI · {altri.length}</div>
+                      )}
+                      <div data-scivola={`${groupKey}:${client.id}`} style={{ position: 'relative', borderTop: '1px solid var(--sup)', padding: '10px 14px', opacity: nonPrevisto ? 0.45 : 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Con una persona sola il nome sta già in cima al
@@ -521,6 +542,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                               {client.surname} {client.name}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
+                            {etichettaGiorni(giorniPersone[client.id]) && (
+                              <span title="I giorni che fa di questa scheda" style={distintivoGiorni}>{etichettaGiorni(giorniPersone[client.id])}</span>
+                            )}
                             </>)}
                             {/* Reps bigger + side by side */}
                             {group.type === 'circuit'
@@ -540,16 +564,16 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                               lavorano in coppia sono lontane. Lontane dai
                               tasti dei chili, che stanno sotto: spostando un
                               nome non si rischia di toccare un carico. */}
-                          {ordineAttivo && !soloAtleti?.length && clients.length > 1 && (
+                          {ordineAttivo && !soloAtleti?.length && !nonPrevisto && previsti.length > 1 && (
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginRight: '6px' }}>
-                              <button onClick={() => spostaPersona(client, -1)}
+                              <button onClick={() => spostaPersona(client, -1, previsti)}
                                 disabled={indiceCliente === 0}
                                 aria-label={`Sposta ${client.surname} più su`}
                                 style={{ ...frecciaOrdine, opacity: indiceCliente === 0 ? 0.25 : 1 }}>↑</button>
-                              <button onClick={() => spostaPersona(client, +1)}
-                                disabled={indiceCliente === clients.length - 1}
+                              <button onClick={() => spostaPersona(client, +1, previsti)}
+                                disabled={indiceCliente === previsti.length - 1}
                                 aria-label={`Sposta ${client.surname} più giù`}
-                                style={{ ...frecciaOrdine, opacity: indiceCliente === clients.length - 1 ? 0.25 : 1 }}>↓</button>
+                                style={{ ...frecciaOrdine, opacity: indiceCliente === previsti.length - 1 ? 0.25 : 1 }}>↓</button>
                             </div>
                           )}
                           <button onClick={() => setEditModal({ client, group })} style={{
@@ -667,6 +691,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             </div>
                           ))}
                       </div>
+                      </Fragment>
                     )
                   })}
                 </div>
@@ -908,3 +933,18 @@ const pannello = { display: 'flex', flexDirection: 'column', height: '100%', min
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
 const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
+
+// «G1 · G3» accanto al nome: i giorni che la persona fa di questa scheda.
+const distintivoGiorni = {
+  display: 'inline-block', marginLeft: '8px', verticalAlign: 'middle',
+  background: 'var(--acc-fondo-forte)', border: '1px solid var(--acc-bordo-forte)', borderRadius: '4px',
+  padding: '1px 6px', color: 'var(--accento)',
+  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '800', letterSpacing: '0.5px',
+}
+
+// La riga che separa chi oggi è previsto da chi no.
+const separatoreNonPrevisti = {
+  borderTop: '1px solid var(--sup-alta)', padding: '8px 14px 6px',
+  background: 'rgba(255,255,255,0.03)', color: 'var(--testo-medio)',
+  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1.5px',
+}

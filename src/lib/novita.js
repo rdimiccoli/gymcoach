@@ -27,6 +27,20 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-16',
+    data: '16 novembre',
+    schede: [
+      {
+        icona: '📅',
+        titolo: 'CHI FA QUALI GIORNI',
+        testo: 'Per ogni persona scegli quali giorni della scheda fa: Alessia G1 e G2, Greta G2 e G3. In seduta accanto al nome vedi «G1 · G2», e chi quel giorno non è previsto va in fondo, in grigio.',
+        dove: ['SCHEDE', '⋮', 'GIORNI DI OGNUNO'],
+        nota: 'Chi non ha niente di segnato fa tutti i giorni, come prima. Clonando una scheda le scelte si copiano.',
+        serve: 'giorniPersona',
+      },
+    ],
+  },
+  {
     id: '2026-11-12',
     data: '12 novembre',
     schede: [

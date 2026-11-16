@@ -5,7 +5,9 @@ import { raggruppaEsercizi } from '../lib/schede'
 import { conOrdineDelTurno } from '../lib/ordineDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
-import { elencoGiorni, GIORNI_MAX } from '../lib/giorni'
+import { elencoGiorni, GIORNI_MAX, giorniDi } from '../lib/giorni'
+import { mappaGiorni, fa } from '../lib/giorniPersona'
+import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 import { settimaneDi, ogniDi, fasi, etichettaFase, repsDiFase } from '../lib/settimane'
 import { disegnaScheda, mandaImmagine } from '../lib/immagineScheda'
 import { ScheletroElenco } from '../components/Scheletro'
@@ -30,6 +32,11 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
   // L'ultimo carico nella scheda prima, per chi in questa non ne ha ancora
   // segnati: «idPersona_idEsercizio» → { kg, settimana, scheda }.
   const [precedenti, setPrecedenti] = useState({})
+  // { idPersona: [giorni] }: chi fa solo alcuni giorni della scheda.
+  const [giorniPersone, setGiorniPersone] = useState({})
+  /** I giorni della scheda che il cliente scelto fa davvero. */
+  const giorniDelCliente = () =>
+    (cycle ? elencoGiorni(cycle).filter(d => fa(giorniPersone[selectedClient], d)) : [])
   const [loading, setLoading] = useState(true)
 
   // Selection state
@@ -87,6 +94,8 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
         })
         setLoads(loadMap)
         setPrecedenti(dallaSchedaPrima)
+        // Chi fa solo alcuni giorni riceve solo quelli (vedi giorniPersona.js).
+        caricaGiorniPersona([c.id]).then(perScheda => setGiorniPersone(mappaGiorni(perScheda[c.id], giorniDi(c))))
       }
     }
     setLoading(false)
@@ -126,7 +135,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     text += `📅 ${weekRange.label}\n`
     text += `━━━━━━━━━━━━━━━━━━━\n\n`
 
-    for (const d of elencoGiorni(cycle)) {
+    for (const d of giorniDelCliente()) {
       const groups = raggruppaEsercizi(days[d])
       if (!groups.length) continue
       text += `📌 *GIORNO ${d}*\n`
@@ -185,7 +194,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     let annullato = false
     const client = clients.find(c => c.id === selectedClient)
     const fascia = WEEK_RANGES[selectedWeekRange]
-    const giorni = elencoGiorni(cycle).map(numero => ({
+    const giorni = giorniDelCliente().map(numero => ({
       numero,
       gruppi: raggruppaEsercizi(days[numero] || []).map(group => ({
         tipo: group.type,
@@ -210,7 +219,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
       if (!annullato) setImmagineFallita(true)
     })
     return () => { annullato = true }
-  }, [selectedClient, selectedWeekRange, cycle, days, loads, precedenti, clients])
+  }, [selectedClient, selectedWeekRange, cycle, days, loads, precedenti, giorniPersone, clients])
 
   async function mandaComeImmagine() {
     if (!immagine) return
@@ -235,8 +244,10 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     setTimeout(() => setCopied(false), 2500)
   }
 
-  // Preview for selected day
-  const [previewDay, setPreviewDay] = useState(1)
+  // Preview for selected day — fra quelli che il cliente fa davvero.
+  const [scelto, setPreviewDay] = useState(1)
+  const giorniVisibili = giorniDelCliente()
+  const previewDay = giorniVisibili.includes(scelto) ? scelto : giorniVisibili[0] ?? 1
   const previewGroups = raggruppaEsercizi(days[previewDay])
 
   return (
@@ -308,7 +319,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
 
                   {/* Day tabs */}
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                    {elencoGiorni(cycle).map(d => (
+                    {giorniVisibili.map(d => (
                       <button key={d} onClick={() => setPreviewDay(d)} style={{
                         flex: 1, padding: '7px', borderRadius: '4px', border: 'none',
                         fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700',

@@ -16,6 +16,11 @@ import CatalogoEsercizi from '../components/CatalogoEsercizi'
 import AvvisoRosso from '../components/AvvisoRosso'
 import { perditeScheda } from '../lib/contaDanni'
 import BottomNav from '../components/BottomNav'
+import GiorniPersone from '../components/GiorniPersone'
+import { giorniDi } from '../lib/giorni'
+import { personeDellaScheda } from '../lib/assegnazioni'
+import { mappaGiorni } from '../lib/giorniPersona'
+import { caricaGiorniPersona, salvaGiorniPersona } from '../lib/giorniPersonaDb'
 
 export default function CyclesList({ navigate, goHome, coach }) {
   const [turns, setTurns] = useState([])
@@ -41,6 +46,10 @@ export default function CyclesList({ navigate, goHome, coach }) {
   // qui vale per tutto il suo turno.
   const [assegnazioni, setAssegnazioni] = useState({})
   const [assegnazioniAttive, setAssegnazioniAttive] = useState(false)
+  // Chi fa quali giorni: la finestra si apre dal ⋮ della scheda.
+  const [giorniPersonaAttivi, setGiorniPersonaAttivi] = useState(false)
+  const [giorniModal, setGiorniModal] = useState(null) // { cycle, persone, scelte }
+  const [salvandoGiorni, setSalvandoGiorni] = useState(false)
   // Nel riquadro MODIFICA: le persone del turno e la scelta in corso.
   const [atletiTurno, setAtletiTurno] = useState([])
   const [scelte, setScelte] = useState(null)
@@ -74,7 +83,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
         'Impossibile caricare le schede.'
       )
 
-      const { assegnazioni: puoAssegnare, settimaneScheda, progressioni } = await capacita()
+      const { assegnazioni: puoAssegnare, settimaneScheda, progressioni, giorniPersona } = await capacita()
+      setGiorniPersonaAttivi(giorniPersona)
       setDurataAttiva(settimaneScheda)
       setProgressioniAttive(progressioni)
       setAssegnazioniAttive(puoAssegnare)
@@ -222,6 +232,34 @@ export default function CyclesList({ navigate, goHome, coach }) {
     setAtletiTurno(data || [])
   }
 
+  /**
+   * «Giorni di ognuno»: le persone che seguono la scheda, ognuna con i giorni
+   * che fa. Si caricano qui, all'apertura: servono solo a chi li cambia.
+   */
+  async function apriGiorni(cycle) {
+    const [{ data }, perScheda] = await Promise.all([
+      run(await conOrdineDelTurno(supabase.from('clients').select('id, name, surname')
+        .eq('turn_id', cycle.turn_id).eq('is_active', true)),
+        'Impossibile caricare le persone del turno.'),
+      caricaGiorniPersona([cycle.id]),
+    ])
+    if (!data) return
+    setGiorniModal({
+      cycle,
+      persone: personeDellaScheda(cycle, data, assegnazioni),
+      scelte: mappaGiorni(perScheda[cycle.id], giorniDi(cycle)),
+    })
+  }
+
+  async function salvaGiorni(cambiate) {
+    setSalvandoGiorni(true)
+    const ok = await salvaGiorniPersona(giorniModal.cycle.id, cambiate)
+    setSalvandoGiorni(false)
+    if (!ok) return
+    notifyOk('Giorni salvati.')
+    setGiorniModal(null)
+  }
+
   async function apriEliminazione(cycle, turnId) {
     setDeleteModal({ cycle, turnId })
     setPerdite(undefined)
@@ -349,6 +387,8 @@ export default function CyclesList({ navigate, goHome, coach }) {
                       <MenuPuntini etichetta={`Altre azioni per ${cycle.name}`} voci={[
                         { icona: '📤', testo: 'Condividi', azione: () => navigate('cycle-share', { cycleId: cycle.id, cycleName: cycle.name }) },
                         { icona: '✏️', testo: 'Modifica', azione: () => apriModifica(cycle) },
+                        giorniPersonaAttivi && cycle.is_active && giorniDi(cycle) > 1 &&
+                          { icona: '📅', testo: 'Giorni di ognuno', azione: () => apriGiorni(cycle) },
                         { icona: '⬇', testo: 'Scarica CSV', azione: () => esportaCsv(cycle) },
                         cycle.is_active && { icona: '✓', testo: 'Completa', azione: () => setCompleteModal(cycle) },
                         { icona: '🗑', testo: 'Elimina', pericolo: true, azione: () => apriEliminazione(cycle, turn.id) },
@@ -466,6 +506,12 @@ export default function CyclesList({ navigate, goHome, coach }) {
             <button onClick={() => setRenameModal(null)} style={cancelBtn}>Annulla</button>
           </div>
         </div>
+      )}
+
+      {giorniModal && (
+        <GiorniPersone scheda={giorniModal.cycle} giorni={giorniDi(giorniModal.cycle)}
+          persone={giorniModal.persone} scelteIniziali={giorniModal.scelte} salvando={salvandoGiorni}
+          onSalva={salvaGiorni} onAnnulla={() => setGiorniModal(null)} />
       )}
 
       {deleteModal && (

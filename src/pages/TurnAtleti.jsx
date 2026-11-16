@@ -10,6 +10,8 @@ import { useScivola } from '../lib/movimento'
 import { GIORNI_PREDEFINITI, giorniDi, elencoGiorni, etichettaGiorno } from '../lib/giorni'
 import { schedeSeguite } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
+import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
+import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
 import { useSchermoLargo } from '../lib/schermo'
 import { ScheletroElenco } from '../components/Scheletro'
@@ -37,6 +39,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   const [day, setDay] = useState(1)
   const [righe, setRighe] = useState([])
   const [schede, setSchede] = useState([])
+  // { idScheda: { idPersona: [giorni] } }: chi fa quali giorni (giorniPersona.js).
+  const [giorniPersone, setGiorniPersone] = useState({})
   const [loading, setLoading] = useState(true)
   // Sul tablet sdraiato le due cose stanno una accanto all'altra invece che
   // una dentro l'altra: si tocca un nome a sinistra e a destra compare la sua
@@ -60,6 +64,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
     ])
     const schedeAttive = attive || []
     setSchede(schedeAttive)
+    caricaGiorniPersona(schedeAttive.map(s => s.id)).then(perScheda =>
+      setGiorniPersone(Object.fromEntries(schedeAttive.map(s => [s.id, mappaGiorni(perScheda[s.id], giorniDi(s))]))))
 
     const caps = await capacita()
     setOrdineAttivo(caps.ordinePersone)
@@ -115,10 +121,21 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
   const personeDelTurno = righe.filter(r => !r.ospite).map(r => r.persona)
     .filter((p, i, elenco) => elenco.findIndex(x => x.id === p.id) === i)
 
+  // Prima chi fa il giorno scelto, poi — in grigio, sotto «Oggi non
+  // previsti» — chi di solito fa altri giorni. Non sparisce: se viene lo
+  // stesso, lo si apre e gli si segnano i carichi come sempre.
+  const giorniDiRiga = r => (r.scheda ? giorniPersone[r.scheda.id]?.[r.persona.id] : null)
+  const { previsti: righePreviste, altri: righeAltre } = dividiPerGiorno(righe, day, giorniDiRiga)
+  const righeInOrdine = [...righePreviste, ...righeAltre]
+  // Le frecce spostano fra quelli che si vedono in cima: chi oggi non c'è
+  // sta in fondo, e scambiarsi con lui non si vedrebbe.
+  const personeVisibili = righePreviste.filter(r => !r.ospite).map(r => r.persona)
+    .filter((p, i, elenco) => elenco.findIndex(x => x.id === p.id) === i)
+
   /** Sposta una persona di un posto e rimette in fila le righe. */
   async function spostaPersona(persona, verso) {
-    const i = personeDelTurno.findIndex(p => p.id === persona.id)
-    const vicino = personeDelTurno[i + verso]
+    const i = personeVisibili.findIndex(p => p.id === persona.id)
+    const vicino = personeVisibili[i + verso]
     if (!vicino) return
     const dopo = await spostaAccanto(personeDelTurno, persona.id, vicino.id)
     if (dopo === personeDelTurno) return
@@ -156,19 +173,25 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
           </div>
         )}
 
-        {righe.map((riga, i) => {
+        {righeInOrdine.map((riga, i) => {
           const settimana = settimanaDaCalendario(riga.scheda)
           const apribile = Boolean(riga.scheda)
+          const nonPrevista = i >= righePreviste.length
+          const suoiGiorni = etichettaGiorni(giorniDiRiga(riga))
           // Le frecce su una riga sola per persona: chi segue due schede ha
           // due righe, e due coppie di frecce per lo stesso nome non
           // vorrebbero dire niente.
-          const iPersona = personeDelTurno.findIndex(p => p.id === riga.persona.id)
-          const conFrecce = ordineAttivo && !riga.ospite && personeDelTurno.length > 1 &&
-            righe.findIndex(r => r.persona.id === riga.persona.id) === i
+          const iPersona = personeVisibili.findIndex(p => p.id === riga.persona.id)
+          const conFrecce = ordineAttivo && !riga.ospite && !nonPrevista && personeVisibili.length > 1 &&
+            righeInOrdine.findIndex(r => r.persona.id === riga.persona.id) === i
           return (
-            <div key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}
+            <div key={`${riga.persona.id}-${riga.scheda?.id || 'niente'}-${i}`}>
+            {i === righePreviste.length && (
+              <div style={separatoreNonPrevisti}>OGGI NON PREVISTI · {righeAltre.length}</div>
+            )}
+            <div
               data-scivola={`${riga.persona.id}:${riga.scheda?.id || 'niente'}:${riga.ospite ? 'o' : 'm'}`}
-              style={{ display: 'flex', alignItems: 'stretch', gap: '6px' }}>
+              style={{ display: 'flex', alignItems: 'stretch', gap: '6px', opacity: nonPrevista ? 0.45 : 1 }}>
             <button
               type="button"
               onClick={() => apri(riga)}
@@ -193,6 +216,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                   {riga.persona.surname} {riga.persona.name}
                   {riga.ospite && <span style={distintivoOspite}>OSPITE · {turnoDOrigine(riga.persona)}</span>}
+                  {suoiGiorni && <span title="I giorni che fa di questa scheda" style={distintivoGiorni}>{suoiGiorni}</span>}
                 </div>
                 <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
                   {!riga.scheda
@@ -215,11 +239,12 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
                   aria-label={`Sposta ${riga.persona.surname} più su`}
                   style={{ ...frecciaOrdine, opacity: iPersona === 0 ? 0.25 : 1 }}>↑</button>
                 <button onClick={() => spostaPersona(riga.persona, +1)}
-                  disabled={iPersona === personeDelTurno.length - 1}
+                  disabled={iPersona === personeVisibili.length - 1}
                   aria-label={`Sposta ${riga.persona.surname} più giù`}
-                  style={{ ...frecciaOrdine, opacity: iPersona === personeDelTurno.length - 1 ? 0.25 : 1 }}>↓</button>
+                  style={{ ...frecciaOrdine, opacity: iPersona === personeVisibili.length - 1 ? 0.25 : 1 }}>↓</button>
               </div>
             )}
+            </div>
             </div>
           )
         })}
@@ -331,4 +356,15 @@ const distintivoOspite = {
   marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
   fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
   color: 'var(--accento)', border: '1px solid var(--acc-bordo-forte)',
+}
+
+// «G1 · G3» accanto al nome: i giorni che la persona fa della sua scheda.
+const distintivoGiorni = {
+  ...distintivoOspite, fontSize: '13px', background: 'var(--acc-fondo-forte)',
+}
+
+// La riga che separa chi oggi è previsto da chi no.
+const separatoreNonPrevisti = {
+  color: 'var(--testo-medio)', fontFamily: 'Barlow Condensed, sans-serif',
+  fontSize: '13px', fontWeight: '700', letterSpacing: '1.5px', margin: '14px 2px 8px',
 }

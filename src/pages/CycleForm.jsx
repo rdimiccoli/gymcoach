@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient'
 import { run, notifyError, notifyOk } from '../lib/notify'
 import { scambiaGiorniDb, scambiaNellaMappa } from '../lib/scambiaGiorni'
 import ScambiaGiorni from '../components/ScambiaGiorni'
+import { copiaGiorniPersona } from '../lib/giorniPersonaDb'
 import { raggruppaEsercizi, oggiLocale, isCircuito } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno } from '../lib/ordineDb'
@@ -248,7 +249,11 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
     // Se non passa, la scheda resta valida per tutto il turno — il caso
     // innocuo — e si può correggere da MODIFICA. Il messaggio lo dice run().
     if (scelte !== null) await salvaAssegnazioni(data.id, scelte)
-    if (cloneFromId) await cloneExercises(data.id, cloneFromId)
+    if (cloneFromId) {
+      await cloneExercises(data.id, cloneFromId)
+      // Chi fa quali giorni va con la scheda: si cambia solo chi cambia.
+      await copiaGiorniPersona(cloneFromId, data.id)
+    }
     setSaving(false)
     setStep('exercises')
   }
