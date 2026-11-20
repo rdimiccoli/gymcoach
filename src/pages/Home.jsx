@@ -8,7 +8,7 @@ import MenuPuntini from '../components/MenuPuntini'
 import RiordinaTurni from '../components/RiordinaTurni'
 import { personeDellaScheda, senzaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
-import { caricaOspitiDiOggi, turnoDOrigine } from '../lib/ospitiDb'
+import { caricaOspitiDiOggi, daDove } from '../lib/ospitiDb'
 import { vistaTurni, PER_ATLETA } from '../lib/vista'
 import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } from '../lib/biometria'
 import { ScheletroSchede } from '../components/Scheletro'
@@ -28,7 +28,7 @@ const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Ve
  * arrivavano.
  *
  * Quello che le fasi dicevano, ora lo dice la card del turno: «settimana 4 di
- * 6». Sotto il turno compaiono anche gli ospiti Silver di oggi, ciascuno con
+ * 6». Sotto il turno compaiono anche gli ospiti di oggi, ciascuno con
  * la propria scheda.
  */
 export default function Home({ navigate, goHome, session, coach }) {
@@ -276,7 +276,7 @@ export default function Home({ navigate, goHome, session, coach }) {
                   turno={turno}
                   scheda={g.scheda}
                   ospiti={g.persone.map(p => `${p.name} ${p.surname}`)}
-                  provenienza={turnoDOrigine(g.persone[0])}
+                  provenienza={daDove(g.persone[0])}
                   mostraOrario={false}
                   mostraConteggio={false}
                   onApri={() => navigate('turn', {

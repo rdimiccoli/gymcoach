@@ -343,7 +343,7 @@ export default function Turns({ navigate, goHome, coach }) {
                     SILVER
                   </span>
                   <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4, marginTop: '2px' }}>
-                    Può venire anche in un altro turno al posto del suo: lì si aggiunge fra gli ospiti, con la sua scheda.
+                    Quando un coach aggiunge un ospite, in qualsiasi turno, i Silver compaiono per primi.
                   </span>
                 </span>
                 <span aria-hidden="true" style={{

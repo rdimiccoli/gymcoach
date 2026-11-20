@@ -4,10 +4,15 @@ import { capacita } from '../lib/capacita'
 import { comePulsante } from '../lib/stile'
 import { tocco } from '../lib/aptico'
 import { settimanaDaCalendario } from '../lib/schede'
-import { caricaOspitiDiOggi, silverDisponibili, segnaOspite, turnoDOrigine } from '../lib/ospitiDb'
+import { caricaOspitiDiOggi, ospitiPossibili, segnaOspite, daDove } from '../lib/ospitiDb'
+import { gruppiOspiti } from '../lib/sceltaOspiti'
 
 /**
- * Gli ospiti Silver di oggi, dentro la schermata del turno.
+ * Gli ospiti di oggi, dentro la schermata del turno.
+ *
+ * Ospite può essere chiunque di un altro turno, di qualsiasi coach: prima
+ * solo i Silver, dal 20/11/2026 tutti. I Silver stanno in cima all'elenco,
+ * e la ricerca per nome trova gli altri.
  *
  * Sta qui e non in Home perché è qui che il coach si trova quando una
  * persona di un altro turno entra in sala.
@@ -22,6 +27,10 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
   const [elencoAperto, setElencoAperto] = useState(false)
   const [disponibili, setDisponibili] = useState(null)
   const [ospitiOggi, setOspitiOggi] = useState(() => new Set())
+  const [cerca, setCerca] = useState('')
+  // Chi era già ospite quando si è aperto l'elenco: resta in cima finché
+  // l'elenco è aperto, anche se lo si tocca (vedi gruppiOspiti).
+  const [giaQui, setGiaQui] = useState(() => new Set())
 
   useEffect(() => {
     capacita().then(c => { setAttivo(c.silver); if (c.silver) carica() })
@@ -35,8 +44,10 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
 
   async function apriElenco() {
     setElencoAperto(true)
+    setCerca('')
+    setGiaQui(new Set(ospitiOggi))
     setDisponibili(null)
-    setDisponibili(await silverDisponibili(turn.id))
+    setDisponibili(await ospitiPossibili(turn.id))
   }
 
   async function chiudiElenco() {
@@ -64,6 +75,8 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
 
   if (!attivo) return null
 
+  const scelta = disponibili ? gruppiOspiti(disponibili, giaQui, cerca) : []
+
   return (
     <div style={{ marginTop: '18px' }}>
       {mostraElenco && <div style={etichetta}>OSPITI DI OGGI</div>}
@@ -77,7 +90,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
               {nomi}
             </div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
-              dal turno {turnoDOrigine(g.persone[0])}
+              dal turno {daDove(g.persone[0])}
               {g.scheda
                 ? <> · {g.scheda.name}{settimana ? ` · settimana ${settimana}` : ''}</>
                 : ' · nessuna scheda attiva'}
@@ -104,7 +117,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
       })}
 
       <button type="button" onClick={apriElenco} style={pulsanteAggiungi}>
-        + OSPITE SILVER
+        + OSPITE
       </button>
 
       {/* Il pannello esce dalla pagina e va attaccato al fondo del documento.
@@ -135,8 +148,20 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
               CHI VIENE OGGI DA UN ALTRO TURNO?
             </div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '14px', lineHeight: 1.45, marginBottom: '14px' }}>
-              Tocca chi è venuto: si allena sulla sua scheda e i carichi restano suoi.
-              Vale solo per oggi.
+              Tocca chi è venuto, da qualsiasi turno e coach: si allena sulla sua
+              scheda e i carichi restano suoi. Vale solo per oggi.
+            </div>
+
+            <div style={{ position: 'relative', marginBottom: '12px' }}>
+              {/* «text» e non «search»: il campo di ricerca del browser mette
+                  una sua ✕, piccola, accanto a quella grande qui sotto. */}
+              <input type="text" inputMode="search" enterKeyHint="search" value={cerca} onChange={e => setCerca(e.target.value)}
+                placeholder="Cerca nome o cognome" aria-label="Cerca nome o cognome"
+                autoComplete="off" autoCorrect="off" spellCheck={false}
+                style={campoCerca} />
+              {cerca && (
+                <button type="button" onClick={() => setCerca('')} aria-label="Cancella la ricerca" style={pulisciCerca}>✕</button>
+              )}
             </div>
 
             <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
@@ -145,40 +170,50 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
               )}
               {disponibili?.length === 0 && (
                 <div style={{ color: 'var(--testo-medio)', fontSize: '14px', lineHeight: 1.5, padding: '8px 0' }}>
-                  Negli altri turni non c’è nessun atleta Silver.
-                  Si segna da TURNI, toccando la matita accanto al nome.
+                  Negli altri turni non c’è nessun atleta.
                 </div>
               )}
-              {disponibili?.map(p => {
-                const qui = ospitiOggi.has(p.id)
-                return (
-                  <button key={p.id} type="button" onClick={() => alterna(p)} style={{
-                    ...comePulsante,
-                    display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
-                    padding: '13px 12px', marginBottom: '6px', borderRadius: '8px',
-                    background: qui ? 'var(--acc-riempimento)' : 'var(--sup)',
-                    border: `1px solid ${qui ? 'var(--acc-bordo-forte)' : 'transparent'}`,
-                    textAlign: 'left', cursor: 'pointer',
-                  }}>
-                    <span style={{
-                      flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: qui ? 'var(--accento)' : 'transparent',
-                      border: qui ? 'none' : '1px solid var(--bordo-forte)',
-                      color: '#fff', fontSize: '15px', lineHeight: 1,
-                    }}>{qui ? '✓' : ''}</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', letterSpacing: '0.5px', color: qui ? '#fff' : 'var(--testo-forte)' }}>
-                        {p.surname} {p.name}
-                      </span>
-                      <span style={{ display: 'block', color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>
-                        dal turno {turnoDOrigine(p)}
-                      </span>
-                    </span>
-                    {qui && <span style={{ flexShrink: 0, color: 'var(--accento)', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>OGGI QUI</span>}
-                  </button>
-                )
-              })}
+              {disponibili?.length > 0 && !scelta.length && (
+                <div style={{ color: 'var(--testo-medio)', fontSize: '14px', lineHeight: 1.5, padding: '8px 0' }}>
+                  Nessuno si chiama «{cerca.trim()}». Prova con un pezzo del nome o del cognome.
+                </div>
+              )}
+              {scelta.map(g => (
+                <div key={g.titolo}>
+                  <div style={{ ...etichetta, margin: '10px 2px 8px' }}>{g.titolo} · {g.persone.length}</div>
+                  {g.persone.map(p => {
+                    const qui = ospitiOggi.has(p.id)
+                    return (
+                      <button key={p.id} type="button" onClick={() => alterna(p)} style={{
+                        ...comePulsante,
+                        display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                        padding: '13px 12px', marginBottom: '6px', borderRadius: '8px',
+                        background: qui ? 'var(--acc-riempimento)' : 'var(--sup)',
+                        border: `1px solid ${qui ? 'var(--acc-bordo-forte)' : 'transparent'}`,
+                        textAlign: 'left', cursor: 'pointer',
+                      }}>
+                        <span style={{
+                          flexShrink: 0, width: '26px', height: '26px', borderRadius: '50%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: qui ? 'var(--accento)' : 'transparent',
+                          border: qui ? 'none' : '1px solid var(--bordo-forte)',
+                          color: '#fff', fontSize: '15px', lineHeight: 1,
+                        }}>{qui ? '✓' : ''}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', letterSpacing: '0.5px', color: qui ? '#fff' : 'var(--testo-forte)' }}>
+                            {p.surname} {p.name}
+                            {p.silver && <span style={distintivoSilver}>SILVER</span>}
+                          </span>
+                          <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '14px', marginTop: '1px' }}>
+                            dal turno {daDove(p)}
+                          </span>
+                        </span>
+                        {qui && <span style={{ flexShrink: 0, color: 'var(--accento)', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>OGGI QUI</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
 
             <button type="button" onClick={chiudiElenco} style={pulsanteFatto}>FATTO</button>
@@ -208,6 +243,25 @@ const pulsanteAggiungi = {
   background: 'transparent', border: '1px dashed var(--acc-bordo-forte)',
   color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif',
   fontSize: '15px', fontWeight: '800', letterSpacing: '1.5px', textAlign: 'center',
+}
+
+const campoCerca = {
+  width: '100%', boxSizing: 'border-box', padding: '13px 44px 13px 14px', borderRadius: '8px',
+  background: 'var(--sup)', border: '1px solid var(--bordo)', color: '#fff',
+  fontSize: '17px', outline: 'none',
+}
+
+const pulisciCerca = {
+  ...comePulsante,
+  position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+  width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer',
+  background: 'transparent', color: 'var(--testo-medio)', fontSize: '16px',
+}
+
+const distintivoSilver = {
+  marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
+  fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
+  color: 'var(--accento)', border: '1px solid var(--acc-bordo-forte)',
 }
 
 const sfondo = {

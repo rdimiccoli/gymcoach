@@ -1,6 +1,5 @@
 /**
- * Gli ospiti Silver del giorno: chi oggi si allena in un turno che non è il
- * suo.
+ * Gli ospiti del giorno: chi oggi si allena in un turno che non è il suo.
  *
  * Una riga di `client_visits` dice solo «oggi, in questo turno, c'è anche
  * questa persona». Da lì si risale alla scheda che segue nel SUO turno,
@@ -9,11 +8,14 @@
 
 import { supabase } from '../supabaseClient'
 import { run } from './notify'
-import { conOrdineDelTurno } from './ordineDb'
+import { tutteLeRighe } from './tutteLeRighe'
 import { oggiLocale } from './schede'
 import { raggruppaOspiti } from './assegnazioni'
 import { caricaAssegnazioni } from './assegnazioniDb'
 import { capacita } from './capacita'
+
+// Il turno di provenienza, con il nome del suo coach.
+const CON_TURNO = 'turns(name, time, coaches(name))'
 
 /**
  * { idTurnoOspitante: [{ scheda, persone }] } per oggi.
@@ -32,7 +34,7 @@ export async function caricaOspitiDiOggi(idTurni) {
   if (!visite?.length) return {}
 
   const { data: persone } = await run(
-    supabase.from('clients').select('id, name, surname, turn_id, turns(name, time)')
+    supabase.from('clients').select(`id, name, surname, turn_id, ${CON_TURNO}`)
       .in('id', [...new Set(visite.map(v => v.client_id))]),
     'Impossibile caricare i nomi degli ospiti.'
   )
@@ -57,13 +59,23 @@ export async function caricaOspitiDiOggi(idTurni) {
   return risultato
 }
 
-/** I Silver degli ALTRI turni: chi può essere aggiunto come ospite qui. */
-export async function silverDisponibili(idTurno) {
-  const { data } = await run(
-    await conOrdineDelTurno(
-      supabase.from('clients').select('id, name, surname, turn_id, turns(name, time)')
-        .eq('silver', true).eq('is_active', true).neq('turn_id', idTurno)),
-    'Impossibile caricare gli atleti Silver.'
+/**
+ * Chi può essere aggiunto come ospite qui: tutte le persone attive degli
+ * ALTRI turni, di qualsiasi coach, Silver o no. In ordine di cognome.
+ *
+ * Fino al 20/11/2026 erano solo i Silver. Il coach ora vede anche di chi è
+ * il turno da cui la persona viene: le 09:00 di Manu e le 09:00 di Sandro
+ * sono due turni diversi.
+ *
+ * Le persone sono qualche centinaio e crescono: si legge a pagine, perché
+ * oltre le mille Supabase taglierebbe l'elenco senza dirlo.
+ */
+export async function ospitiPossibili(idTurno) {
+  const { data } = await tutteLeRighe(
+    () => supabase.from('clients').select(`id, name, surname, silver, turn_id, ${CON_TURNO}`)
+      .eq('is_active', true).neq('turn_id', idTurno)
+      .order('surname').order('name').order('id'),
+    'Impossibile caricare gli atleti.'
   )
   return data || []
 }
@@ -89,3 +101,9 @@ export function segnaOspite(idTurno, idAtleta, presente) {
 /** «09:00», o il nome del turno se l'orario manca. Per dire da dove viene. */
 export const turnoDOrigine = persona =>
   persona?.turns?.time || persona?.turns?.name?.split('—')[0]?.trim() || ''
+
+/** «09:00 · Manu»: il turno e il coach da cui viene la persona. */
+export function daDove(persona) {
+  const coach = persona?.turns?.coaches?.name
+  return [turnoDOrigine(persona), coach].filter(Boolean).join(' · ')
+}
