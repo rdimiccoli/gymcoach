@@ -15,7 +15,14 @@ import { caricaAssegnazioni } from './assegnazioniDb'
 import { capacita } from './capacita'
 
 // Il turno di provenienza, con il nome del suo coach.
-const CON_TURNO = 'turns(name, time, coaches(name))'
+//
+// I nomi dopo il «!» dicono a Supabase QUALE collegamento seguire. Fra turni
+// e coach ce ne sono due: il proprietario del turno (`turns.coach_id`) e la
+// vecchia tabella delle condivisioni `turn_coaches`. Senza indicazione
+// Supabase non sceglie e risponde con un errore (300, «più di una
+// relazione»): il 20/11/2026 l'elenco degli ospiti non si apriva per questo.
+// Lo stesso vale per persona → turno, che passa anche da `client_visits`.
+const CON_TURNO = 'turns!clients_turn_id_fkey(name, time, coaches!turns_coach_id_fkey(name))'
 
 /**
  * { idTurnoOspitante: [{ scheda, persone }] } per oggi.
