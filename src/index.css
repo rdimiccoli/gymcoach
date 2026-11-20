@@ -56,6 +56,11 @@
   --testo:         #fff;
 
   /* ── colori con un significato, non decorativi ──────────────────── */
+  /* Argento: gli atleti Silver, riconoscibili a colpo d'occhio. */
+  --argento:        #d4d9e0;
+  --argento-scuro:  #9aa3ae;
+  --argento-alone:  rgba(212,217,224,.28);
+  --argento-bordo:  rgba(212,217,224,.55);
   --ok: #22c55e;
   --attenzione: #eab308;
   --errore: #ef4444;

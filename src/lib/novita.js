@@ -35,7 +35,7 @@ export const NOVITA = [
         titolo: 'OSPITE PUÒ ESSERE CHIUNQUE',
         testo: 'Con «+ OSPITE» aggiungi al turno chi viene da un altro turno: anche se non è Silver, anche se è di un altro coach. Scrivi il nome per trovarlo: si allena sulla sua scheda e i carichi restano suoi.',
         dove: ['APRI UN TURNO', 'IN FONDO', '+ OSPITE'],
-        nota: 'I Silver compaiono per primi. Accanto a ogni nome vedi il turno e il coach da cui viene: «09:00 · Manu».',
+        nota: 'I Silver compaiono per primi, con l\'alone argento. Accanto a ogni nome vedi il turno e il coach da cui viene: «09:00 · Manu».',
         serve: 'silver',
       },
     ],

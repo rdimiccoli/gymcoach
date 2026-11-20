@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { capacita } from '../lib/capacita'
-import { comePulsante } from '../lib/stile'
+import { comePulsante, distintivoSilver, aloneSilver } from '../lib/stile'
 import { tocco } from '../lib/aptico'
 import { settimanaDaCalendario } from '../lib/schede'
 import { caricaOspitiDiOggi, ospitiPossibili, segnaOspite, daDove } from '../lib/ospitiDb'
@@ -180,7 +180,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
               )}
               {scelta.map(g => (
                 <div key={g.titolo}>
-                  <div style={{ ...etichetta, margin: '10px 2px 8px' }}>{g.titolo} · {g.persone.length}</div>
+                  <div style={{ ...etichetta, margin: '10px 2px 8px', ...(g.titolo === 'SILVER' && { color: 'var(--argento)' }) }}>{g.titolo} · {g.persone.length}</div>
                   {g.persone.map(p => {
                     const qui = ospitiOggi.has(p.id)
                     return (
@@ -190,6 +190,9 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
                         padding: '13px 12px', marginBottom: '6px', borderRadius: '8px',
                         background: qui ? 'var(--acc-riempimento)' : 'var(--sup)',
                         border: `1px solid ${qui ? 'var(--acc-bordo-forte)' : 'transparent'}`,
+                        // Silver: l'alone argento; scelto, il bordo torna arancione
+                        // ma l'alone resta, così si vede ancora che è Silver.
+                        ...(p.silver && (qui ? { boxShadow: aloneSilver.boxShadow } : aloneSilver)),
                         textAlign: 'left', cursor: 'pointer',
                       }}>
                         <span style={{
@@ -256,12 +259,6 @@ const pulisciCerca = {
   position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
   width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer',
   background: 'transparent', color: 'var(--testo-medio)', fontSize: '16px',
-}
-
-const distintivoSilver = {
-  marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
-  fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
-  color: 'var(--accento)', border: '1px solid var(--acc-bordo-forte)',
 }
 
 const sfondo = {

@@ -1,4 +1,4 @@
-import { comePulsante } from '../lib/stile.js'
+import { comePulsante, distintivoSilver, aloneSilver } from '../lib/stile.js'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk } from '../lib/notify'
@@ -277,7 +277,7 @@ export default function Turns({ navigate, goHome, coach }) {
           </div>
         )}
         {clients.map((client, indice) => (
-          <div key={client.id} data-scivola={client.id} style={{ ...row, opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
+          <div key={client.id} data-scivola={client.id} style={{ ...row, ...(client.silver && aloneSilver), opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {client.surname} {client.name}
@@ -334,12 +334,13 @@ export default function Turns({ navigate, goHome, coach }) {
                 ...comePulsante,
                 display: 'flex', alignItems: 'center', gap: '14px', width: '100%',
                 padding: '14px', marginBottom: '20px', borderRadius: '8px', cursor: 'pointer',
-                background: editSilver ? 'var(--acc-riempimento)' : 'var(--sup-alta)',
-                border: `1px solid ${editSilver ? 'var(--acc-bordo-forte)' : 'var(--bordo)'}`,
+                background: editSilver ? 'rgba(212,217,224,.08)' : 'var(--sup-alta)',
+                border: `1px solid ${editSilver ? 'var(--argento-bordo)' : 'var(--bordo)'}`,
+                boxShadow: editSilver ? aloneSilver.boxShadow : 'none',
                 textAlign: 'left',
               }}>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '800', letterSpacing: '1.5px', color: editSilver ? 'var(--accento)' : '#fff' }}>
+                  <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '800', letterSpacing: '1.5px', color: editSilver ? 'var(--argento)' : '#fff' }}>
                     SILVER
                   </span>
                   <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.4, marginTop: '2px' }}>
@@ -348,7 +349,7 @@ export default function Turns({ navigate, goHome, coach }) {
                 </span>
                 <span aria-hidden="true" style={{
                   flexShrink: 0, width: '46px', height: '26px', borderRadius: '13px', position: 'relative',
-                  background: editSilver ? 'var(--accento)' : 'var(--bordo-forte)', transition: 'background .15s',
+                  background: editSilver ? 'var(--argento-scuro)' : 'var(--bordo-forte)', transition: 'background .15s',
                 }}>
                   <span style={{
                     position: 'absolute', top: '3px', left: editSilver ? '23px' : '3px',
@@ -500,11 +501,6 @@ export default function Turns({ navigate, goHome, coach }) {
 }
 
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
-const distintivoSilver = {
-  marginLeft: '8px', padding: '1px 6px', borderRadius: '3px', verticalAlign: 'middle',
-  fontSize: '11px', fontWeight: '800', letterSpacing: '1px',
-  color: 'var(--accento)', border: '1px solid var(--acc-bordo-forte)',
-}
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '8px' }
 const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }

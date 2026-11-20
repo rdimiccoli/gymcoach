@@ -29,3 +29,22 @@ export const comePulsante = {
   textAlign: 'inherit',
   WebkitAppearance: 'none',
 }
+
+/**
+ * Il segno degli atleti Silver: una targhetta argento accanto al nome.
+ *
+ * Prima era arancione come tutto il resto, e in mezzo ai pulsanti arancioni
+ * non si notava. I coach hanno chiesto l'argento: si capisce senza leggere.
+ */
+export const distintivoSilver = {
+  display: 'inline-block', marginLeft: '8px', padding: '1px 7px', borderRadius: '3px', verticalAlign: 'middle',
+  fontSize: '11px', fontWeight: '900', letterSpacing: '1px', lineHeight: 1.5,
+  color: '#15171a', background: 'linear-gradient(135deg, #f3f5f8 0%, var(--argento) 45%, var(--argento-scuro) 100%)',
+  boxShadow: '0 0 8px var(--argento-alone)',
+}
+
+/** L'alone argento attorno a una riga intera, per chi è Silver. */
+export const aloneSilver = {
+  border: '1px solid var(--argento-bordo)',
+  boxShadow: '0 0 12px var(--argento-alone), inset 0 0 10px rgba(212,217,224,.06)',
+}
