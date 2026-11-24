@@ -1,6 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 --  LE FRASI DELLA FESTA PER I RECORD
 --
+--  ⚠️  DAL 24/11/2026 L'APP NON LE USA PIÙ. La festa a tutto schermo è stata
+--      tolta su richiesta dei coach: per un record c'è di nuovo l'avviso in
+--      alto, come prima. La tabella resta nel database (non si cancella
+--      niente) ma non serve: non c'è bisogno di lanciare questo script, e le
+--      righe che ci sono non fanno niente.
+--
 --  Quando un cliente batte il suo record, l'app fa festa: un'emoji, un
 --  titolo grande e una frase divertente, presi a caso fra le righe di questa
 --  tabella. Le righe stanno nel database e valgono su tutti i telefoni.

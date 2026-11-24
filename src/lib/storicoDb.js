@@ -14,11 +14,15 @@ import { supabase } from '../supabaseClient'
 import { run } from './notify'
 import { tutteLeRighe } from './tutteLeRighe'
 import { ultimiCarichiPrima } from './carichiPrecedenti'
+import { repsPerSettimana } from './schede'
+import { settimaneDi, ogniDi } from './settimane'
 
 /**
  * `righe`: tutti i carichi, con `cycle_exercises.exercise_id` e — se si
  * riesce a leggerla — la scheda (`cycle_exercises.cycles`).
- * `precedenti`: { «idPersona_idEsercizio»: { kg, settimana, scheda } }.
+ * `precedenti`: { «idPersona_idEsercizio»: { kg, settimana, scheda, reps } }.
+ *   `reps`: le ripetizioni che quella settimana aveva nella scheda prima
+ *   («4x6»), o undefined se non si riescono a sapere.
  * Se la lettura non passa: righe null (l'avviso è già a schermo).
  */
 export async function storicoEsercizi(idPersone, idEsercizi, schedaAperta) {
@@ -38,14 +42,34 @@ export async function storicoEsercizi(idPersone, idEsercizi, schedaAperta) {
     .filter(id => id && id !== schedaAperta?.id))]
   if (!idSchede.length) return { righe, precedenti: {} }
   const { data: schede } = await run(
-    supabase.from('cycles').select('id, name, start_date').in('id', idSchede),
+    // Tutta la riga: per le ripetizioni servono anche durata e passo.
+    supabase.from('cycles').select('*').in('id', idSchede),
     'Impossibile leggere le schede precedenti.')
   const perId = Object.fromEntries((schede || []).map(s => [s.id, s]))
   const conScheda = righe.map(r => ({
     ...r, cycle_exercises: { ...r.cycle_exercises, cycles: perId[r.cycle_exercises?.cycle_id] },
   }))
-  return {
-    righe: conScheda,
-    precedenti: ultimiCarichiPrima(conScheda.filter(r => r.cycle_exercises.cycles), schedaAperta),
+  const precedenti = ultimiCarichiPrima(conScheda.filter(r => r.cycle_exercises.cycles), schedaAperta)
+  await aggiungiRipetizioni(precedenti, perId)
+  return { righe: conScheda, precedenti }
+}
+
+/**
+ * Accanto al carico della scheda prima, anche le ripetizioni che quella
+ * settimana aveva: «SCHEDA PREC. 4x6 · 20 kg». Si leggono solo le righe che
+ * servono, poche. Se la lettura non passa si mostra il carico senza le
+ * ripetizioni, come prima: non è un motivo per un avviso rosso.
+ */
+async function aggiungiRipetizioni(precedenti, schedePerId) {
+  const idRighe = [...new Set(Object.values(precedenti).map(p => p.idRiga).filter(Boolean))]
+  if (!idRighe.length) return
+  const { data, error } = await supabase.from('cycle_exercises').select('*').in('id', idRighe)
+  if (error || !data) return
+  const righePerId = Object.fromEntries(data.map(r => [r.id, r]))
+  for (const p of Object.values(precedenti)) {
+    const riga = righePerId[p.idRiga]
+    const scheda = schedePerId[p.idScheda]
+    if (!riga || !scheda || !p.settimana) continue
+    p.reps = repsPerSettimana(riga, p.settimana, settimaneDi(scheda), ogniDi(scheda))
   }
 }

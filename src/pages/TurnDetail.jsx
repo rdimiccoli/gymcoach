@@ -15,9 +15,6 @@ import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
-import { FRASI_DI_SERIE, scegliFrase } from '../lib/frasiRecord'
-import { caricaFrasi } from '../lib/frasiRecordDb'
-import FestaRecord from '../components/FestaRecord'
 import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
 import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
@@ -76,21 +73,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const [saltelli, setSaltelli] = useState({})     // il numero cambiato con + / −
   const [salvati, setSalvati] = useState({})       // il server ha detto sì
   const [recordAppena, setRecordAppena] = useState({}) // record battuto adesso
-  // Le feste per i record, in fila: due record nello stesso salvataggio (una
-  // superserie) fanno due feste una dopo l'altra, non una sopra l'altra.
-  const [feste, setFeste] = useState([])
-  // Vedi controllaRecord: le feste in attesa che il coach finisca di
-  // toccare, chi ha già avuto la sua, e il record sempre aggiornato (le
-  // scritture partono da timer, e lo stato letto lì potrebbe essere vecchio).
-  const festaInAttesa = useRef({})
-  const giaFesteggiati = useRef(new Set())
+  // Vedi controllaRecord: gli avvisi di record in attesa che il coach
+  // finisca di toccare, chi ha già avuto il suo, e il record sempre
+  // aggiornato (le scritture partono da timer, e lo stato letto lì potrebbe
+  // essere vecchio).
+  const avvisoInAttesa = useRef({})
+  const giaAvvisati = useRef(new Set())
   const recordRef = useRef({})
-  useEffect(() => () => Object.values(festaInAttesa.current).forEach(a => clearTimeout(a.timer)), [])
-  // Le frasi si rileggono a ogni apertura: una frase aggiunta su Supabase
-  // vale dal turno dopo. Intanto, quelle di serie.
-  const frasi = useRef(FRASI_DI_SERIE)
-  const ultimaFrase = useRef(null)
-  useEffect(() => { caricaFrasi().then(f => { frasi.current = f }) }, [])
+  useEffect(() => () => Object.values(avvisoInAttesa.current).forEach(a => clearTimeout(a.timer)), [])
   const elencoRef = useRef(null)
   const ricordaPosti = useScivola(elencoRef)
   const [ordineAttivo, setOrdineAttivo] = useState(false)
@@ -300,7 +290,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
     tocco() // conferma il tocco senza obbligare a guardare lo schermo
-    rimandaFesta(client, ex)
+    rimandaAvviso(client, ex)
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])
     // Settimana nuova, ancora vuota: si parte dal carico della volta prima,
@@ -322,19 +312,19 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
 
   /**
    * Se il carico appena salvato supera il massimo di sempre su quell'esercizio,
-   * lo si dice: subito con «🏆 RECORD» sulla riga, e con la festa a tutto
-   * schermo — ma con giudizio.
+   * lo si dice: subito con «🏆 RECORD» sulla riga, e con l'avviso in alto
+   * «🏆 Record di Maria: 52.5 kg…», che sparisce da solo.
    *
-   * Prima la festa partiva a ogni salvataggio sopra il record, e il
-   * salvataggio parte un attimo dopo ogni tocco: chi segnava 10 kg toccando +
-   * con calma si prendeva dieci feste. Ora:
-   *  - la festa aspetta che il coach abbia finito di toccare (ATTESA_FESTA
-   *    dopo l'ultimo salvataggio; un nuovo tocco la rimanda) e mostra il peso
+   * Dall'11 al 24/11/2026 al posto dell'avviso c'era una festa a tutto
+   * schermo, con coriandoli e frasi. I coach l'hanno bocciata: faceva perdere
+   * tempo in sala. Si è tornati all'avviso di prima, tenendo le regole che
+   * evitano di ripeterlo a ogni tocco:
+   *  - l'avviso aspetta che il coach abbia finito di toccare (ATTESA_AVVISO
+   *    dopo l'ultimo salvataggio; un nuovo tocco lo rimanda) e dice il peso
    *    finale;
-   *  - una festa sola per persona ed esercizio in tutta la seduta;
-   *  - si confronta con il massimo di PRIMA di oggi, e da zero non si fa
-   *    festa: 0 kg è corpo libero o un carico mai segnato davvero, e 1, 2,
-   *    3 kg sopra lo zero non sono un traguardo.
+   *  - uno solo per persona ed esercizio in tutta la seduta;
+   *  - si confronta con il massimo di PRIMA di oggi, e da zero non si
+   *    avvisa: 0 kg è corpo libero o un carico mai segnato davvero.
    * `subito`: dai DETTAGLI, dove il peso si scrive tutto in una volta.
    */
   function controllaRecord(client, ex, kg, subito = false) {
@@ -347,31 +337,24 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       setRecord(prev => ({ ...prev, [chiave]: kg }))
       setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     }
-    if (giaFesteggiati.current.has(chiave)) return
-    const inAttesa = festaInAttesa.current[chiave]
+    if (giaAvvisati.current.has(chiave)) return
+    const inAttesa = avvisoInAttesa.current[chiave]
     const prima = inAttesa ? inAttesa.prima : massimo
     clearTimeout(inAttesa?.timer)
-    delete festaInAttesa.current[chiave]
+    delete avvisoInAttesa.current[chiave]
     if (prima === undefined || !(prima > 0) || kg <= prima) return
     const timer = setTimeout(() => {
-      delete festaInAttesa.current[chiave]
-      giaFesteggiati.current.add(chiave)
-      festa()
-      // La festa a tutto schermo, con una frase a caso (mai la stessa di prima).
-      const frase = scegliFrase(frasi.current, ultimaFrase.current)
-      ultimaFrase.current = frase
-      setFeste(prev => [...prev, {
-        id: `${chiave}_${kg}_${Date.now()}`, nome: client.name, kg, prima,
-        esercizio: ex?.exercises?.name ?? '',
-        emoji: frase.emoji, titolo: frase.titolo, frase: frase.testo,
-      }])
-    }, subito ? 0 : ATTESA_FESTA)
-    festaInAttesa.current[chiave] = { timer, prima }
+      delete avvisoInAttesa.current[chiave]
+      giaAvvisati.current.add(chiave)
+      festa() // la vibrazione del record
+      notifyOk(`🏆 Record di ${client.name}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${prima})`)
+    }, subito ? 0 : ATTESA_AVVISO)
+    avvisoInAttesa.current[chiave] = { timer, prima }
   }
 
-  /** Un nuovo tocco sullo stesso esercizio rimanda la festa in attesa. */
-  function rimandaFesta(client, ex) {
-    const inAttesa = festaInAttesa.current[`${client.id}_${ex?.exercise_id}`]
+  /** Un nuovo tocco sullo stesso esercizio rimanda l'avviso in attesa. */
+  function rimandaAvviso(client, ex) {
+    const inAttesa = avvisoInAttesa.current[`${client.id}_${ex?.exercise_id}`]
     if (inAttesa) clearTimeout(inAttesa.timer)
   }
 
@@ -424,7 +407,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       // la prima settimana di una scheda nuova: vale l'ultimo carico della
       // scheda prima, sullo stesso esercizio.
       const prima = precedenti[`${client.id}_${ex.exercise_id}`]
-      if (prima) return { currentKg, prevKg: prima.kg, prevReps: undefined, daPrima: prima }
+      if (prima) return { currentKg, prevKg: prima.kg, prevReps: prima.reps, daPrima: prima }
     }
     const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
     const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek, totale, passo) : undefined
@@ -674,7 +657,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             (mezzi chili e nota). */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {group.exercises.map(ex => {
-                            const { currentKg, prevKg, daPrima } = getLoadInfo(client, ex)
+                            const { currentKg, prevKg, prevReps, daPrima } = getLoadInfo(client, ex)
                             // Un carico di 0 kg (corpo libero, macchina assistita) è
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
@@ -690,9 +673,17 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                     </div>
                                   )}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                                    <span style={{ color: 'var(--testo-chiaro)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600' }}>
-                                      × {repsPerSettimana(ex, settimana, totale, passo)}
-                                    </span>
+                                    {/* Le ripetizioni di questa settimana. Con un
+                                        esercizio solo sono già scritte sotto il
+                                        nome, grandi: qui sarebbero un doppione, e
+                                        accanto a «PREC.» si confondevano con quelle
+                                        della volta prima. Nelle superserie invece
+                                        ognuno ha le sue, e restano. */}
+                                    {group.exercises.length > 1 && (
+                                      <span style={{ color: 'var(--testo-chiaro)', fontSize: '14px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '600' }}>
+                                        × {repsPerSettimana(ex, settimana, totale, passo)}
+                                      </span>
+                                    )}
                                     {currentKg !== undefined && record[`${client.id}_${ex.exercise_id}`] !== undefined
                                       && currentKg >= record[`${client.id}_${ex.exercise_id}`] && currentKg > 0 && (
                                       <span title="Massimo di sempre su questo esercizio"
@@ -708,7 +699,12 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                       // grigio quasi trasparente, e chi ci vede meno non lo
                                       // leggeva. Ora sta in un riquadro, con il numero
                                       // grande e bianco. Arancione se viene dalla scheda prima.
+                                      // Dal 24/11/2026 con le ripetizioni di quella volta
+                                      // («PREC. 4x6 · 20 kg»): 20 kg per 4x6 non è 20 kg
+                                      // per 4x4, e il coach decide il carico guardando
+                                      // tutte e due.
                                       <span title={daPrima ? `Ultimo carico nella scheda «${daPrima.scheda}», settimana ${daPrima.settimana}` : undefined}
+                                        aria-label={`Volta prima: ${prevReps ? `${prevReps}, ` : ''}${prevKg} chili`}
                                         style={{
                                           display: 'inline-flex', alignItems: 'baseline', gap: '4px',
                                           background: daPrima ? 'var(--acc-fondo-forte)' : 'var(--sup-alta)',
@@ -718,6 +714,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                         <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', color: daPrima ? 'var(--accento)' : 'var(--testo-chiaro)' }}>
                                           {daPrima ? 'SCHEDA PREC.' : 'PREC.'}
                                         </span>
+                                        {prevReps && (<>
+                                          <span style={{ fontSize: '16px', fontWeight: '800', color: '#fff' }}>{prevReps}</span>
+                                          <span aria-hidden="true" style={{ fontSize: '14px', fontWeight: '700', color: 'var(--testo-medio)' }}>·</span>
+                                        </>)}
                                         <span style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>{prevKg}</span>
                                         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--testo-chiaro)' }}>kg</span>
                                       </span>
@@ -803,10 +803,6 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           onSave={(updates) => saveLoads(editModal.client.id, settimana, updates)}
           onClose={() => setEditModal(null)}
         />
-      )}
-
-      {feste[0] && (
-        <FestaRecord key={feste[0].id} festa={feste[0]} onFine={() => setFeste(prev => prev.slice(1))} />
       )}
 
       <BottomNav active="home" navigate={navigate} goHome={goHome} />
@@ -1016,9 +1012,10 @@ const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflo
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
 const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
 
-// Quanto aspetta la festa dopo l'ultimo salvataggio (che a sua volta parte
-// quasi un secondo dopo l'ultimo tocco): il tempo di finire di segnare.
-const ATTESA_FESTA = 1500
+// Quanto aspetta l'avviso del record dopo l'ultimo salvataggio (che a sua
+// volta parte quasi un secondo dopo l'ultimo tocco): il tempo di finire di
+// segnare.
+const ATTESA_AVVISO = 1500
 
 // «G1 · G3» accanto al nome: i giorni che la persona fa di questa scheda.
 const distintivoGiorni = {

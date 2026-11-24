@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { ultimiCarichiPrima } from './carichiPrecedenti'
 
 const riga = (client_id, exercise_id, cycle_id, start_date, week, kg, name = cycle_id) =>
-  ({ client_id, week, kg, cycle_exercises: { exercise_id, cycle_id, cycles: { name, start_date } } })
+  ({ client_id, week, kg, cycle_exercise_id: `${cycle_id}_${exercise_id}`, cycle_exercises: { exercise_id, cycle_id, cycles: { name, start_date } } })
 
 const nuova = { id: 'nuova', start_date: '2026-11-09' }
 
@@ -15,6 +15,11 @@ describe('il carico della volta prima, da un altra scheda', () => {
       riga('marco', 'squat', 'forza', '2026-09-21', 5, 55, 'Forza I'),
     ], nuova)
     expect(u.marco_squat).toMatchObject({ kg: 52.5, settimana: 8, scheda: 'Forza I' })
+  })
+
+  it('dice da quale riga e scheda viene, per ritrovarne le ripetizioni', () => {
+    const u = ultimiCarichiPrima([riga('marco', 'squat', 'forza', '2026-09-21', 8, 52.5)], nuova)
+    expect(u.marco_squat).toMatchObject({ idScheda: 'forza', idRiga: 'forza_squat' })
   })
 
   it('persone ed esercizi restano separati', () => {

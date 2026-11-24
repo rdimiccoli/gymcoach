@@ -27,6 +27,19 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-24',
+    data: '24 novembre',
+    schede: [
+      {
+        icona: '🔢',
+        titolo: 'LA VOLTA PRIMA, CON LE RIPETIZIONI',
+        testo: 'Accanto al carico della volta prima ora vedi anche le ripetizioni di quella settimana: «PREC. 4x6 · 20 kg». Così sai se quei 20 kg erano per 4x6 o per 4x4.',
+        dove: ['APRI UN TURNO', 'TOCCA UN ESERCIZIO', 'PREC.'],
+        nota: 'Le ripetizioni di questa settimana restano scritte sotto il nome, grandi.',
+      },
+    ],
+  },
+  {
     id: '2026-11-20',
     data: '20 novembre',
     schede: [

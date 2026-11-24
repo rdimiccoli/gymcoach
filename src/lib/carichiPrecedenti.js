@@ -20,7 +20,9 @@
  *            cycles: { name, start_date } } }]
  * `scheda`: quella aperta, { id, start_date }.
  *
- * Torna { «idPersona_idEsercizio»: { kg, settimana, scheda } }.
+ * Torna { «idPersona_idEsercizio»: { kg, settimana, scheda, idScheda,
+ *          idRiga } }: `idRiga` è la riga di `cycle_exercises` da cui viene,
+ *          e serve a ritrovarne le ripetizioni (vedi storicoDb.js).
  */
 export function ultimiCarichiPrima(righe, scheda) {
   const inizio = scheda?.start_date || null
@@ -36,7 +38,10 @@ export function ultimiCarichiPrima(righe, scheda) {
     const chiave = `${r.client_id}_${riga.exercise_id}`
     const visto = ultimi[chiave]
     const piuRecente = !visto || data > visto.data || (data === visto.data && (r.week ?? 0) > visto.settimana)
-    if (piuRecente) ultimi[chiave] = { kg, settimana: r.week ?? 0, scheda: altra.name || '', data }
+    if (piuRecente) ultimi[chiave] = {
+      kg, settimana: r.week ?? 0, scheda: altra.name || '', data,
+      idScheda: riga.cycle_id, idRiga: r.cycle_exercise_id,
+    }
   }
   return ultimi
 }

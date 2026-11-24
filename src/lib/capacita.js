@@ -65,7 +65,7 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, frasiRecord, giorniPersona] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, giorniPersona] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -79,7 +79,6 @@ export function capacita() {
       presente('cycles', 'ogni'),
       presente('cycle_exercises', 'reps_fasi'),
       presente('turns', 'sort_order'),
-      presente('frasi_record', 'id'),
       presente('giorni_persona', 'cycle_id'),
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
@@ -90,8 +89,6 @@ export function capacita() {
       progressioni: colonnaOgni && colonnaFasi,
       // I turni in Home nell'ordine scelto dal coach.
       ordineTurni,
-      // Le frasi della festa per i record, scritte nel database.
-      frasiRecord,
       // Chi fa quali giorni di una scheda.
       giorniPersona }
   })()
