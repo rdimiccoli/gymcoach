@@ -11,6 +11,8 @@ import { ScheletroElenco } from '../components/Scheletro'
 import PulsanteFlottante from '../components/PulsanteFlottante'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto } from '../lib/nomi'
+import NotaPersona from '../components/NotaPersona'
 
 export default function Turns({ navigate, goHome, coach }) {
   const [turns, setTurns] = useState([])
@@ -31,6 +33,9 @@ export default function Turns({ navigate, goHome, coach }) {
   const [editSurname, setEditSurname] = useState('')
   const [editSilver, setEditSilver] = useState(false)
   const [silverAttivo, setSilverAttivo] = useState(false)
+  // La nota accanto al nome: solo se il database ha la colonna (capacita.js).
+  const [notaAttiva, setNotaAttiva] = useState(false)
+  const [editNota, setEditNota] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   // Cosa si perde con la cancellazione aperta: undefined finché si conta.
   // Il ref tiene a chi appartiene il conto in corso, così un conto che
@@ -166,7 +171,7 @@ export default function Turns({ navigate, goHome, coach }) {
   // sarebbe tutto com'era.
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   useEffect(() => {
-    capacita().then(c => { setSilverAttivo(c.silver); setOrdineAttivo(c.ordinePersone) })
+    capacita().then(c => { setSilverAttivo(c.silver); setOrdineAttivo(c.ordinePersone); setNotaAttiva(c.notaPersona) })
   }, [])
 
   async function executeDeleteTurn() {
@@ -189,7 +194,7 @@ export default function Turns({ navigate, goHome, coach }) {
   async function toggleClient(client) {
     const { error } = await run(
       supabase.from('clients').update({ is_active: !client.is_active }).eq('id', client.id),
-      `Impossibile ${client.is_active ? 'archiviare' : 'riattivare'} ${client.surname} ${client.name}.`
+      `Impossibile ${client.is_active ? 'archiviare' : 'riattivare'} ${nomeCompleto(client)}.`
     )
     if (error) return
     await loadClients(selectedTurn)
@@ -201,6 +206,7 @@ export default function Turns({ navigate, goHome, coach }) {
     setEditName(client.name)
     setEditSurname(client.surname)
     setEditSilver(!!client.silver)
+    setEditNota(client.nota || '')
   }
 
   async function saveEditClient() {
@@ -211,6 +217,7 @@ export default function Turns({ navigate, goHome, coach }) {
     // migrazione, una colonna sconosciuta farebbe fallire tutto il salvataggio,
     // nome compreso.
     if (silverAttivo) modifiche.silver = editSilver
+    if (notaAttiva) modifiche.nota = editNota.trim().slice(0, 30) || null
     const { error } = await run(
       supabase.from('clients').update(modifiche).eq('id', editClient.id),
       'Modifiche al cliente non salvate.'
@@ -234,7 +241,7 @@ export default function Turns({ navigate, goHome, coach }) {
     // cancellazione manuale che c'era prima era ridondante.
     const { error } = await run(
       supabase.from('clients').delete().eq('id', client.id),
-      `Impossibile eliminare ${client.surname} ${client.name}.`
+      `Impossibile eliminare ${nomeCompleto(client)}.`
     )
     if (error) return
     setClients(prev => prev.filter(c => c.id !== client.id))
@@ -280,8 +287,9 @@ export default function Turns({ navigate, goHome, coach }) {
           <div key={client.id} data-scivola={client.id} style={{ ...row, ...(client.silver && aloneSilver), opacity: client.is_active ? 1 : 0.45, marginBottom: '8px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                {client.surname} {client.name}
+                {nomeCompleto(client)}
                 {client.silver && <span style={distintivoSilver}>SILVER</span>}
+                <NotaPersona nota={client.nota} />
               </div>
               {!client.is_active && <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>In archivio</div>}
             </div>
@@ -297,7 +305,7 @@ export default function Turns({ navigate, goHome, coach }) {
               </div>
             ) : (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <button onClick={() => openEditClient(client)} aria-label={`Modifica ${client.surname} ${client.name}`}
+              <button onClick={() => openEditClient(client)} aria-label={`Modifica ${nomeCompleto(client)}`}
                 style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '15px', minWidth: '44px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 ✏️
               </button>
@@ -305,7 +313,7 @@ export default function Turns({ navigate, goHome, coach }) {
                 style={{ background: 'var(--sup-alta)', border: '1px solid var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 {client.is_active ? 'ARCHIVIA' : 'RIATTIVA'}
               </button>
-              <button onClick={() => confirmDeleteClient(client)} aria-label={`Elimina ${client.surname} ${client.name}`}
+              <button onClick={() => confirmDeleteClient(client)} aria-label={`Elimina ${nomeCompleto(client)}`}
                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(239,68,68,0.85)', fontSize: '15px', minWidth: '44px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 🗑
               </button>
@@ -326,6 +334,14 @@ export default function Turns({ navigate, goHome, coach }) {
             <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nome" style={{ ...inp, marginBottom: '12px' }} />
             <div style={fieldLabel}>COGNOME</div>
             <input value={editSurname} onChange={e => setEditSurname(e.target.value)} placeholder="Cognome" style={{ ...inp, marginBottom: '20px' }} />
+            {notaAttiva && (<>
+              <div style={fieldLabel}>NOTA <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>(facoltativa)</span></div>
+              <input value={editNota} onChange={e => setEditNota(e.target.value)} maxLength={30}
+                placeholder="es. nuova, over, arriva tardi" style={{ ...inp, marginBottom: '6px' }} />
+              <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginBottom: '20px' }}>
+                Compare accanto al nome, in seduta e negli elenchi.
+              </div>
+            </>)}
 
             {/* Un interruttore solo, con scritto sotto cosa cambia: chi lo
                 accende deve sapere che effetto ha senza doverlo chiedere. */}
@@ -377,7 +393,7 @@ export default function Turns({ navigate, goHome, coach }) {
               Confermi di voler eliminare
             </div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
-              {deleteConfirm.surname} {deleteConfirm.name}?
+              {nomeCompleto(deleteConfirm)}?
             </div>
             <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginBottom: '14px' }}>
               Se vuoi solo toglierla dal turno senza perdere niente, usa ARCHIVIA.

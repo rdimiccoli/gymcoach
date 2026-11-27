@@ -14,6 +14,10 @@ import { biometriaDisponibile, bloccoAttivo, invitoRifiutato, rifiutaInvito } fr
 import { ScheletroSchede } from '../components/Scheletro'
 import CardTurno from '../components/CardTurno'
 import BottomNav from '../components/BottomNav'
+import { nomeECognome, nomeCompleto } from '../lib/nomi'
+import { chiManca, giornoCorto, GIORNI_ASSENZA } from '../lib/assenti'
+import { caricaUltimi, personeAttive } from '../lib/assentiDb'
+import { turnoDOrigine } from '../lib/ospitiDb'
 
 const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
 
@@ -37,6 +41,9 @@ export default function Home({ navigate, goHome, session, coach }) {
   const [atlete, setAtlete] = useState({})       // turnId → [{ id }], solo per contarle
   const [assegnazioni, setAssegnazioni] = useState({})  // schedaId → Set(atletaId)
   const [ospiti, setOspiti] = useState({})       // turnId → [{ scheda, persone }] di oggi
+  // Chi non ha un peso segnato da tre settimane (vedi assenti.js).
+  const [assenti, setAssenti] = useState([])
+  const [tuttiAssenti, setTuttiAssenti] = useState(false)
   const [loading, setLoading] = useState(true)
   // Riordinare i turni: dai ⋮ in alto, «Riordina i turni». Le card diventano
   // compatte, con una maniglia per trascinarle, e finché si riordina non si
@@ -158,6 +165,11 @@ export default function Home({ navigate, goHome, session, coach }) {
       ])
       setAssegnazioni(assegnate)
       setOspiti(diOggi)
+      // Dopo il resto: la Home si vede subito, il riquadro arriva un attimo dopo.
+      if (caps.ultimiAllenamenti) {
+        const [ultimi, persone] = await Promise.all([caricaUltimi(), personeAttive(ids)])
+        setAssenti(ultimi ? chiManca(persone, ultimi) : [])
+      }
     }
     setLoading(false)
   }
@@ -275,7 +287,7 @@ export default function Home({ navigate, goHome, session, coach }) {
                   key={`ospiti-${g.scheda.id}`}
                   turno={turno}
                   scheda={g.scheda}
-                  ospiti={g.persone.map(p => `${p.name} ${p.surname}`)}
+                  ospiti={g.persone.map(p => `${nomeECognome(p)}`)}
                   provenienza={daDove(g.persone[0])}
                   mostraOrario={false}
                   mostraConteggio={false}
@@ -289,6 +301,32 @@ export default function Home({ navigate, goHome, session, coach }) {
             </div>
           )
         })}
+
+        {!loading && !riordina && assenti.length > 0 && (
+          <div style={{ marginTop: '20px' }}>
+            <div style={etichetta}>NON SI VEDONO DA {GIORNI_ASSENZA / 7} SETTIMANE · {assenti.length}</div>
+            <div style={riquadroAssenti}>
+              {(tuttiAssenti ? assenti : assenti.slice(0, 5)).map(p => (
+                <button key={p.id} type="button" onClick={() => navigate('athlete-profile', { client: p })} style={rigaAssente}>
+                  <span style={{ flex: 1, minWidth: 0, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {nomeCompleto(p)}
+                  </span>
+                  <span style={{ color: 'var(--testo-medio)', fontSize: '13px', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                    {turnoDOrigine(p)}{turnoDOrigine(p) ? ' · ' : ''}ultima volta {giornoCorto(p.ultimo)}
+                  </span>
+                </button>
+              ))}
+              {assenti.length > 5 && (
+                <button type="button" onClick={() => setTuttiAssenti(v => !v)} style={{ ...rigaAssente, justifyContent: 'center', color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', fontSize: '14px' }}>
+                  {tuttiAssenti ? 'MOSTRA MENO' : `MOSTRA TUTTI (${assenti.length})`}
+                </button>
+              )}
+            </div>
+            <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '6px', lineHeight: 1.4 }}>
+              Nessun peso segnato da tre settimane. Un messaggio adesso può fare la differenza.
+            </div>
+          </div>
+        )}
 
         <div style={{ height: '14px' }} />
       </div>
@@ -346,4 +384,14 @@ const pulsanteVuoto = {
   background: 'var(--accento)', border: 'none', borderRadius: '5px', padding: '13px 20px',
   color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px',
   fontWeight: '800', letterSpacing: '1.5px', cursor: 'pointer',
+}
+
+// Il riquadro di chi non si vede: righe grandi, si toccano per aprire il profilo.
+const riquadroAssenti = {
+  background: 'var(--sup)', border: '1px solid var(--sup-alta)', borderRadius: '8px', overflow: 'hidden',
+}
+const rigaAssente = {
+  display: 'flex', alignItems: 'center', gap: '10px', width: '100%', minHeight: '52px',
+  padding: '8px 14px', background: 'transparent', border: 'none', borderTop: '1px solid var(--sup-alta)',
+  textAlign: 'left', cursor: 'pointer', color: '#fff',
 }

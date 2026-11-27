@@ -1,5 +1,6 @@
 import { comePulsante } from '../lib/stile'
 import { tocco } from '../lib/aptico'
+import { nomeCompleto } from '../lib/nomi'
 
 /**
  * «A chi è assegnata?» — la stessa domanda quando si crea una scheda e quando
@@ -78,7 +79,7 @@ export default function ScegliPersone({ atleti, scelte, onChange }) {
                     flex: 1, minWidth: 0,
                     fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700',
                     letterSpacing: '0.5px', color: dentro ? '#fff' : 'var(--testo-forte)',
-                  }}>{a.surname} {a.name}</span>
+                  }}>{nomeCompleto(a)}</span>
                 </button>
               )
             })}

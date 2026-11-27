@@ -13,6 +13,7 @@ import { disegnaScheda, mandaImmagine } from '../lib/immagineScheda'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto, nomeECognome } from '../lib/nomi'
 
 
 
@@ -131,7 +132,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     const weekRange = WEEK_RANGES[selectedWeekRange]
 
     let text = `🏋️ *${cycle?.name?.toUpperCase() ?? ''}*\n`
-    text += `👤 ${client.name} ${client.surname}\n`
+    text += `👤 ${nomeECognome(client)}\n`
     text += `📅 ${weekRange.label}\n`
     text += `━━━━━━━━━━━━━━━━━━━\n\n`
 
@@ -270,7 +271,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
                   }}>
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                    {client.surname} {client.name}
+                    {nomeCompleto(client)}
                   </span>
                   {selectedClient === client.id && <span style={{ color: 'var(--accento)', fontSize: '16px' }}>✓</span>}
                 </button>
@@ -310,7 +311,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid var(--sup-alta)' }}>
                     <div>
                       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '900', color: '#fff' }}>
-                        {clients.find(c => c.id === selectedClient)?.surname} {clients.find(c => c.id === selectedClient)?.name}
+                        {nomeCompleto(clients.find(c => c.id === selectedClient))}
                       </div>
                       <div style={{ color: 'var(--accento)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700' }}>{WEEK_RANGES[selectedWeekRange].label}</div>
                     </div>

@@ -11,6 +11,7 @@ import Settings from './pages/Settings'
 import Turns from './pages/Turns'
 import ChangePassword from './pages/ChangePassword'
 import AthleteProfile from './pages/AthleteProfile'
+import Pulizia from './pages/Pulizia'
 import Athletes from './pages/Athletes'
 import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
 import NovitaApp from './components/NovitaApp'
@@ -364,6 +365,7 @@ export default function App() {
     turns: Turns,
     athletes: Athletes,
     'athlete-profile': AthleteProfile,
+    pulizia: Pulizia,
   }
 
   const Page = pages[current.page] || Home

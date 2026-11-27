@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { elencoGiorni } from '../lib/giorni'
 import { cambiaGiorno, normalizza } from '../lib/giorniPersona'
+import { nomeCompleto } from '../lib/nomi'
 
 /**
  * Chi fa quali giorni di una scheda: una riga per persona, con un pulsante
@@ -45,7 +46,7 @@ export default function GiorniPersone({ scheda, giorni, persone, scelteIniziali,
             <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderTop: '1px solid var(--sup-alta)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {p.surname} {p.name}
+                  {nomeCompleto(p)}
                 </div>
                 <div style={{ color: sue ? 'var(--accento)' : 'var(--testo-medio)', fontSize: '13px', marginTop: '1px' }}>
                   {sue ? `Solo ${sue.map(g => `G${g}`).join(' e ')}` : 'Tutti i giorni'}
@@ -57,7 +58,7 @@ export default function GiorniPersone({ scheda, giorni, persone, scelteIniziali,
                   const ultimo = acceso && sue?.length === 1
                   return (
                     <button key={g} type="button" aria-pressed={acceso}
-                      aria-label={`${p.surname} ${p.name}: giorno ${g} ${acceso ? 'acceso' : 'spento'}`}
+                      aria-label={`${nomeCompleto(p)}: giorno ${g} ${acceso ? 'acceso' : 'spento'}`}
                       onClick={() => setScelte(s => ({ ...s, [p.id]: cambiaGiorno(normalizza(s[p.id], giorni), g, giorni) }))}
                       disabled={ultimo}
                       style={{

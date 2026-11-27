@@ -19,6 +19,8 @@ import TurnDetail from './TurnDetail'
 import OspitiDelGiorno from '../components/OspitiDelGiorno'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto, nomeECognome } from '../lib/nomi'
+import NotaPersona from '../components/NotaPersona'
 
 
 /**
@@ -104,7 +106,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
       // Il giorno scelto qui si porta dietro: averlo scelto sul turno e
       // ritrovare il Giorno 1 aprendo una persona sarebbe un passo indietro.
       giorno: day,
-      sottotitolo: `${riga.persona.name} ${riga.persona.surname} · ${riga.scheda.name}`,
+      sottotitolo: `${nomeECognome(riga.persona)} · ${riga.scheda.name}`,
     })
   }
 
@@ -214,7 +216,8 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                  {riga.persona.surname} {riga.persona.name}
+                  {nomeCompleto(riga.persona)}
+                  <NotaPersona nota={riga.persona.nota} />
                   {riga.ospite && <span style={distintivoOspite}>OSPITE · {turnoDOrigine(riga.persona)}</span>}
                   {suoiGiorni && <span title="I giorni che fa di questa scheda" style={distintivoGiorni}>{suoiGiorni}</span>}
                 </div>

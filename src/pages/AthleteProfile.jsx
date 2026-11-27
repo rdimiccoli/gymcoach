@@ -7,6 +7,7 @@ import { analizzaEsercizio, riassunto, numero } from '../lib/progressi'
 import { ScheletroStorico } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto } from '../lib/nomi'
 
 // La settimana esatta. Prima si scriveva «Sett. 1–2» sia per la prima sia
 // per la seconda — le coppie di settimane delle ripetizioni — e due carichi
@@ -110,7 +111,7 @@ export default function AthleteProfile({ navigate, goBack, goHome, params }) {
   return (
     <div style={page}>
       <TopBar
-        title={`${client.surname} ${client.name}`.toUpperCase()}
+        title={`${nomeCompleto(client)}`.toUpperCase()}
         subtitle="Progressi"
         onBack={goBack}
       />

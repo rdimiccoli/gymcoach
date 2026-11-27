@@ -652,6 +652,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
           <Riga etichetta="Cambia coach" valore={coach.name} onClick={cambiaCoach} />
         )}
         <Riga etichetta="Aggiungi coach" onClick={() => setView('addCoach')} />
+        <Riga etichetta="🧹 Mettere in ordine" onClick={() => navigate('pulizia')} />
         {coaches.filter(c => c.id !== coach.id && c.nascosto !== true).length > 0 && (
           <Riga etichetta="Archivia coach"
             onClick={() => { setDaArchiviare(null); setView('archivia') }} />

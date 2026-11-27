@@ -1,6 +1,7 @@
 import { settimanaDaCalendario } from '../lib/schede'
 import { settimaneDi } from '../lib/settimane'
 import { comePulsante } from '../lib/stile'
+import { statoScheda, turnoInCorso } from '../lib/avvisiTurno'
 
 /**
  * La card di un turno nella schermata iniziale.
@@ -31,9 +32,14 @@ export default function CardTurno({
   // fra loro. Il nome completo («09:00 — Femminile») è ridondante.
   const orario = turno.time || turno.name?.split('—')[0]?.trim() || ''
   const tipo = turno.type || turno.name?.split('—')[1]?.trim() || ''
+  // Il turno di adesso si accende: il tablet passato di mano apre quello
+  // giusto senza cercarlo. Solo sulla prima card del turno.
+  const adesso = mostraOrario && turnoInCorso(orario)
+  const stato = altreSchede.length === 0 ? statoScheda(scheda) : null
 
   return (
-    <button type="button" onClick={onApri} style={card}>
+    <button type="button" onClick={onApri} style={adesso ? { ...card, boxShadow: '0 0 0 2px var(--accento)' } : card}
+      aria-label={adesso ? `${orario}, turno in corso` : undefined}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '14px' }}>
 
         <div style={{ flexShrink: 0, minWidth: '64px' }}>
@@ -103,6 +109,13 @@ export default function CardTurno({
                   </span>
                 )}
               </div>
+              {(adesso || stato) && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                  {adesso && <span style={{ ...distintivo, ...arancione }}>ORA IN CORSO</span>}
+                  {stato === 'ultima' && <span style={{ ...distintivo, ...giallo }}>ULTIMA SETTIMANA</span>}
+                  {stato === 'finita' && <span style={{ ...distintivo, ...rosso }}>FINITA · PREPARA LA NUOVA</span>}
+                </div>
+              )}
               {senzaScheda > 0 && (
                 <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', marginTop: '6px' }}>
                   ⚠ {senzaScheda} {senzaScheda === 1 ? 'PERSONA' : 'PERSONE'} SENZA SCHEDA
@@ -117,6 +130,7 @@ export default function CardTurno({
               <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '3px' }}>
                 {atlete.length > 0 ? `${atlete.length} ${atlete.length === 1 ? 'persona' : 'persone'} in attesa` : 'Creane una da SCHEDE'}
               </div>
+              {adesso && <div style={{ marginTop: '8px' }}><span style={{ ...distintivo, ...arancione }}>ORA IN CORSO</span></div>}
             </div>
           )}
         </div>
@@ -140,6 +154,14 @@ function BarraSettimane({ settimana, totale }) {
     </div>
   )
 }
+
+const distintivo = {
+  display: 'inline-block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '800',
+  letterSpacing: '1px', padding: '2px 8px', borderRadius: '4px', whiteSpace: 'nowrap',
+}
+const arancione = { color: 'var(--accento)', background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo-forte)' }
+const giallo = { color: 'var(--attenzione)', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.45)' }
+const rosso = { color: '#ff8a7a', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.45)' }
 
 const card = {
   ...comePulsante,

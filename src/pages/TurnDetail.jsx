@@ -24,6 +24,8 @@ import { ScheletroElenco } from '../components/Scheletro'
 import OspitiDelGiorno from '../components/OspitiDelGiorno'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto, bello } from '../lib/nomi'
+import NotaPersona from '../components/NotaPersona'
 
 
 
@@ -408,7 +410,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       delete avvisoInAttesa.current[chiave]
       giaAvvisati.current.add(chiave)
       festa() // la vibrazione del record
-      notifyOk(`🏆 Record di ${client.name}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${prima})`)
+      notifyOk(`🏆 Record di ${bello(client.name)}: ${kg} kg su ${ex?.exercises?.name ?? 'questo esercizio'} (prima ${prima})`)
     }, subito ? 0 : ATTESA_AVVISO)
     avvisoInAttesa.current[chiave] = { timer, prima }
   }
@@ -511,7 +513,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           style={testataPersona}>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
-              {unaPersona.surname} {unaPersona.name}
+              {nomeCompleto(unaPersona)}
               {etichettaGiorni(giorniPersone[unaPersona.id]) && (
                 <span style={distintivoGiorni}>{etichettaGiorni(giorniPersone[unaPersona.id])}</span>
               )}
@@ -675,9 +677,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                 schermate. */}
                             <button type="button" onClick={() => navigate('athlete-profile', { client })}
                               style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                              {client.surname} {client.name}
+                              {nomeCompleto(client)}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
+                            <NotaPersona nota={client.nota} />
                             {etichettaGiorni(giorniPersone[client.id]) && (
                               <span title="I giorni che fa di questa scheda" style={distintivoGiorni}>{etichettaGiorni(giorniPersone[client.id])}</span>
                             )}

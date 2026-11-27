@@ -6,6 +6,7 @@ import { tocco } from '../lib/aptico'
 import { settimanaDaCalendario } from '../lib/schede'
 import { caricaOspitiDiOggi, ospitiPossibili, segnaOspite, daDove } from '../lib/ospitiDb'
 import { gruppiOspiti } from '../lib/sceltaOspiti'
+import { nomeCompleto, nomeECognome } from '../lib/nomi'
 
 /**
  * Gli ospiti di oggi, dentro la schermata del turno.
@@ -82,7 +83,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
       {mostraElenco && <div style={etichetta}>OSPITI DI OGGI</div>}
 
       {mostraElenco && gruppi.map((g, i) => {
-        const nomi = g.persone.map(p => `${p.name} ${p.surname}`).join(', ')
+        const nomi = g.persone.map(p => `${nomeECognome(p)}`).join(', ')
         const settimana = settimanaDaCalendario(g.scheda)
         const contenuto = (
           <>
@@ -204,7 +205,7 @@ export default function OspitiDelGiorno({ turn, navigate, mostraElenco = true, o
                         }}>{qui ? '✓' : ''}</span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', letterSpacing: '0.5px', color: qui ? '#fff' : 'var(--testo-forte)' }}>
-                            {p.surname} {p.name}
+                            {nomeCompleto(p)}
                             {p.silver && <span style={distintivoSilver}>SILVER</span>}
                           </span>
                           <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '14px', marginTop: '1px' }}>

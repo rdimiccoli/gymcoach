@@ -4,6 +4,7 @@ import { run } from '../lib/notify'
 import { ScheletroElenco } from '../components/Scheletro'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
+import { nomeCompleto } from '../lib/nomi'
 
 /**
  * Elenco di tutte le atlete di tutti i turni, con ricerca.
@@ -41,7 +42,7 @@ export default function Athletes({ navigate, goHome, coach }) {
   const testo = cerca.trim().toLowerCase()
   const visibili = atlete
     .filter(a => mostraArchiviate || a.is_active)
-    .filter(a => !testo || `${a.surname} ${a.name} ${a.turnName}`.toLowerCase().includes(testo))
+    .filter(a => !testo || `${nomeCompleto(a)} ${a.turnName}`.toLowerCase().includes(testo))
 
   const attive = atlete.filter(a => a.is_active).length
 
@@ -93,7 +94,7 @@ export default function Athletes({ navigate, goHome, coach }) {
           }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
-                {a.surname} {a.name}
+                {nomeCompleto(a)}
                 {!a.is_active && <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '7px', letterSpacing: '1px' }}>IN ARCHIVIO</span>}
               </div>
               <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px' }}>{a.turnName}</div>
