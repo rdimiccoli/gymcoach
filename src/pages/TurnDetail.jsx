@@ -16,6 +16,7 @@ import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
 import { passiDalloStorico, scriviPasso } from '../lib/passoPeso'
+import { useSchermoLargo } from '../lib/schermo'
 import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
 import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
@@ -111,6 +112,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // Chi non c'è fa tutti i giorni.
   const [giorniPersone, setGiorniPersone] = useState({})
   const [expanded, setExpanded] = useState({})
+  // Tablet sdraiato: due colonne (vedi renderGruppo). Non dentro il pannello
+  // di un'altra schermata, né per gli ospiti: lì la colonna è già stretta.
+  const schermoLargo = useSchermoLargo()
+  const affiancato = schermoLargo && !incorporato && !soloAtleti?.length
+  const [scelto, setScelto] = useState(null)
   const [editModal, setEditModal] = useState(null)
   const [timer, setTimer] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -478,6 +484,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   }
 
   const groups = raggruppaEsercizi(exercises)
+  const chiaveGruppo = group => (group.type === 'superset' ? group.label : group.exercises[0].id)
+  // Il gruppo aperto a destra sul tablet: quello scelto, o il primo.
+  const sceltoKey = groups.some(g => chiaveGruppo(g) === scelto) ? scelto : (groups[0] ? chiaveGruppo(groups[0]) : null)
   // Prima chi fa questo giorno, poi — in grigio, sotto «Oggi non previsti» —
   // chi di solito fa altri giorni. Non sparisce: se viene lo stesso, c'è.
   const { previsti, altri } = dividiPerGiorno(clients, day, c => giorniPersone[c.id])
@@ -503,110 +512,19 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     </div>
   )
 
-  return (
-    <div style={incorporato ? pannello : page}>
-      {!incorporato && <TopBar title={turn.name} subtitle={sottotitolo || cycle.name} onBack={goBack} />}
-      {/* I giorni e la settimana stanno già in cima all'elenco di sinistra:
-          ripeterli qui accanto sarebbe la stessa cosa scritta due volte. */}
-      {unaPersona && (
-        <button type="button" onClick={() => navigate('athlete-profile', { client: unaPersona })}
-          style={testataPersona}>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
-              {nomeCompleto(unaPersona)}
-              {etichettaGiorni(giorniPersone[unaPersona.id]) && (
-                <span style={distintivoGiorni}>{etichettaGiorni(giorniPersone[unaPersona.id])}</span>
-              )}
-            </span>
-            <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
-              {cycle.name} · settimana {settimana} di {totale}
-            </span>
-          </span>
-          <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
-        </button>
-      )}
-
-      {!incorporato && (<>
-      {/* Le schede del turno sopra i giorni: un tocco e si passa all'altra.
-          Linguette di solo testo su una fascia scura, con quella aperta
-          sottolineata in arancione — diverse a colpo d'occhio dai pulsanti
-          pieni dei giorni, che stanno sotto. Con una scheda sola non c'è. */}
-      {schedeTurno.length > 1 && (
-        <div style={{ background: '#050505', borderBottom: '1px solid var(--sup-alta)', flexShrink: 0 }}>
-          <div role="tablist" aria-label="Schede del turno" style={{ display: 'flex', overflowX: 'auto', padding: '0 8px' }}>
-            {schedeTurno.map(s => {
-              const attiva = s.id === cycle.id
-              return (
-                <button key={s.id} type="button" role="tab" aria-selected={attiva} onClick={() => cambiaScheda(s)} style={{
-                  flex: schedeTurno.length <= 3 ? '1 1 0' : '0 0 auto', minWidth: 0,
-                  padding: '13px 10px 11px', background: 'none', border: 'none',
-                  borderBottom: `3px solid ${attiva ? 'var(--accento)' : 'transparent'}`,
-                  color: attiva ? '#fff' : 'var(--testo-medio)',
-                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: attiva ? '800' : '600', letterSpacing: '0.3px',
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer',
-                }}>{s.name}</button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
-        {elencoGiorni(cycle).map(d => (
-          <button key={d} onClick={() => setDay(d)} style={{
-            flex: 1, minHeight: '44px', padding: '9px', borderRadius: '4px', border: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', letterSpacing: '1px',
-            background: day === d ? 'var(--accento)' : 'var(--sup)',
-            color: day === d ? '#fff' : 'var(--testo-debole)'
-          }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
-        ))}
-      </div>
-
-      {/* Tutto quello che resta del pannello «avanza settimana»: un numero, in
-          chiaro, uguale per tutte. Non si tocca e non si può sbagliare. */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '9px 16px', flexShrink: 0,
-        borderBottom: '1px solid var(--sup-alta)', background: 'var(--sup)',
-      }}>
-        <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1.5px', color: 'var(--testo-medio)', whiteSpace: 'nowrap' }}>
-          SETTIMANA <span style={{ color: 'var(--accento)', fontSize: '17px', fontWeight: '900' }}>{settimana}</span> {finita ? '· EXTRA' : `DI ${totale}`}
-        </span>
-        <span style={{ display: 'flex', gap: '3px', flex: 1 }} aria-hidden="true">
-          {Array.from({ length: totale }, (_, i) => i + 1).map(n => (
-            <span key={n} style={{
-              flex: 1, height: '4px', borderRadius: '2px',
-              background: n <= settimana ? 'var(--accento)' : 'var(--sup-alta)',
-            }} />
-          ))}
-        </span>
-      </div>
-      {finita && (
-        <div role="status" style={{
-          margin: '10px 16px 0', padding: '10px 12px', borderRadius: '6px', flexShrink: 0,
-          background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.45)',
-          color: 'var(--attenzione)', fontSize: '14px', lineHeight: 1.4,
-        }}>
-          <strong style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', letterSpacing: '1px' }}>⚠ SCHEDA FINITA</strong>
-          <span style={{ color: 'var(--testo-forte)' }}> · La settimana {totale} era l'ultima. I pesi di oggi si salvano a parte, come settimana {settimana}: quelli della {totale} restano com'erano. Quando puoi, completala in SCHEDE e preparane una nuova.</span>
-        </div>
-      )}
-      </>)}
-
-      <div style={scroll} ref={elencoRef}>
-        {inCaricamento && <ScheletroElenco righe={4} />}
-        {!inCaricamento && exercises.length === 0 && (
-          <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
-            Nessun esercizio per il Giorno {day}.
-          </div>
-        )}
-
-        {!inCaricamento && groups.map((group, gi) => {
+  // Un gruppo di esercizi (singolo, superserie o circuito) con le sue persone.
+  // `parte`: 'tutto' sul telefono; sul tablet 'testa' a sinistra e 'corpo' a destra.
+  const renderGruppo = (group, gi, parte = 'tutto') => {
           const groupKey = group.type === 'superset' ? group.label : group.exercises[0].id
           // Aperta una persona sola, i gruppi partono già aperti: sono i SUOI
           // esercizi, e richiuderli uno per uno per poterli aprire sarebbe un
           // tocco a vuoto. Con tutto il turno restano chiusi, altrimenti
           // servirebbe mezzo metro di scorrimento per arrivare in fondo.
-          const isExpanded = expanded[groupKey] ?? (soloAtleti?.length === 1)
+          // Sul tablet a due colonne: a sinistra solo i titoli («testa»), a
+          // destra il gruppo scelto già aperto («corpo»). Sul telefono «tutto»:
+          // titolo e, se aperto, il contenuto sotto.
+          const isExpanded = parte === 'corpo' || (parte === 'tutto' && (expanded[groupKey] ?? (soloAtleti?.length === 1)))
+          const selezionato = parte === 'testa' && groupKey === sceltoKey
           return (
             <div key={gi} style={{ marginBottom: '8px' }}>
               {/* Il contenitore resta un <div>: dentro c'è il pulsante TIMER, e
@@ -619,11 +537,16 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                   border: `1px solid ${group.type === 'circuit' ? 'rgba(59,130,246,0.25)' : group.type === 'superset' ? 'var(--acc-bordo-tenue)' : 'var(--sup-alta)'}`,
                   borderLeft: group.type === 'circuit' ? '2px solid var(--circuito)' : group.type === 'superset' ? '2px solid var(--accento)' : undefined,
                   borderRadius: isExpanded ? '6px 6px 0 0' : '6px',
+                  boxShadow: selezionato ? '0 0 0 2px var(--accento)' : undefined,
                   padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
                 }}>
                 <button
                   type="button"
-                  onClick={() => setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))}
+                  onClick={() => {
+                    if (parte === 'testa') setScelto(groupKey)
+                    else if (parte === 'tutto') setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))
+                  }}
+                  aria-pressed={parte === 'testa' ? selezionato : undefined}
                   style={{ ...comePulsante, flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }}>
                   {group.type === 'superset' && (
                     <div style={{ color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
@@ -649,7 +572,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                   }}>▶ TIMER</button>
                 )}
 
-                <div style={{ color: 'var(--testo-fioco)', fontSize: '16px' }}>{isExpanded ? '∨' : '›'}</div>
+                {parte !== 'corpo' && <div style={{ color: selezionato ? 'var(--accento)' : 'var(--testo-fioco)', fontSize: '16px' }}>{isExpanded ? '∨' : '›'}</div>}
               </div>
 
               {isExpanded && (
@@ -872,7 +795,122 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
               )}
             </div>
           )
-        })}
+        }
+
+  return (
+    <div style={incorporato ? pannello : affiancato ? { ...page, maxWidth: 'var(--colonna-larga)' } : page}>
+      {!incorporato && <TopBar title={turn.name} subtitle={sottotitolo || cycle.name} onBack={goBack} />}
+      {/* I giorni e la settimana stanno già in cima all'elenco di sinistra:
+          ripeterli qui accanto sarebbe la stessa cosa scritta due volte. */}
+      {unaPersona && (
+        <button type="button" onClick={() => navigate('athlete-profile', { client: unaPersona })}
+          style={testataPersona}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '20px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>
+              {nomeCompleto(unaPersona)}
+              {etichettaGiorni(giorniPersone[unaPersona.id]) && (
+                <span style={distintivoGiorni}>{etichettaGiorni(giorniPersone[unaPersona.id])}</span>
+              )}
+            </span>
+            <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
+              {cycle.name} · settimana {settimana} di {totale}
+            </span>
+          </span>
+          <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
+        </button>
+      )}
+
+      {!incorporato && (<>
+      {/* Le schede del turno sopra i giorni: un tocco e si passa all'altra.
+          Linguette di solo testo su una fascia scura, con quella aperta
+          sottolineata in arancione — diverse a colpo d'occhio dai pulsanti
+          pieni dei giorni, che stanno sotto. Con una scheda sola non c'è. */}
+      {schedeTurno.length > 1 && (
+        <div style={{ background: '#050505', borderBottom: '1px solid var(--sup-alta)', flexShrink: 0 }}>
+          <div role="tablist" aria-label="Schede del turno" style={{ display: 'flex', overflowX: 'auto', padding: '0 8px' }}>
+            {schedeTurno.map(s => {
+              const attiva = s.id === cycle.id
+              return (
+                <button key={s.id} type="button" role="tab" aria-selected={attiva} onClick={() => cambiaScheda(s)} style={{
+                  flex: schedeTurno.length <= 3 ? '1 1 0' : '0 0 auto', minWidth: 0,
+                  padding: '13px 10px 11px', background: 'none', border: 'none',
+                  borderBottom: `3px solid ${attiva ? 'var(--accento)' : 'transparent'}`,
+                  color: attiva ? '#fff' : 'var(--testo-medio)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: attiva ? '800' : '600', letterSpacing: '0.3px',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer',
+                }}>{s.name}</button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
+        {elencoGiorni(cycle).map(d => (
+          <button key={d} onClick={() => setDay(d)} style={{
+            flex: 1, minHeight: '44px', padding: '9px', borderRadius: '4px', border: 'none',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', letterSpacing: '1px',
+            background: day === d ? 'var(--accento)' : 'var(--sup)',
+            color: day === d ? '#fff' : 'var(--testo-debole)'
+          }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
+        ))}
+      </div>
+
+      {/* Tutto quello che resta del pannello «avanza settimana»: un numero, in
+          chiaro, uguale per tutte. Non si tocca e non si può sbagliare. */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '9px 16px', flexShrink: 0,
+        borderBottom: '1px solid var(--sup-alta)', background: 'var(--sup)',
+      }}>
+        <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1.5px', color: 'var(--testo-medio)', whiteSpace: 'nowrap' }}>
+          SETTIMANA <span style={{ color: 'var(--accento)', fontSize: '17px', fontWeight: '900' }}>{settimana}</span> {finita ? '· EXTRA' : `DI ${totale}`}
+        </span>
+        <span style={{ display: 'flex', gap: '3px', flex: 1 }} aria-hidden="true">
+          {Array.from({ length: totale }, (_, i) => i + 1).map(n => (
+            <span key={n} style={{
+              flex: 1, height: '4px', borderRadius: '2px',
+              background: n <= settimana ? 'var(--accento)' : 'var(--sup-alta)',
+            }} />
+          ))}
+        </span>
+      </div>
+      {finita && (
+        <div role="status" style={{
+          margin: '10px 16px 0', padding: '10px 12px', borderRadius: '6px', flexShrink: 0,
+          background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.45)',
+          color: 'var(--attenzione)', fontSize: '14px', lineHeight: 1.4,
+        }}>
+          <strong style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', letterSpacing: '1px' }}>⚠ SCHEDA FINITA</strong>
+          <span style={{ color: 'var(--testo-forte)' }}> · La settimana {totale} era l'ultima. I pesi di oggi si salvano a parte, come settimana {settimana}: quelli della {totale} restano com'erano. Quando puoi, completala in SCHEDE e preparane una nuova.</span>
+        </div>
+      )}
+      </>)}
+
+      <div style={scroll} ref={elencoRef}>
+        {inCaricamento && <ScheletroElenco righe={4} />}
+        {!inCaricamento && exercises.length === 0 && (
+          <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
+            Nessun esercizio per il Giorno {day}.
+          </div>
+        )}
+
+        {!inCaricamento && !affiancato && groups.map((group, gi) => renderGruppo(group, gi))}
+
+        {/* Sul tablet sdraiato la seduta usava solo la colonna in mezzo: un
+            terzo dello schermo restava nero, e gli esercizi si aprivano uno
+            alla volta. Ora a sinistra ci sono gli esercizi del giorno, a
+            destra le persone con i loro pesi: si passa dall'uno all'altro
+            con un tocco, senza aprire e chiudere. */}
+        {!inCaricamento && affiancato && groups.length > 0 && (
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+            <div style={{ width: '300px', flexShrink: 0, position: 'sticky', top: 0 }}>
+              {groups.map((group, gi) => renderGruppo(group, gi, 'testa'))}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {groups.map((group, gi) => chiaveGruppo(group) === sceltoKey ? renderGruppo(group, gi, 'corpo') : null)}
+            </div>
+          </div>
+        )}
 
         {/* Dentro la scheda di una singola persona non si aggiungono ospiti:
             si è già dentro a qualcuno. */}
