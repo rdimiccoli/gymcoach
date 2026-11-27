@@ -906,7 +906,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                       {!readOnly && (
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                           <button onPointerUp={e => { e.stopPropagation(); setEditExerciseModal({ id: ex.exerciseId, name: ex.name }); setEditExerciseName(ex.name) }}
-                            style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px', touchAction: 'manipulation' }}>✏️</button>
+                            style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', minWidth: '38px', minHeight: '34px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '15px', touchAction: 'manipulation' }}>✏️</button>
                           {elencoGiorni({ giorni }).filter(d => d !== day).map(targetDay => {
                             // Il tasto premuto resta acceso finché il foglio
                             // di conferma è aperto: si vede quale si è toccato.
@@ -918,7 +918,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                                 style={{
                                   background: acceso ? 'var(--accento)' : 'var(--sup-alta)',
                                   border: `1px solid ${acceso ? 'var(--accento)' : 'var(--bordo)'}`,
-                                  borderRadius: '3px', padding: '3px 7px',
+                                  borderRadius: '4px', padding: '3px 7px', minWidth: '36px', minHeight: '34px',
                                   color: acceso ? '#fff' : 'var(--testo-debole)',
                                   fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', lineHeight: 1, touchAction: 'manipulation',
                                 }}>
@@ -927,7 +927,7 @@ export default function CycleForm({ navigate, goBack, goHome, params }) {
                             )
                           })}
                           <button onPointerUp={e => { e.stopPropagation(); removeExercise(day, ex.idx) }}
-                            style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '18px', padding: '4px 6px', touchAction: 'manipulation' }}>✕</button>
+                            aria-label={`Togli ${ex.name} dalla scheda`} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '19px', minWidth: '38px', minHeight: '34px', padding: '4px 6px', touchAction: 'manipulation' }}>✕</button>
                         </div>
                       )}
                     </div>
@@ -1186,9 +1186,10 @@ const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', 
 const scroll = { flex: 1, overflowY: 'auto', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const fieldLabel = { color: 'var(--testo-debole)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '8px', fontFamily: 'Barlow Condensed, sans-serif' }
 const inp = { width: '100%', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '14px 16px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }
-// 26x22: piccole ma raggiungibili col pollice, e non rubano spazio al nome.
+// 34x30 (erano 26x22, troppo piccole per il pollice): ancora sotto la riga
+// del nome, senza rubargli spazio.
 const freccia = {
-  width: '26px', height: '22px', flexShrink: 0,
+  width: '34px', height: '30px', flexShrink: 0,
   background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px',
   color: 'var(--testo-medio)', fontSize: '12px', lineHeight: 1,
   display: 'flex', alignItems: 'center', justifyContent: 'center',

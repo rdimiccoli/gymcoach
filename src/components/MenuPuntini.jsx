@@ -92,7 +92,7 @@ export default function MenuPuntini({ voci, etichetta = 'Altre azioni' }) {
 const ALTEZZA_STIMATA = 290
 
 const stilePulsante = {
-  width: '40px', height: '34px', padding: 0,
+  width: '44px', height: '44px', padding: 0,
   background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px',
   color: '#fff', fontSize: '20px', fontWeight: '700', lineHeight: 1, cursor: 'pointer',
 }

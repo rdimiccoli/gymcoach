@@ -13,7 +13,7 @@ export default function TopBar({ title, subtitle, onBack }) {
           background: 'var(--sup-alta)',
           border: '1px solid var(--sup-alta)',
           borderRadius: '3px',
-          width: '34px', height: '34px',
+          width: '44px', height: '44px',
           color: '#fff', fontSize: '20px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,

@@ -15,6 +15,7 @@ import { personeDellaScheda } from '../lib/assegnazioni'
 import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
+import { passiDalloStorico, scriviPasso } from '../lib/passoPeso'
 import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
 import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
 // Arriva solo quando si apre un circuito, non a ogni avvio dell'app.
@@ -84,6 +85,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // («riga della scheda + settimana»). Il record è il massimo di queste: così
   // un peso sbagliato e poi corretto non lascia un record finto in memoria.
   const celleRecord = useRef({})
+  // Di quanto sale il + per ogni esercizio: 2,5, 2 o 1 kg, capito dai pesi
+  // già segnati (vedi passoPeso.js). { idEsercizio: passo }
+  const [passi, setPassi] = useState({})
   useEffect(() => () => Object.values(avvisoInAttesa.current).forEach(a => clearTimeout(a.timer)), [])
   const elencoRef = useRef(null)
   const ricordaPosti = useScivola(elencoRef)
@@ -230,6 +234,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
         if (massimi[persona] === undefined || kg > massimi[persona]) massimi[persona] = kg
       })
       celleRecord.current = celle
+      setPassi(passiDalloStorico(storico))
       setRecord(massimi)
       recordRef.current = massimi
       setPrecedenti(dallaSchedaPrima)
@@ -321,8 +326,6 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // aggiorna subito — il tocco deve rispondere all'istante — e la scrittura
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
-    tocco() // conferma il tocco senza obbligare a guardare lo schermo
-    rimandaAvviso(client, ex)
     const chiave = `${client.id}_${ex.id}_${settimana}`
     const attuale = parseFloat(loads[chiave])
     // Settimana nuova, ancora vuota: si parte dal carico della volta prima,
@@ -330,7 +333,25 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     // che + dava 1 kg, e per arrivare a 28 bisognava aprire DETTAGLI.
     const precedente = parseFloat(getLoadInfo(client, ex).prevKg)
     const base = Number.isFinite(attuale) ? attuale : Number.isFinite(precedente) ? precedente : 0
-    const nuovo = Math.max(0, parseFloat((base + delta).toFixed(2)))
+    impostaCarico(client, ex, Math.max(0, parseFloat((base + delta).toFixed(2))))
+  }
+
+  /**
+   * Il riquadro «PREC.» si tocca: il peso della volta prima diventa quello di
+   * oggi. Capita 17 volte su 100 che un cliente rifaccia lo stesso peso, e
+   * prima servivano due tocchi (+ e poi −) e due salvataggi.
+   */
+  function usaPrecedente(client, ex, kg) {
+    const valore = parseFloat(kg)
+    if (!Number.isFinite(valore)) return
+    if (parseFloat(loads[`${client.id}_${ex.id}_${settimana}`]) === valore) { tocco(); return }
+    impostaCarico(client, ex, valore)
+  }
+
+  function impostaCarico(client, ex, nuovo) {
+    tocco() // conferma il tocco senza obbligare a guardare lo schermo
+    rimandaAvviso(client, ex)
+    const chiave = `${client.id}_${ex.id}_${settimana}`
 
     setLoads(prev => ({ ...prev, [chiave]: nuovo }))
     setSaltelli(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
@@ -530,8 +551,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {elencoGiorni(cycle).map(d => (
           <button key={d} onClick={() => setDay(d)} style={{
-            flex: 1, padding: '9px', borderRadius: '4px', border: 'none',
-            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1px',
+            flex: 1, minHeight: '44px', padding: '9px', borderRadius: '4px', border: 'none',
+            fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', letterSpacing: '1px',
             background: day === d ? 'var(--accento)' : 'var(--sup)',
             color: day === d ? '#fff' : 'var(--testo-debole)'
           }}>{etichettaGiorno(d, giorniDi(cycle))}</button>
@@ -693,7 +714,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                           )}
                           <button onClick={() => setEditModal({ client, group })} style={{
                             background: 'var(--acc-riempimento)', border: '1px solid var(--acc-bordo)',
-                            borderRadius: '3px', padding: '6px 12px', flexShrink: 0,
+                            borderRadius: '4px', padding: '0 14px', minHeight: '40px', flexShrink: 0,
                             color: 'var(--accento)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px'
                           }}>DETTAGLI</button>
                         </div>
@@ -712,11 +733,11 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
                             return (
-                              <div key={ex.id} style={{ position: 'relative', background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div key={ex.id} style={{ position: 'relative', background: 'var(--sup)', borderRadius: '5px', padding: '5px 6px 5px 9px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
                                 {salvati[`${client.id}_${ex.id}_${settimana}`] > 0 && (
                                   <span key={salvati[`${client.id}_${ex.id}_${settimana}`]} className="lampo-salvato" aria-hidden="true" />
                                 )}
-                                <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ flex: '1 1 130px', minWidth: 0 }}>
                                   {group.exercises.length > 1 && (
                                     <div style={{ color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {ex?.exercises?.name?.toUpperCase() ?? ''}
@@ -753,13 +774,17 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                       // («PREC. 4x6 · 20 kg»): 20 kg per 4x6 non è 20 kg
                                       // per 4x4, e il coach decide il carico guardando
                                       // tutte e due.
-                                      <span title={daPrima ? `Ultimo carico nella scheda «${daPrima.scheda}», settimana ${daPrima.settimana}` : undefined}
-                                        aria-label={`Volta prima: ${prevReps ? `${prevReps}, ` : ''}${prevKg} chili`}
+                                      // Dal 27/11/2026 si tocca: il peso della volta prima
+                                      // diventa quello di oggi (vedi usaPrecedente).
+                                      <button type="button" onClick={() => usaPrecedente(client, ex, prevKg)}
+                                        title={daPrima ? `Ultimo carico nella scheda «${daPrima.scheda}», settimana ${daPrima.settimana}` : undefined}
+                                        aria-label={`Rifai il peso della volta prima: ${prevReps ? `${prevReps}, ` : ''}${prevKg} chili`}
                                         style={{
+                                          ...comePulsante, cursor: 'pointer', minHeight: '34px',
                                           display: 'inline-flex', alignItems: 'baseline', gap: '4px',
                                           background: daPrima ? 'var(--acc-fondo-forte)' : 'var(--sup-alta)',
                                           border: `1px solid ${daPrima ? 'var(--acc-bordo-forte)' : 'var(--bordo-forte)'}`,
-                                          borderRadius: '5px', padding: '1px 7px 2px', fontFamily: 'Barlow Condensed, sans-serif',
+                                          borderRadius: '5px', padding: '4px 8px 4px', fontFamily: 'Barlow Condensed, sans-serif',
                                         }}>
                                         <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', color: daPrima ? 'var(--accento)' : 'var(--testo-chiaro)' }}>
                                           {daPrima ? 'SCHEDA PREC.' : 'PREC.'}
@@ -770,7 +795,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                         </>)}
                                         <span style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>{prevKg}</span>
                                         <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--testo-chiaro)' }}>kg</span>
-                                      </span>
+                                        <span aria-hidden="true" style={{ fontSize: '15px', fontWeight: '800', color: currentKg !== undefined && parseFloat(currentKg) === parseFloat(prevKg) ? 'var(--ok)' : 'var(--accento)', marginLeft: '2px' }}>
+                                          {currentKg !== undefined && parseFloat(currentKg) === parseFloat(prevKg) ? '✓' : '↵'}
+                                        </span>
+                                      </button>
                                     )}
                                     {diff !== null && diff !== 0 && (
                                       <span style={{ fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', color: diff > 0 ? 'var(--ok)' : 'var(--errore)' }}>
@@ -780,18 +808,29 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                   </div>
                                 </div>
 
-                                <button onClick={() => modificaCarico(client, ex, -1)} style={tastoCarico}>−</button>
-                                <button type="button" onClick={() => setEditModal({ client, group })}
-                                  style={{ ...comePulsante, minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
-                                  <span key={saltelli[`${client.id}_${ex.id}_${settimana}`] || 0}
-                                    className={saltelli[`${client.id}_${ex.id}_${settimana}`] ? 'salto' : undefined}
-                                    style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
-                                    {currentKg !== undefined ? currentKg : '—'}
-                                  </span>
-                                  <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
-                                </button>
-                                <button onClick={() => modificaCarico(client, ex, 1)}
-                                  style={{ ...tastoCarico, background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>+</button>
+                                {/* I tre tasti stanno insieme: se il testo è grande e lo spazio non basta,
+                                    scendono tutti e tre sotto il riquadro PREC., non uno alla volta. */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                                <button onClick={() => modificaCarico(client, ex, -(passi[ex.exercise_id] || 1))}
+                                    aria-label={`Meno ${scriviPasso(passi[ex.exercise_id] || 1)} chili`}
+                                    style={{ ...tastoCarico, ...((passi[ex.exercise_id] || 1) !== 1 && tastoConNumero) }}>
+                                    {(passi[ex.exercise_id] || 1) !== 1 ? `−${scriviPasso(passi[ex.exercise_id])}` : '−'}
+                                  </button>
+                                  <button type="button" onClick={() => setEditModal({ client, group })}
+                                    style={{ ...comePulsante, minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
+                                    <span key={saltelli[`${client.id}_${ex.id}_${settimana}`] || 0}
+                                      className={saltelli[`${client.id}_${ex.id}_${settimana}`] ? 'salto' : undefined}
+                                      style={{ color: currentKg !== undefined ? '#fff' : 'var(--testo-fioco)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }}>
+                                      {currentKg !== undefined ? currentKg : '—'}
+                                    </span>
+                                    <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
+                                  </button>
+                                  <button onClick={() => modificaCarico(client, ex, passi[ex.exercise_id] || 1)}
+                                    aria-label={`Più ${scriviPasso(passi[ex.exercise_id] || 1)} chili`}
+                                    style={{ ...tastoCarico, ...((passi[ex.exercise_id] || 1) !== 1 && tastoConNumero), background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>
+                                    {(passi[ex.exercise_id] || 1) !== 1 ? `+${scriviPasso(passi[ex.exercise_id])}` : '+'}
+                                  </button>
+                                </div>
                               </div>
                             )
                           })}
@@ -1056,11 +1095,14 @@ const testataPersona = {
 
 // Le frecce dell'ordine, accanto al nome. Più piccole di quelle di TURNI
 // perché qui la riga è già piena, ma abbastanza da prenderle col pollice.
-const frecciaOrdine = { background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: '#fff', fontSize: '15px', lineHeight: 1, width: '34px', height: '30px', borderRadius: '3px', cursor: 'pointer', padding: 0 }
+const frecciaOrdine = { background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: '#fff', fontSize: '17px', lineHeight: 1, width: '44px', height: '40px', borderRadius: '3px', cursor: 'pointer', padding: 0 }
 const pannello = { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }
 // 38px: sotto questa misura il pollice sbaglia, e qui si tocca tutto il giorno.
-const tastoCarico = { width: '38px', height: '38px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
+// Con il passo scritto sopra («+2,5») il tasto si allarga un poco e il testo
+// si stringe, perché ci stia senza andare a capo.
+const tastoConNumero = { width: 'auto', minWidth: '48px', padding: '0 4px', fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }
+const tastoCarico = { width: '44px', height: '44px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
 
 // Quanto aspetta l'avviso del record dopo l'ultimo salvataggio (che a sua
 // volta parte quasi un secondo dopo l'ultimo tocco): il tempo di finire di

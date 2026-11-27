@@ -48,11 +48,15 @@
   --sup-alta:      rgba(255,255,255,.07);
   --bordo:         rgba(255,255,255,.10);
   --bordo-forte:   rgba(255,255,255,.15);
-  --testo-fioco:   rgba(255,255,255,.22);
-  --testo-debole:  rgba(255,255,255,.32);
-  --testo-medio:   rgba(255,255,255,.42);
-  --testo-chiaro:  rgba(255,255,255,.52);
-  --testo-forte:   rgba(255,255,255,.68);
+  /* Le scritte grigie. Fino al 27/11/2026 le tre più tenui erano sotto la
+     soglia minima di leggibilità (4,5 a 1): «fioco» arrivava a 1,9 a 1, e
+     con la luce della sala non si leggeva. Ora la più tenue è 4,7 a 1 e la
+     scala resta la stessa: dal meno al più importante. */
+  --testo-fioco:   rgba(255,255,255,.46);
+  --testo-debole:  rgba(255,255,255,.54);
+  --testo-medio:   rgba(255,255,255,.62);
+  --testo-chiaro:  rgba(255,255,255,.70);
+  --testo-forte:   rgba(255,255,255,.80);
   --testo:         #fff;
 
   /* ── colori con un significato, non decorativi ──────────────────── */
@@ -93,9 +97,13 @@
 
      Le misure sono scritte una volta sola, qui: le pagine dicono
      `height: var(--schermo)` e non sanno niente di tutto questo. */
-  --ingrandimento: 1;
-  --schermo: 100dvh;
-  --schermo-largo: 100%;
+  /* L'ingrandimento è lo schermo (sotto) per la scelta di chi usa il
+     telefono: «Testo più grande» in IMPOSTAZIONI (vedi testo.js). */
+  --ingrandimento-schermo: 1;
+  --fattore-testo: 1;
+  --ingrandimento: calc(var(--ingrandimento-schermo) * var(--fattore-testo));
+  --schermo: calc(100dvh / var(--ingrandimento));
+  --schermo-largo: calc(100vw / var(--ingrandimento));
 
   /* Quanto può diventare larga l'app.
 
@@ -122,21 +130,17 @@
 
 /* Tablet in verticale: iPad mini 744, iPad 820, Galaxy Tab 800. */
 @media (min-width: 700px) and (min-height: 700px) {
-  :root {
-    --ingrandimento: 1.3;
-    --schermo: calc(100dvh / 1.3);
-    --schermo-largo: calc(100vw / 1.3);
-  }
+  :root { --ingrandimento-schermo: 1.3; }
 }
 
 /* Computer veri: larghi E alti. Un tablet sdraiato non arriva qui. */
 @media (min-width: 1100px) and (min-height: 900px) {
-  :root {
-    --ingrandimento: 1.6;
-    --schermo: calc(100dvh / 1.6);
-    --schermo-largo: calc(100vw / 1.6);
-  }
+  :root { --ingrandimento-schermo: 1.6; }
 }
+
+/* Testo più grande, a scelta di chi usa questo telefono. */
+:root[data-testo="grande"] { --fattore-testo: 1.12; }
+:root[data-testo="molto"]  { --fattore-testo: 1.25; }
 
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }

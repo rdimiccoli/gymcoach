@@ -12,6 +12,7 @@ import AvatarCoach from '../components/AvatarCoach'
 import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { NOVITA } from '../lib/novita'
+import { MISURE, leggiTesto, scegliTesto } from '../lib/testo'
 
 export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili, apriNovita }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
@@ -68,6 +69,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
   // Sblocco biometrico (per dispositivo, non per account)
   const [bioDisponibile, setBioDisponibile] = useState(false)
   const [bioAttivo, setBioAttivo] = useState(() => bloccoAttivo(session.user.id))
+  const [misuraTesto, setMisuraTesto] = useState(leggiTesto)
   const [bioInCorso, setBioInCorso] = useState(false)
 
   useEffect(() => { loadData() }, [coach.id])
@@ -601,7 +603,7 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
                 <div style={{ color: 'var(--testo-debole)', fontSize: '13px', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session.user.email}</div>
               </div>
             </div>
-            <button onClick={() => setView('editName')} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '7px 12px', borderRadius: '3px' }}>
+            <button onClick={() => setView('editName')} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '0 14px', minHeight: '44px', borderRadius: '4px' }}>
               MODIFICA
             </button>
           </div>
@@ -654,6 +656,28 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
           <Riga etichetta="Archivia coach"
             onClick={() => { setDaArchiviare(null); setView('archivia') }} />
         )}
+
+        {/* Vale solo su questo telefono o tablet (vedi testo.js). */}
+        <div style={titoloSezione}>GRANDEZZA DEL TESTO</div>
+        <div role="radiogroup" aria-label="Grandezza del testo" style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+          {MISURE.map(m => (
+            <button key={m.id} type="button" role="radio" aria-checked={misuraTesto === m.id} aria-label={m.nome}
+              onClick={() => { scegliTesto(m.id); setMisuraTesto(m.id) }}
+              style={{
+                flex: 1, minHeight: '64px', borderRadius: '6px', cursor: 'pointer',
+                background: misuraTesto === m.id ? 'var(--acc-riempimento)' : 'var(--sup)',
+                border: `1px solid ${misuraTesto === m.id ? 'var(--accento)' : 'var(--bordo)'}`,
+                color: misuraTesto === m.id ? 'var(--accento)' : '#fff',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+              }}>
+              <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', fontSize: `${m.lettera}px`, lineHeight: 1 }}>A</span>
+              <span style={{ fontSize: '12px', color: misuraTesto === m.id ? 'var(--accento)' : 'var(--testo-medio)' }}>{m.nome}</span>
+            </button>
+          ))}
+        </div>
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', lineHeight: 1.4, marginBottom: '18px' }}>
+          Ingrandisce scritte e tasti, solo su questo telefono o tablet.
+        </div>
 
         {bioDisponibile && (
           <>

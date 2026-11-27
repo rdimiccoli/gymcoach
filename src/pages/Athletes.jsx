@@ -67,7 +67,7 @@ export default function Athletes({ navigate, goHome, coach }) {
           <button onClick={() => setMostraArchiviate(v => !v)} style={{
             background: mostraArchiviate ? 'var(--acc-riempimento)' : 'var(--sup)',
             border: `1px solid ${mostraArchiviate ? 'var(--acc-bordo-forte)' : 'var(--bordo)'}`,
-            borderRadius: '3px', padding: '5px 10px',
+            borderRadius: '4px', padding: '0 12px', minHeight: '40px',
             color: mostraArchiviate ? 'var(--accento)' : 'var(--testo-debole)',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', cursor: 'pointer',
           }}>

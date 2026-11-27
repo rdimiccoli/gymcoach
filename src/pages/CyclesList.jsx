@@ -307,7 +307,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
       <div style={{ display: 'flex', gap: '6px', padding: '10px 16px', flexShrink: 0, borderBottom: '1px solid var(--sup-alta)' }}>
         {[['schede', 'SCHEDE'], ['esercizi', 'ESERCIZI']].map(([id, testo]) => (
           <button key={id} type="button" onClick={() => setLinguetta(id)} style={{
-            flex: 1, padding: '10px', borderRadius: '4px', border: 'none', cursor: 'pointer',
+            flex: 1, padding: '10px', minHeight: '44px', borderRadius: '4px', border: 'none', cursor: 'pointer',
             fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '700', letterSpacing: '1.5px',
             background: linguetta === id ? 'var(--accento)' : 'var(--sup)',
             color: linguetta === id ? '#fff' : 'var(--testo-debole)',
@@ -337,7 +337,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
                     <div style={{ color: 'var(--attenzione)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px' }}>⚠ TUTTI ALLA SETTIMANA {settimaneDi(activeCycle)}</div>
                     <div style={{ color: 'var(--testo-debole)', fontSize: '12px', marginTop: '2px' }}>È ora di completare questa scheda?</div>
                   </div>
-                  <button onClick={() => setCompleteModal(activeCycle)} style={{ background: 'var(--attenzione)', border: 'none', borderRadius: '3px', padding: '6px 12px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>
+                  <button onClick={() => setCompleteModal(activeCycle)} style={{ background: 'var(--attenzione)', border: 'none', borderRadius: '4px', padding: '0 14px', minHeight: '40px', color: '#000', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '12px', fontWeight: '800', letterSpacing: '1px' }}>
                     COMPLETA
                   </button>
                 </div>
@@ -381,7 +381,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       <button onClick={() => navigate('cycle-form', { turnId: turn.id, cycleId: cycle.id, readOnly: !cycle.is_active })}
-                        style={{ height: '34px', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '0 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
+                        style={{ height: '44px', background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '4px', padding: '0 12px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px' }}>
                         APRI →
                       </button>
                       <MenuPuntini etichetta={`Altre azioni per ${cycle.name}`} voci={[
@@ -545,7 +545,7 @@ export default function CyclesList({ navigate, goHome, coach }) {
 const page = { maxWidth: 'var(--colonna)', marginInline: 'auto', width: '100%', display: 'flex', flexDirection: 'column', height: 'var(--schermo)', background: 'var(--fondo)', overflow: 'hidden', position: 'relative' }
 const scroll = { flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px', WebkitOverflowScrolling: 'touch' }
 const sectionLabel = { color: 'var(--testo-fioco)', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif' }
-const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '7px 14px', borderRadius: '3px', cursor: 'pointer' }
+const orangeSmall = { background: 'var(--accento)', border: 'none', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', padding: '0 14px', minHeight: '40px', borderRadius: '4px', cursor: 'pointer' }
 const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }
 // maxHeight + scroll: con nome, data e l'elenco delle persone, su un telefono
 // piccolo il pulsante SALVA finirebbe sotto il bordo dello schermo.

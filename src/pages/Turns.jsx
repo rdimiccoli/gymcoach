@@ -265,8 +265,8 @@ export default function Turns({ navigate, goHome, coach }) {
               border: `1px solid ${riordino ? 'var(--accento)' : 'var(--bordo)'}`,
               color: riordino ? '#fff' : 'var(--testo-chiaro)',
               fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px',
-              fontWeight: '700', letterSpacing: '1px', padding: '6px 12px',
-              borderRadius: '3px', cursor: 'pointer', flexShrink: 0,
+              fontWeight: '700', letterSpacing: '1px', padding: '0 14px', minHeight: '40px',
+              borderRadius: '4px', cursor: 'pointer', flexShrink: 0,
             }}>{riordino ? '✓ FATTO' : '↑↓ RIORDINA'}</button>
           )}
         </div>
@@ -297,16 +297,16 @@ export default function Turns({ navigate, goHome, coach }) {
               </div>
             ) : (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <button onClick={() => openEditClient(client)}
-                style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '14px', padding: '6px 10px', borderRadius: '3px' }}>
+              <button onClick={() => openEditClient(client)} aria-label={`Modifica ${client.surname} ${client.name}`}
+                style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)', fontSize: '15px', minWidth: '44px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 ✏️
               </button>
               <button onClick={() => toggleClient(client)}
-                style={{ background: 'var(--sup-alta)', border: '1px solid var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '12px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', padding: '6px 10px', borderRadius: '3px' }}>
+                style={{ background: 'var(--sup-alta)', border: '1px solid var(--sup-alta)', color: 'var(--testo-medio)', fontSize: '13px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '1px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 {client.is_active ? 'ARCHIVIA' : 'RIATTIVA'}
               </button>
-              <button onClick={() => confirmDeleteClient(client)}
-                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(239,68,68,0.7)', fontSize: '14px', padding: '6px 10px', borderRadius: '3px' }}>
+              <button onClick={() => confirmDeleteClient(client)} aria-label={`Elimina ${client.surname} ${client.name}`}
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: 'rgba(239,68,68,0.85)', fontSize: '15px', minWidth: '44px', minHeight: '44px', padding: '0 10px', borderRadius: '4px' }}>
                 🗑
               </button>
             </div>
@@ -441,9 +441,10 @@ export default function Turns({ navigate, goHome, coach }) {
               <div style={{ color: 'var(--testo-fioco)', fontSize: '13px', marginTop: '1px' }}>Tocca per gestire clienti</div>
             </button>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  color: 'var(--testo-fioco)', fontSize: '18px', cursor: 'pointer' }}>›</button>
-              <button onClick={() => apriRinomina(turn)} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo)', borderRadius: '3px', padding: '4px 8px', color: 'var(--testo-medio)', fontSize: '14px' }}>✏️</button>
-              <button onClick={() => deleteTurn(turn.id)} style={{ background: 'none', border: 'none', color: 'var(--acc-bordo-marcato)', fontSize: '16px', padding: '4px' }}>✕</button>
+              {/* Fino al 27/11/2026 qui c'erano anche la matita e una ✕ da 21
+                  pixel che eliminava il turno, attaccate: ora «Elimina» sta
+                  dentro MODIFICA, lontano dal dito. */}
+              <button onClick={() => apriRinomina(turn)} style={{ background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '4px', minHeight: '44px', padding: '0 14px', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', letterSpacing: '1px' }}>MODIFICA</button>
             </div>
           </div>
         ))}
@@ -473,6 +474,10 @@ export default function Turns({ navigate, goHome, coach }) {
             <button onClick={saveRenameTurn} disabled={!renameTime.trim()}
               style={{ ...bigBtn, marginBottom: '10px', opacity: !renameTime.trim() ? 0.3 : 1 }}>✓ SALVA</button>
             <button onClick={() => setRenameTurnModal(null)} style={cancelBtn}>Annulla</button>
+            <button onClick={() => { const id = renameTurnModal.id; setRenameTurnModal(null); deleteTurn(id) }}
+              style={{ width: '100%', marginTop: '18px', minHeight: '48px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '6px', color: 'rgba(239,68,68,0.95)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', letterSpacing: '1.5px' }}>
+              🗑 ELIMINA IL TURNO
+            </button>
           </div>
         </div>
       )}
