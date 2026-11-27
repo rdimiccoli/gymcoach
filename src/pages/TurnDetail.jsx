@@ -547,7 +547,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                     else if (parte === 'tutto') setExpanded(prev => ({ ...prev, [groupKey]: !prev[groupKey] }))
                   }}
                   aria-pressed={parte === 'testa' ? selezionato : undefined}
-                  style={{ ...comePulsante, flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer' }}>
+                  // Il margine negativo allarga la zona da toccare a tutta
+                  // l'altezza della riga (era alta 19 pixel, solo il testo).
+                  style={{ ...comePulsante, flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', margin: '-12px 0', padding: '12px 0' }}>
                   {group.type === 'superset' && (
                     <div style={{ color: 'var(--accento)', fontSize: '12px', fontWeight: '700', letterSpacing: '2px', fontFamily: 'Barlow Condensed, sans-serif', marginBottom: '3px' }}>⚡ SUPERSERIE</div>
                   )}
@@ -599,7 +601,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                 compaiono in TURNI, ATLETI e in tutte le altre
                                 schermate. */}
                             <button type="button" onClick={() => navigate('athlete-profile', { client })}
-                              style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              style={{ ...comePulsante, fontFamily: 'Barlow Condensed, sans-serif', fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', minHeight: '36px' }}>
                               {nomeCompleto(client)}
                               <span style={{ color: 'var(--testo-fioco)', fontSize: '13px' }}>›</span>
                             </button>
@@ -707,12 +709,14 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                         aria-label={`Rifai il peso della volta prima: ${prevReps ? `${prevReps}, ` : ''}${prevKg} chili`}
                                         style={{
                                           ...comePulsante, cursor: 'pointer', minHeight: '34px',
-                                          display: 'inline-flex', alignItems: 'baseline', gap: '4px',
+                                          // Stretto (testo grande, «SCHEDA PREC.»): i numeri vanno a capo
+                                          // sotto l'etichetta, invece di spezzare l'etichetta in due.
+                                          display: 'inline-flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '4px', rowGap: 0, textAlign: 'left',
                                           background: daPrima ? 'var(--acc-fondo-forte)' : 'var(--sup-alta)',
                                           border: `1px solid ${daPrima ? 'var(--acc-bordo-forte)' : 'var(--bordo-forte)'}`,
                                           borderRadius: '5px', padding: '4px 8px 4px', fontFamily: 'Barlow Condensed, sans-serif',
                                         }}>
-                                        <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', color: daPrima ? 'var(--accento)' : 'var(--testo-chiaro)' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: '700', letterSpacing: '0.5px', whiteSpace: 'nowrap', color: daPrima ? 'var(--accento)' : 'var(--testo-chiaro)' }}>
                                           {daPrima ? 'SCHEDA PREC.' : 'PREC.'}
                                         </span>
                                         {prevReps && (<>

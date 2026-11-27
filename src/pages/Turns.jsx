@@ -450,7 +450,7 @@ export default function Turns({ navigate, goHome, coach }) {
         {loading && <ScheletroElenco righe={4} />}
         {turns.map(turn => (
           <div key={turn.id} style={{ ...row, marginBottom: '7px' }}>
-            <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  flex: 1, cursor: 'pointer', paddingLeft: '4px' }}>
+            <button type="button" onClick={() => loadClients(turn)} style={{ ...comePulsante,  flex: 1, cursor: 'pointer', paddingLeft: '4px', minHeight: '44px' }}>
               <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '0.5px' }}>
                 {turn.name}
               </div>

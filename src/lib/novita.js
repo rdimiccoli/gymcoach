@@ -27,6 +27,66 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-27',
+    data: '27 novembre',
+    schede: [
+      {
+        icona: '➕',
+        titolo: 'IL + SALE DEL PESO GIUSTO',
+        testo: 'Dove si usano i dischi il + sale di 2,5 kg, con i manubri di 2: l\'app lo capisce da sola dai pesi già segnati. Sul tasto c\'è scritto «+2,5». Da 50 a 55: due tocchi invece di cinque.',
+        dove: ['APRI UN TURNO', 'TOCCA UN ESERCIZIO', '+2,5'],
+        nota: 'Per il mezzo chilo ci sono sempre i DETTAGLI.',
+      },
+      {
+        icona: '↵',
+        titolo: 'TOCCA «PREC.» PER RIFARE LO STESSO PESO',
+        testo: 'Se il cliente rifà il peso della volta prima, tocca il riquadro PREC.: il peso si scrive da solo e si salva. Quando è uguale compare ✓.',
+        dove: ['APRI UN TURNO', 'TOCCA UN ESERCIZIO', 'PREC. ↵'],
+      },
+      {
+        icona: '🔆',
+        titolo: 'SI LEGGE E SI TOCCA MEGLIO',
+        testo: 'Le scritte grigie sono più chiare e i tasti più grandi. E in IMPOSTAZIONI puoi ingrandire tutto: normale, grande o molto grande.',
+        dove: ['IMPOST.', 'GRANDEZZA DEL TESTO'],
+        nota: 'La grandezza vale solo sul telefono dove la scegli. In TURNI «Elimina il turno» ora sta dentro MODIFICA, lontano dal dito.',
+      },
+      {
+        icona: '🏠',
+        titolo: 'GLI AVVISI IN HOME',
+        testo: 'La card del turno dice quando la scheda è all\'ultima settimana e quando è finita. E il turno dell\'ora in corso si accende di arancione.',
+        dove: ['HOME'],
+        nota: 'Se una scheda finita resta aperta, i pesi nuovi si salvano a parte: quelli dell\'ultima settimana non si toccano.',
+      },
+      {
+        icona: '👀',
+        titolo: 'CHI NON SI VEDE DA TRE SETTIMANE',
+        testo: 'In Home, sotto i turni: chi non ha più un peso segnato da tre settimane, con il giorno dell\'ultima volta. Tocca il nome per aprire il suo profilo.',
+        dove: ['HOME', 'IN FONDO'],
+        serve: 'ultimiAllenamenti',
+      },
+      {
+        icona: '📱',
+        titolo: 'SUL TABLET, DUE COLONNE',
+        testo: 'Con il tablet in orizzontale la seduta usa tutto lo schermo: a sinistra gli esercizi del giorno, a destra le persone con i loro pesi. Un tocco per passare all\'esercizio dopo.',
+        dove: ['TABLET IN ORIZZONTALE', 'APRI UN TURNO'],
+      },
+      {
+        icona: '🏷️',
+        titolo: 'NOMI IN ORDINE, E UNA NOTA',
+        testo: 'I nomi si vedono tutti allo stesso modo, anche quelli scritti in maiuscolo. E accanto al nome puoi mettere una nota corta: «nuova», «over», «arriva tardi».',
+        dove: ['TURNI', 'APRI UN TURNO', 'MATITA ACCANTO AL NOME', 'NOTA'],
+        serve: 'notaPersona',
+      },
+      {
+        icona: '🧹',
+        titolo: 'METTERE IN ORDINE',
+        testo: 'Una pagina che trova chi è attivo ma non ha mai fatto un allenamento, le persone iscritte due volte e gli esercizi scritti in due modi. Si sistema uno alla volta, sempre con conferma.',
+        dove: ['IMPOST.', 'METTERE IN ORDINE'],
+        nota: 'Non si cancella niente: chi si archivia si riattiva da ATLETI.',
+      },
+    ],
+  },
+  {
     id: '2026-11-24',
     data: '24 novembre',
     schede: [
