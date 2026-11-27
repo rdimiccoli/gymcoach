@@ -111,6 +111,25 @@ export function settimanaDaCalendario(scheda) {
 }
 
 /**
+ * La settimana del calendario SENZA fermarsi alla fine della scheda.
+ *
+ * `settimanaDaCalendario` si ferma all'ultima settimana, ed è giusto per
+ * mostrare «settimana 6 di 6». Ma per SALVARE un peso no: una scheda finita
+ * e rimasta aperta faceva scrivere ogni peso nuovo sopra quello dell'ultima
+ * settimana, e lo storico di quella settimana spariva. Con questa i pesi di
+ * dopo la fine vanno in una settimana in più (7, 8…), senza toccare niente.
+ * Ritorna null se la data manca o è nel futuro.
+ */
+export function settimanaVera(scheda) {
+  if (!scheda?.start_date) return null
+  const inizio = new Date(`${scheda.start_date}T00:00:00`)
+  if (Number.isNaN(inizio.getTime())) return null
+  const giorni = Math.floor((Date.now() - inizio.getTime()) / 86_400_000)
+  if (giorni < 0) return null
+  return Math.floor(giorni / 7) + 1
+}
+
+/**
  * La data di oggi come 'AAAA-MM-GG', nel fuso del telefono.
  *
  * Non toISOString(): quella converte in UTC, e in Italia fra mezzanotte e le

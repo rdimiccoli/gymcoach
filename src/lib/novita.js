@@ -8,9 +8,9 @@
  *
  * ── PER CHI MODIFICA L'APP ─────────────────────────────────────────────────
  * Ogni modifica che il coach vede → una voce nuova IN CIMA, con un `id`
- * nuovo (la data, AAAA-MM-GG: si confrontano come testo, quindi l'ordine
- * delle date è anche l'ordine delle versioni). Due rilasci nello stesso
- * giorno: «AAAA-MM-GG-2», «-3»… (vengono dopo la data semplice). Una voce
+ * nuovo (la data, AAAA-MM-GG: l'ordine delle date è anche l'ordine delle
+ * versioni). Due rilasci nello stesso giorno: «AAAA-MM-GG-2», «-3»… (vengono
+ * dopo la data semplice, e «-10» dopo «-9»: vedi confronta). Una voce
  * già pubblicata non si allunga: chi l'ha vista non la rivedrebbe. Le
  * correzioni invisibili non servono: il tutorial è per le cose da imparare.
  *
@@ -154,12 +154,31 @@ const MASSIMO = 8
  *   oggi, non sono novità.
  * `capacita`: quello che il database sa fare (vedi `serve`).
  */
-export function novitaDaMostrare({ ultimaVista = null, introDaFare = false, capacita = {}, elenco = NOVITA } = {}) {
+export function novitaDaMostrare({ ultimaVista = null, introDaFare = false, capacita = {}, elenco = NOVITA, sospese = [] } = {}) {
   if (introDaFare || !elenco.length) return []
   // Mai viste niente, ma l'app la usava già: le più recenti, fino al
   // massimo (l'elenco va dalla più nuova, quindi le vecchie restano fuori).
-  const nuove = ultimaVista ? elenco.filter(n => n.id > ultimaVista) : elenco
-  return schermateDi(nuove, capacita)
+  const nuove = ultimaVista ? elenco.filter(n => confronta(n.id, ultimaVista) > 0) : elenco
+  // Più quelle rimaste in sospeso: annunciate in un aggiornamento quando il
+  // database non le sapeva ancora fare, e diventate possibili dopo (vedi
+  // segnaNovitaViste). Prima si perdevano per sempre.
+  const giaDentro = new Set(nuove.map(n => n.id))
+  const recuperate = elenco
+    .filter(n => !giaDentro.has(n.id))
+    .flatMap(n => n.schede.filter((s, i) => sospese.includes(`${n.id}#${i}`)))
+  return [...schermateDi(nuove, capacita), ...recuperate.filter(s => !s.serve || capacita[s.serve])].slice(0, MASSIMO)
+}
+
+/**
+ * Confronta due id di rilascio: prima la data, poi il numero dopo la data.
+ * Come testo «2026-11-16-10» verrebbe prima di «2026-11-16-2», e il decimo
+ * rilascio di un giorno sembrerebbe già visto.
+ */
+export function confronta(a, b) {
+  const [, dataA = '', nA = '1'] = String(a).match(/^(\d{4}-\d{2}-\d{2})(?:-(\d+))?/) || []
+  const [, dataB = '', nB = '1'] = String(b).match(/^(\d{4}-\d{2}-\d{2})(?:-(\d+))?/) || []
+  if (dataA !== dataB) return dataA < dataB ? -1 : 1
+  return Number(nA) - Number(nB)
 }
 
 /** Le schermate dell'ultimo aggiornamento, per rivederle dalle impostazioni. */
@@ -180,11 +199,46 @@ function schermateDi(versioni, capacita) {
 // ── Il segno «già viste», su questo telefono ───────────────────────────────
 
 const CHIAVE = 'gymcoach.novita-viste'
+const CHIAVE_SOSPESE = 'gymcoach.novita-sospese'
 
 export function leggiUltimaVista() {
   try { return localStorage.getItem(CHIAVE) } catch { return null }
 }
 
-export function segnaNovitaViste(elenco = NOVITA) {
-  try { if (elenco[0]) localStorage.setItem(CHIAVE, elenco[0].id) } catch { /* modalità privata */ }
+export function leggiSospese() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_SOSPESE) || '[]')
+    return Array.isArray(v) ? v : []
+  } catch { return [] }
+}
+
+/**
+ * Le schermate da tenere in sospeso: quelle fra le non viste che il database
+ * non sa ancora fare (la query su Supabase si lancia dopo l'aggiornamento).
+ * Restano in elenco finché non diventano possibili; quelle mostrate escono.
+ */
+export function sospeseDopo({ ultimaVista = null, capacita = {}, elenco = NOVITA, sospese = [] } = {}) {
+  const nuove = ultimaVista ? elenco.filter(n => confronta(n.id, ultimaVista) > 0) : elenco
+  const fuori = nuove.flatMap(n => n.schede.map((s, i) => (s.serve && !capacita[s.serve] ? `${n.id}#${i}` : null))).filter(Boolean)
+  const ancora = sospese.filter(id => {
+    const [vid, i] = id.split('#')
+    const s = elenco.find(n => n.id === vid)?.schede[Number(i)]
+    return s?.serve && !capacita[s.serve]
+  })
+  return [...new Set([...ancora, ...fuori])]
+}
+
+/**
+ * Segna tutto come visto. Con `capacita` ricorda anche le schermate saltate
+ * perché il database non era pronto, per mostrarle quando lo sarà; senza
+ * (telefono nuovo, con la presentazione iniziale) non ricorda niente.
+ */
+export function segnaNovitaViste(elenco = NOVITA, capacita = null) {
+  try {
+    if (capacita) {
+      const sospese = sospeseDopo({ ultimaVista: leggiUltimaVista(), capacita, elenco, sospese: leggiSospese() })
+      localStorage.setItem(CHIAVE_SOSPESE, JSON.stringify(sospese))
+    }
+    if (elenco[0]) localStorage.setItem(CHIAVE, elenco[0].id)
+  } catch { /* modalità privata */ }
 }

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, secondiDaTesto, numeroDaTesto, settimanaDaCalendario, TIPO } from './schede'
+import { describe, it, expect, vi } from 'vitest'
+import { raggruppaEsercizi, repsPerSettimana, tipoGruppo, secondiDaTesto, numeroDaTesto, settimanaDaCalendario, settimanaVera, TIPO } from './schede'
 
 const ex = (id, gruppo = null, reps = {}) => ({
   id,
@@ -173,5 +173,18 @@ describe('settimanaDaCalendario', () => {
     expect(settimanaDaCalendario(null)).toBeNull()
     expect(settimanaDaCalendario({})).toBeNull()
     expect(settimanaDaCalendario({ start_date: 'non-una-data' })).toBeNull()
+  })
+})
+
+describe('la settimana vera, oltre la fine della scheda', () => {
+  it('dopo la fine non si ferma: i pesi vanno in una settimana in più', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-27T10:00:00'))
+    const finita = { start_date: '2026-10-09', settimane: 6 } // 49 giorni fa
+    expect(settimanaDaCalendario(finita)).toBe(6)
+    expect(settimanaVera(finita)).toBe(8)
+    expect(settimanaVera({ start_date: '2026-12-01' })).toBeNull()
+    expect(settimanaVera({})).toBeNull()
+    vi.useRealTimers()
   })
 })

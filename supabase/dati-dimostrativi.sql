@@ -8,7 +8,13 @@
 --  ⚠️  CANCELLA I DATI DI TUTTI I COACH, NON SOLO DI UNO.
 --      Turni, atlete, schede, esercizi, carichi, note e il catalogo esercizi.
 --      Non è annullabile.
---      PRIMA: Supabase → Database → Backups.
+--      ⚠️  Col piano gratuito di Supabase NON ci sono backup automatici: la
+--      pagina Database → Backups è vuota. Prima di tutto serve una copia fatta
+--      a mano (per esempio con `supabase db dump`).
+--
+--  🔒  SICURA (27/11/2026): il PASSO 2 si rifiuta di partire se nel database
+--      ci sono più di 30 atlete, cioè dati veri. Per svuotare davvero un
+--      database vero va tolta a mano la sicura qui sotto, sapendo cosa si fa.
 --
 --  Da eseguire in quest'ordine. Il PASSO 0 non tocca niente: leggilo prima.
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -53,6 +59,13 @@ declare
   t_mat    uuid;  t_pom  uuid;  t_ser uuid;
   s_att    uuid;  s_vec  uuid;  s_forza uuid;  s_metab uuid;
 begin
+  -- ── SICURA ──────────────────────────────────────────────────────────────
+  -- Questo script è nato per un database di prova. Su quello vero, con le
+  -- atlete e i carichi della palestra, cancellerebbe tutto senza ritorno.
+  if (select count(*) from clients) > 30 then
+    raise exception 'FERMO: nel database ci sono % atlete, sono dati veri. Questo script li cancellerebbe tutti. Non è stato toccato niente.', (select count(*) from clients);
+  end if;
+
   select id into v_coach from auth.users where lower(email) = lower(v_email);
   if v_coach is null then
     raise exception
@@ -337,5 +350,5 @@ order by c.start_date;
 -- delete from auth.users
 -- where lower(email) not in (
 --   lower('sandro@esempio.it')        -- ← l'account di Sandro, da tenere
---   -- , lower('r.dimiccoli93@gmail.com')  -- ← togli il commento per tenere anche il tuo
+--   -- , lower('la-tua-email@esempio.it')  -- ← togli il commento per tenere anche il tuo
 -- );

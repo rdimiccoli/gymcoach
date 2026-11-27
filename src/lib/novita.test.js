@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { novitaDaMostrare, ultimeNovita, NOVITA } from './novita'
+import { novitaDaMostrare, ultimeNovita, NOVITA, sospeseDopo, confronta } from './novita'
 
 const elenco = [
   { id: '2026-12-01', schede: [{ titolo: 'C' }, { titolo: 'D', serve: 'nuovaColonna' }] },
@@ -61,5 +61,37 @@ describe('l elenco vero', () => {
       expect(s.icona && s.titolo && s.testo).toBeTruthy()
       expect(s.dove?.length).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('novità che aspettano il database', () => {
+  const elenco = [
+    { id: '2026-12-01', schede: [{ titolo: 'Nuova', icona: '1', testo: 't', dove: ['x'] }] },
+    { id: '2026-11-20', schede: [{ titolo: 'Con SQL', icona: '2', testo: 't', dove: ['x'], serve: 'nota' }, { titolo: 'Senza', icona: '3', testo: 't', dove: ['x'] }] },
+  ]
+
+  it('una schermata saltata per il database resta in sospeso', () => {
+    expect(sospeseDopo({ ultimaVista: '2026-11-01', capacita: {}, elenco })).toEqual(['2026-11-20#0'])
+  })
+
+  it('quando il database è pronto, la schermata in sospeso arriva', () => {
+    const viste = novitaDaMostrare({ ultimaVista: '2026-12-01', capacita: { nota: true }, elenco, sospese: ['2026-11-20#0'] })
+    expect(viste.map(s => s.titolo)).toEqual(['Con SQL'])
+  })
+
+  it('finché il database non è pronto non arriva, e resta in sospeso', () => {
+    expect(novitaDaMostrare({ ultimaVista: '2026-12-01', capacita: {}, elenco, sospese: ['2026-11-20#0'] })).toEqual([])
+    expect(sospeseDopo({ ultimaVista: '2026-12-01', capacita: {}, elenco, sospese: ['2026-11-20#0'] })).toEqual(['2026-11-20#0'])
+  })
+
+  it('mostrata una volta, esce dalle sospese', () => {
+    expect(sospeseDopo({ ultimaVista: '2026-12-01', capacita: { nota: true }, elenco, sospese: ['2026-11-20#0'] })).toEqual([])
+  })
+
+  it('il decimo rilascio di un giorno viene dopo il nono', () => {
+    expect(confronta('2026-11-16-10', '2026-11-16-9')).toBeGreaterThan(0)
+    expect(confronta('2026-11-16-2', '2026-11-16')).toBeGreaterThan(0)
+    expect(confronta('2026-11-17', '2026-11-16-10')).toBeGreaterThan(0)
+    expect(confronta('2026-11-16', '2026-11-16')).toBe(0)
   })
 })

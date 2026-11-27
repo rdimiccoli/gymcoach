@@ -27,14 +27,14 @@ describe('ordine delle persone di un turno', () => {
     expect(spostaDi(elenco, 1, +1)).toBe(elenco)
   })
 
-  it('il caso del coach: Borracino e Spira finiscono vicini', () => {
+  it('il caso del coach: Bianchi e Spira finiscono vicini', () => {
     // In ordine alfabetico stanno lontani: fra loro ci sono altri tre.
     const turno = numeraDaCapo([
-      p('bor', 'Borracino'), p('c', 'Cassano'), p('d', 'Dimiccoli'),
-      p('f', 'Fiorella'), p('spi', 'Spira'),
+      p('bor', 'Bianchi'), p('c', 'Conti'), p('d', 'De Rosa'),
+      p('f', 'Ferri'), p('spi', 'Spira'),
     ])
     let fuori = turno
-    // Spira sale fino a sotto Borracino: tre passi.
+    // Spira sale fino a sotto Bianchi: tre passi.
     for (let i = 0; i < 3; i++) {
       fuori = spostaDi(fuori, fuori.findIndex(x => x.id === 'spi'), -1)
     }

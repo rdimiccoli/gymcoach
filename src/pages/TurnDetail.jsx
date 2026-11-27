@@ -4,7 +4,7 @@ import { run, notifyOk, notifyError } from '../lib/notify'
 import { salvaCarichi } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
-import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario } from '../lib/schede'
+import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario, settimanaVera } from '../lib/schede'
 import { capacita } from '../lib/capacita'
 import { conOrdineDelTurno, spostaAccanto } from '../lib/ordineDb'
 import { useScivola } from '../lib/movimento'
@@ -80,6 +80,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const avvisoInAttesa = useRef({})
   const giaAvvisati = useRef(new Set())
   const recordRef = useRef({})
+  // Ogni peso salvato di una persona su un esercizio, cella per cella
+  // («riga della scheda + settimana»). Il record è il massimo di queste: così
+  // un peso sbagliato e poi corretto non lascia un record finto in memoria.
+  const celleRecord = useRef({})
   useEffect(() => () => Object.values(avvisoInAttesa.current).forEach(a => clearTimeout(a.timer)), [])
   const elencoRef = useRef(null)
   const ricordaPosti = useScivola(elencoRef)
@@ -104,6 +108,16 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   const [editModal, setEditModal] = useState(null)
   const [timer, setTimer] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Di quale scheda e giorno sono i dati sullo schermo. Toccando in fretta due
+  // linguette, la risposta della prima può arrivare dopo quella della
+  // seconda: senza questo controllo lo schermo mostrava gli esercizi di una
+  // scheda con la settimana dell'altra, e un peso segnato in quel momento
+  // finiva sulla scheda sbagliata. Ogni lettura ha il suo numero; vale solo
+  // l'ultima, e finché non arriva l'elenco non si mostra.
+  const richiesta = useRef(0)
+  const [caricatoPer, setCaricatoPer] = useState(null)
+  const chiaveDati = cycle ? `${cycle.id}_${day}` : null
+  const inCaricamento = loading || caricatoPer !== chiaveDati
   const timerCarichi = useRef({})
   const carichiPendenti = useRef({})
 
@@ -129,9 +143,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
    * che non si può sbagliare con un tocco accidentale. Se il gruppo resta
    * davvero indietro si sposta la data d'inizio, e si ricalcola tutto.
    */
-  const settimana = settimanaDaCalendario(cycle) || 1
   // Quante settimane dura questa scheda: sei, se nessuno ha scelto altro.
   const totale = settimaneDi(cycle)
+  // Scheda finita ma ancora aperta: i pesi vanno in una settimana in più
+  // invece di scrivere sopra l'ultima (vedi settimanaVera).
+  const vera = settimanaVera(cycle)
+  const finita = vera !== null && vera > totale
+  const settimana = finita ? vera : (settimanaDaCalendario(cycle) || 1)
   // Ogni quante settimane cambiano le ripetizioni (null: le tre fasi di sempre).
   const passo = ogniDi(cycle)
 
@@ -139,6 +157,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   useEffect(() => () => { Object.keys(carichiPendenti.current).forEach(scriviCarico) }, [])
 
   async function loadData() {
+    const mia = ++richiesta.current
+    const chiave = `${cycle.id}_${day}`
+    const vecchia = () => mia !== richiesta.current
     setLoading(true)
     const perOspiti = soloAtleti?.length > 0
     const [{ data: exData }, { data: tutti }, assegnazioni] = await Promise.all([
@@ -159,14 +180,16 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
         ? {}
         : capacita().then(c => c.assegnazioni ? caricaAssegnazioni([cycle.id]) : {}),
     ])
+    if (vecchia()) return
     // Una scheda assegnata solo ad alcuni mostra solo loro; senza
     // assegnazioni, tutto il turno — come prima.
     const cl = personeDellaScheda(cycle, tutti || [], assegnazioni)
     setExercises(exData || [])
     setClients(cl)
     setTuttiDelTurno(tutti || [])
-    caricaGiorniPersona([cycle.id]).then(perScheda =>
-      setGiorniPersone(mappaGiorni(perScheda[cycle.id], giorniDi(cycle))))
+    caricaGiorniPersona([cycle.id]).then(perScheda => {
+      if (!vecchia()) setGiorniPersone(mappaGiorni(perScheda[cycle.id], giorniDi(cycle)))
+    })
 
     if (exData?.length && cl?.length) {
       const exIds = exData.map(e => e.id)
@@ -182,6 +205,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           .in('client_id', clIds).in('cycle_exercise_id', exIds),
           'Impossibile caricare le note.'),
       ])
+      if (vecchia()) return
       const loadMap = {}
       loadData?.forEach(l => {
         loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
@@ -195,11 +219,17 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       // exercise_id. Una lettura sola per tutte e due le cose.
       const idEsercizi = [...new Set(exData.map(e => e.exercise_id).filter(Boolean))]
       const { righe: storico, precedenti: dallaSchedaPrima } = await storicoEsercizi(clIds, idEsercizi, cycle)
+      if (vecchia()) return
       const massimi = {}
+      const celle = {}
       storico?.forEach(r => {
-        const chiave = `${r.client_id}_${r.cycle_exercises?.exercise_id}`
-        if (r.kg != null && (massimi[chiave] === undefined || r.kg > massimi[chiave])) massimi[chiave] = r.kg
+        const kg = r.kg == null || r.kg === '' ? NaN : Number(r.kg)
+        if (!Number.isFinite(kg)) return
+        const persona = `${r.client_id}_${r.cycle_exercises?.exercise_id}`
+        ;(celle[persona] ||= {})[`${r.cycle_exercise_id}_${r.week}`] = kg
+        if (massimi[persona] === undefined || kg > massimi[persona]) massimi[persona] = kg
       })
+      celleRecord.current = celle
       setRecord(massimi)
       recordRef.current = massimi
       setPrecedenti(dallaSchedaPrima)
@@ -208,6 +238,8 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       noteData?.forEach(n => { noteMap[`${n.client_id}_${n.cycle_exercise_id}`] = n.note })
       setNotes(noteMap)
     }
+    if (vecchia()) return
+    setCaricatoPer(chiave)
     setLoading(false)
   }
 
@@ -278,7 +310,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     conCarico.forEach(({ cycleExId, kg }) => {
       const ex = exercises.find(e => e.id === cycleExId)
       const cliente = clients.find(c => c.id === clientId)
-      if (ex && cliente) controllaRecord(cliente, ex, kg, true)
+      if (ex && cliente) controllaRecord(cliente, ex, kg, true, clientWeek)
     })
     conferma()
     notifyOk(!righe.length ? 'Salvato' : differito ? 'Carichi salvati sul telefono, partiranno appena torna la rete' : 'Carichi salvati')
@@ -327,14 +359,22 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
    *    avvisa: 0 kg è corpo libero o un carico mai segnato davvero.
    * `subito`: dai DETTAGLI, dove il peso si scrive tutto in una volta.
    */
-  function controllaRecord(client, ex, kg, subito = false) {
+  function controllaRecord(client, ex, kg, subito = false, week = settimana) {
     if (kg == null || !ex?.exercise_id) return
     const chiave = `${client.id}_${ex.exercise_id}`
-    const massimo = recordRef.current[chiave]
+    // Il massimo di sempre SENZA questa cella: è il record da battere. Se
+    // questa cella prima aveva un peso sbagliato (55 al posto di 50) e ora lo
+    // si corregge, il 55 non conta più.
+    const celle = (celleRecord.current[chiave] ||= {})
+    const cella = `${ex.id}_${week}`
+    const altri = Object.entries(celle).filter(([c]) => c !== cella).map(([, v]) => v)
+    const massimo = altri.length ? Math.max(...altri) : undefined
+    celle[cella] = kg
+    const nuovoMassimo = Math.max(...Object.values(celle))
+    recordRef.current = { ...recordRef.current, [chiave]: nuovoMassimo }
+    setRecord(prev => ({ ...prev, [chiave]: nuovoMassimo }))
     // Il primo carico in assoluto non è un record: è solo il primo.
     if (massimo !== undefined && kg > massimo) {
-      recordRef.current = { ...recordRef.current, [chiave]: kg }
-      setRecord(prev => ({ ...prev, [chiave]: kg }))
       setRecordAppena(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
     }
     if (giaAvvisati.current.has(chiave)) return
@@ -367,7 +407,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     clearTimeout(timerCarichi.current[chiave])
     const { errore, differito } = await salvaCarichi([daSpedire])
     if (!errore && !differito) setSalvati(prev => ({ ...prev, [chiave]: (prev[chiave] || 0) + 1 }))
-    if (!errore) controllaRecord(riga.__client, riga.__ex, riga.kg)
+    if (!errore) controllaRecord(riga.__client, riga.__ex, riga.kg, false, riga.week)
     if (errore) notifyError('Carico non salvato: il server lo ha rifiutato.')
   }
 
@@ -506,7 +546,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
         borderBottom: '1px solid var(--sup-alta)', background: 'var(--sup)',
       }}>
         <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '14px', fontWeight: '800', letterSpacing: '1.5px', color: 'var(--testo-medio)', whiteSpace: 'nowrap' }}>
-          SETTIMANA <span style={{ color: 'var(--accento)', fontSize: '17px', fontWeight: '900' }}>{settimana}</span> DI {totale}
+          SETTIMANA <span style={{ color: 'var(--accento)', fontSize: '17px', fontWeight: '900' }}>{settimana}</span> {finita ? '· EXTRA' : `DI ${totale}`}
         </span>
         <span style={{ display: 'flex', gap: '3px', flex: 1 }} aria-hidden="true">
           {Array.from({ length: totale }, (_, i) => i + 1).map(n => (
@@ -517,17 +557,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
           ))}
         </span>
       </div>
+      {finita && (
+        <div role="status" style={{
+          margin: '10px 16px 0', padding: '10px 12px', borderRadius: '6px', flexShrink: 0,
+          background: 'rgba(234,179,8,0.10)', border: '1px solid rgba(234,179,8,0.45)',
+          color: 'var(--attenzione)', fontSize: '14px', lineHeight: 1.4,
+        }}>
+          <strong style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '15px', letterSpacing: '1px' }}>⚠ SCHEDA FINITA</strong>
+          <span style={{ color: 'var(--testo-forte)' }}> · La settimana {totale} era l'ultima. I pesi di oggi si salvano a parte, come settimana {settimana}: quelli della {totale} restano com'erano. Quando puoi, completala in SCHEDE e preparane una nuova.</span>
+        </div>
+      )}
       </>)}
 
       <div style={scroll} ref={elencoRef}>
-        {loading && <ScheletroElenco righe={4} />}
-        {!loading && exercises.length === 0 && (
+        {inCaricamento && <ScheletroElenco righe={4} />}
+        {!inCaricamento && exercises.length === 0 && (
           <div style={{ color: 'var(--bordo-forte)', fontSize: '14px', textAlign: 'center', padding: '32px', border: '1px dashed var(--sup-alta)', borderRadius: '6px' }}>
             Nessun esercizio per il Giorno {day}.
           </div>
         )}
 
-        {groups.map((group, gi) => {
+        {!inCaricamento && groups.map((group, gi) => {
           const groupKey = group.type === 'superset' ? group.label : group.exercises[0].id
           // Aperta una persona sola, i gruppi partono già aperti: sono i SUOI
           // esercizi, e richiuderli uno per uno per poterli aprire sarebbe un
@@ -595,10 +645,10 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                 pannello: qui sarebbe la sesta ripetizione. */}
                             {!unaPersona && (<>
                             {/* Il nome si tocca e porta alla scheda della persona.
-                                Prima si leggeva «Vincenzo Bailon». L'elenco è
+                                Prima si leggeva «Vincenzo Esposito». L'elenco è
                                 ordinato per cognome — come ovunque nell'app — ma
                                 scritto così l'occhio leggeva V, A, P, R, F e
-                                sembrava messo a caso. Scritto «Bailon Vincenzo»
+                                sembrava messo a caso. Scritto «Esposito Vincenzo»
                                 l'ordine si vede, ed è lo stesso modo in cui i nomi
                                 compaiono in TURNI, ATLETI e in tutte le altre
                                 schermate. */}
@@ -838,7 +888,7 @@ function LoadModal({ client, group, loads, precedenti = {}, notes, settimana, to
       if (kg !== undefined) return { kg, reps: repsPerSettimana(ex, w, totale, passo) }
     }
     const prima = precedenti[`${client.id}_${ex.exercise_id}`]
-    return prima ? { kg: prima.kg, reps: null, scheda: prima.scheda } : null
+    return prima ? { kg: prima.kg, reps: prima.reps ?? null, scheda: prima.scheda } : null
   }
 
   const change = (exId, delta) => {
@@ -885,7 +935,7 @@ function LoadModal({ client, group, loads, precedenti = {}, notes, settimana, to
     <div className="foglio-entra" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--superficie-modale)', borderTop: '1px solid var(--bordo)', borderRadius: '16px 16px 0 0', padding: '20px 16px 32px', zIndex: 50, maxHeight: '85vh', overflowY: 'auto' }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '18px', fontWeight: '900', color: '#fff', letterSpacing: '1px', marginBottom: '2px' }}>
         {/* Cognome prima, come nell'elenco da cui si arriva qui: toccare
-            «Bailon Vincenzo» e ritrovarsi «VINCENZO BAILON» in testa fa
+            «Esposito Vincenzo» e ritrovarsi «VINCENZO ESPOSITO» in testa fa
             dubitare di aver aperto la persona giusta. */}
         {client?.surname?.toUpperCase()} {client?.name?.toUpperCase()}
       </div>

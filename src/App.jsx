@@ -14,7 +14,7 @@ import AthleteProfile from './pages/AthleteProfile'
 import Athletes from './pages/Athletes'
 import PrimoAccesso, { introDaMostrare } from './components/PrimoAccesso'
 import NovitaApp from './components/NovitaApp'
-import { novitaDaMostrare, ultimeNovita, leggiUltimaVista, segnaNovitaViste } from './lib/novita'
+import { novitaDaMostrare, ultimeNovita, leggiUltimaVista, leggiSospese, segnaNovitaViste } from './lib/novita'
 import { capacita } from './lib/capacita'
 import ScegliCoach, { ConfermaCambio } from './components/ScegliCoach'
 import Notifier from './components/Notifier'
@@ -84,8 +84,14 @@ export default function App() {
   const [sbloccato, setSbloccato] = useState(false)
   const [intro, setIntro] = useState(introDaMostrare)
   const [novita, setNovita] = useState(null) // { schede, aggiornata }
+  // Vero solo mentre il tutorial è davvero sullo schermo: lo accende e lo
+  // spegne NovitaApp stessa. Prima bastava che le novità fossero pronte, e un
+  // «indietro» premuto sul lucchetto o sulla scelta del coach le segnava come
+  // viste prima ancora di mostrarle.
   const novitaAperta = useRef(false)
-  useEffect(() => { novitaAperta.current = !!novita }, [novita])
+  // Cosa sapeva fare il database quando si sono calcolate le novità: serve a
+  // ricordare quelle saltate (vedi segnaNovitaViste).
+  const capacitaNovita = useRef(null)
   // I profili coach. `null` vuol dire «non ancora chiesti al database», che è
   // diverso da «non ce n'è nessuno»: il primo è un'attesa, il secondo un
   // problema da dire a schermo.
@@ -143,7 +149,7 @@ export default function App() {
       // chiude: altrimenti cambierebbe pagina lì sotto, senza che si veda.
       if (novitaAperta.current) {
         window.history.pushState({ gymcoach: true }, '')
-        segnaNovitaViste()
+        segnaNovitaViste(undefined, capacitaNovita.current)
         setNovita(null)
         return
       }
@@ -228,14 +234,15 @@ export default function App() {
     if (!session?.user?.id) return
     let vivo = true
     capacita().then(c => {
-      const schede = novitaDaMostrare({ ultimaVista: leggiUltimaVista(), capacita: c })
+      capacitaNovita.current = c
+      const schede = novitaDaMostrare({ ultimaVista: leggiUltimaVista(), capacita: c, sospese: leggiSospese() })
       if (vivo && schede.length) setNovita({ schede, aggiornata: true })
     })
     return () => { vivo = false }
   }, [session?.user?.id])
 
   function chiudiNovita() {
-    segnaNovitaViste()
+    segnaNovitaViste(undefined, capacitaNovita.current)
     setNovita(null)
   }
 
@@ -343,7 +350,7 @@ export default function App() {
     // L'elenco intero serve alla schermata che archivia un collega.
     coaches: visibili,
     // Dalle impostazioni si rivedono le novità dell'ultimo aggiornamento.
-    apriNovita: () => capacita().then(c => setNovita({ schede: ultimeNovita(c), aggiornata: false })),
+    apriNovita: () => capacita().then(c => { capacitaNovita.current = c; setNovita({ schede: ultimeNovita(c), aggiornata: false }) }),
   }
 
   const pages = {
@@ -369,7 +376,7 @@ export default function App() {
           carichi e gruppi aperti restavano quelli della scheda di prima. */}
       <Page key={stack.length} {...props} />
       {novita?.schede.length > 0 && (
-        <NovitaApp schede={novita.schede} nome={coach.name} aggiornata={novita.aggiornata} onChiudi={chiudiNovita} />
+        <NovitaApp schede={novita.schede} nome={coach.name} aggiornata={novita.aggiornata} onChiudi={chiudiNovita} apertaRef={novitaAperta} />
       )}
       <Notifier />
       <IndicatoreCoda />

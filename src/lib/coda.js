@@ -119,33 +119,75 @@ function accoda(righe) {
   scriviCoda(coda.slice(-MAX_ELEMENTI))
 }
 
-/** Prova a svuotare la coda. Ritorna quanti elementi restano. */
-export async function sincronizza() {
-  const limite = Date.now() - GIORNI_VALIDI * 24 * 60 * 60 * 1000
-  const coda = leggiCoda().filter(e => e.ts > limite)
+/**
+ * Toglie dalla coda le voci appena spedite — e SOLO quelle.
+ *
+ * Mentre la richiesta viaggia la coach può segnare un altro peso, che finisce
+ * in coda. Prima, a spedizione finita, la coda veniva svuotata tutta: quel
+ * peso nuovo spariva senza che nessuno lo sapesse. Ora si rilegge la coda e
+ * si toglie una voce solo se è ancora quella spedita (stessa cella, stesso
+ * momento): se nel frattempo è stata ripesata, resta e partirà al giro dopo.
+ */
+function togliSpediti(spediti) {
+  const via = new Set(spediti.map(e => `${e.k}@${e.ts}`))
+  const resto = leggiCoda().filter(e => !via.has(`${e.k}@${e.ts}`))
+  scriviCoda(resto)
+  return resto.length
+}
 
-  if (!coda.length) { scriviCoda(coda); return 0 }
+const righeDa = voci => voci.map(({ client_id, cycle_exercise_id, kg, week }) =>
+  ({ client_id, cycle_exercise_id, kg, week }))
+
+const spedisci = voci => supabase
+  .from('client_loads')
+  .upsert(righeDa(voci), { onConflict: 'client_id,cycle_exercise_id,week' })
+
+// Un giro di spedizione alla volta: il ritorno della rete, la riapertura
+// dell'app e il controllo di ogni minuto possono cadere insieme, e due giri
+// paralleli si toglierebbero le voci a vicenda.
+let inCorso = null
+
+/** Prova a svuotare la coda. Ritorna quanti elementi restano. */
+export function sincronizza() {
+  inCorso ||= svuota().finally(() => { inCorso = null })
+  return inCorso
+}
+
+async function svuota() {
+  const limite = Date.now() - GIORNI_VALIDI * 24 * 60 * 60 * 1000
+  const tutta = leggiCoda()
+  const scaduti = tutta.filter(e => !(e.ts > limite))
+  if (scaduti.length) {
+    // Un peso fermo sul telefono da più di due settimane non parte più: ma lo
+    // si dice, invece di farlo sparire in silenzio.
+    togliSpediti(scaduti)
+    notifyError(`${scaduti.length} ${scaduti.length === 1 ? 'peso fermo' : 'pesi fermi'} sul telefono da più di ${GIORNI_VALIDI} giorni non ${scaduti.length === 1 ? 'è partito' : 'sono partiti'}: vanno riscritti.`)
+  }
+  const coda = tutta.filter(e => e.ts > limite)
+
+  if (!coda.length) return 0
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return coda.length
 
-  const righe = coda.map(({ client_id, cycle_exercise_id, kg, week }) =>
-    ({ client_id, cycle_exercise_id, kg, week }))
+  const { error } = await spedisci(coda)
+  if (!error) return togliSpediti(coda)
+  if (eProblemaDiRete(error)) return coda.length // ritenteremo
 
-  const { error } = await supabase
-    .from('client_loads')
-    .upsert(righe, { onConflict: 'client_id,cycle_exercise_id,week' })
-
-  if (error) {
-    if (eProblemaDiRete(error)) return coda.length // ritenteremo
-    // Rifiutati dal server: tenerli in coda significherebbe ritentare per
-    // sempre. Meglio toglierli e dirlo, così la coach può reinserirli.
-    console.error('carichi in coda rifiutati', error)
-    notifyError(`${coda.length} carichi in attesa non sono stati accettati dal server. Vanno reinseriti.`)
-    scriviCoda([])
-    return 0
+  // Il server ne rifiuta almeno uno, e con una spedizione unica li rifiuta
+  // tutti. Prima si buttava via l'intera coda; ora si riprova uno per uno e
+  // si scartano solo quelli che il server non vuole davvero.
+  const rifiutati = []
+  for (const voce of coda) {
+    const { error: e } = await spedisci([voce])
+    if (!e) { togliSpediti([voce]); continue }
+    if (eProblemaDiRete(e)) return leggiCoda().length // la rete è caduta: si riprende dopo
+    rifiutati.push(voce)
   }
-
-  scriviCoda([])
-  return 0
+  if (rifiutati.length) {
+    console.error('carichi in coda rifiutati', rifiutati)
+    togliSpediti(rifiutati)
+    notifyError(`${rifiutati.length} ${rifiutati.length === 1 ? 'peso in attesa non è stato accettato' : 'pesi in attesa non sono stati accettati'} dal server: ${rifiutati.length === 1 ? 'va riscritto' : 'vanno riscritti'}.`)
+  }
+  return leggiCoda().length
 }
 
 /**
@@ -156,15 +198,16 @@ export function avviaSincronizzazioneAutomatica(collegato) {
   if (!collegato) return () => {}
   const prova = () => { sincronizza() }
 
+  const allaRiapertura = () => { if (document.visibilityState === 'visible') prova() }
+
   window.addEventListener('online', prova)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') prova()
-  })
+  document.addEventListener('visibilitychange', allaRiapertura)
   const intervallo = setInterval(prova, 60_000)
   prova()
 
   return () => {
     window.removeEventListener('online', prova)
+    document.removeEventListener('visibilitychange', allaRiapertura)
     clearInterval(intervallo)
   }
 }

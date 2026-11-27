@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 /**
  * Il tutorial delle novità: compare una volta dopo un aggiornamento.
@@ -12,8 +12,14 @@ import { useState } from 'react'
  * dopo l'aggiornamento (e allora lo dice), falso quando la si riapre dalle
  * impostazioni.
  */
-export default function NovitaApp({ schede, nome, aggiornata = true, onChiudi }) {
+export default function NovitaApp({ schede, nome, aggiornata = true, onChiudi, apertaRef }) {
   const [passo, setPasso] = useState(0)
+  // Dice all'app che il tutorial è sullo schermo, per il tasto indietro.
+  useEffect(() => {
+    if (!apertaRef) return
+    apertaRef.current = true
+    return () => { apertaRef.current = false }
+  }, [apertaRef])
   const [verso, setVerso] = useState('avanti')
   const s = schede[passo]
   const ultima = passo === schede.length - 1

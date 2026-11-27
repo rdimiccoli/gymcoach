@@ -244,7 +244,7 @@ export default function CycleShare({ navigate, goBack, goHome, params }) {
     setTimeout(() => setCopied(false), 2500)
   }
 
-  // Preview for selected day — fra quelli che il cliente fa davvero.
+  // Il giorno in anteprima, fra quelli che il cliente fa davvero.
   const [scelto, setPreviewDay] = useState(1)
   const giorniVisibili = giorniDelCliente()
   const previewDay = giorniVisibili.includes(scelto) ? scelto : giorniVisibili[0] ?? 1

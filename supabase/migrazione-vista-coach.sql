@@ -33,7 +33,9 @@ alter table coaches add column if not exists vista text;
 --
 -- Da qui in poi Sandro la trova già accesa su qualunque dispositivo, anche su
 -- uno nuovo. Può sempre cambiarla da IMPOSTAZIONI → COME SI APRONO I TURNI.
-update coaches set vista = 'atleti' where email = 'dibiasesandro77@gmail.com';
+-- (Lanciata l'8/10/2026. L'email vera di Sandro non sta più qui, perché il
+-- codice è su GitHub: la trovi in Supabase → Authentication → Users.)
+update coaches set vista = 'atleti' where email = '<email di Sandro>';
 
 
 -- ═══ VERIFICA ═════════════════════════════════════════════════════════════
