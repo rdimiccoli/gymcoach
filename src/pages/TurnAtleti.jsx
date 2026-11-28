@@ -21,6 +21,7 @@ import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { nomeCompleto, nomeECognome } from '../lib/nomi'
 import NotaPersona from '../components/NotaPersona'
+import { statoScheda } from '../lib/avvisiTurno'
 
 
 /**
@@ -228,7 +229,7 @@ export default function TurnAtleti({ navigate, goBack, goHome, params }) {
                     // sotto ogni persona sarebbe rumore: si dice la settimana.
                     : piuDiUnaScheda || riga.ospite
                       ? `${riga.scheda.name}${settimana ? ` · sett. ${settimana}` : ''}`
-                      : settimana ? `Settimana ${settimana} di ${settimaneDi(riga.scheda)}` : riga.scheda.name}
+                      : settimana ? `Settimana ${settimana} di ${settimaneDi(riga.scheda)}${statoScheda(riga.scheda) === 'finita' ? ' · scheda finita' : ''}` : riga.scheda.name}
                 </div>
               </div>
               {apribile && <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>}

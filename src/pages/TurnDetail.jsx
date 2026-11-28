@@ -817,7 +817,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
               )}
             </span>
             <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
-              {cycle.name} · settimana {settimana} di {totale}
+              {cycle.name} · settimana {settimana}{finita ? ' · extra, scheda finita' : ` di ${totale}`}
             </span>
           </span>
           <span style={{ color: 'var(--testo-fioco)', fontSize: '18px', flexShrink: 0 }}>›</span>
@@ -907,7 +907,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
             con un tocco, senza aprire e chiudere. */}
         {!inCaricamento && affiancato && groups.length > 0 && (
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            <div style={{ width: '300px', flexShrink: 0, position: 'sticky', top: 0 }}>
+            {/* Sugli iPad da 1024 punti lo spazio è meno: la colonna dei
+                titoli si stringe fino al 40%, la destra resta comoda. */}
+            <div style={{ width: 'min(300px, 40%)', flexShrink: 0, position: 'sticky', top: 0 }}>
               {groups.map((group, gi) => renderGruppo(group, gi, 'testa'))}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>

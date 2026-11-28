@@ -27,6 +27,19 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-28',
+    data: '28 novembre',
+    schede: [
+      {
+        icona: '📱',
+        titolo: 'DUE COLONNE SU TUTTI GLI iPad',
+        testo: 'La seduta a due colonne ora si apre anche sugli iPad più piccoli, come l\'iPad di 9ª generazione e l\'iPad Pro da 9,7 pollici. Prima funzionava solo sugli schermi più larghi.',
+        dove: ['iPad IN ORIZZONTALE', 'APRI UN TURNO'],
+        nota: 'Con l\'iPad in verticale resta una colonna sola, con il menu in basso.',
+      },
+    ],
+  },
+  {
     id: '2026-11-27',
     data: '27 novembre',
     schede: [
