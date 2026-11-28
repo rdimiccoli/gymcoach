@@ -20,7 +20,7 @@ Object.defineProperty(globalThis, 'navigator', {
   configurable: true,
 })
 
-const { registraErrore, impostaContesto, dimenticaRegistro, descriviDispositivo, daIgnorare, preparaRiga, quandoCorto, testoPerWhatsapp, MASSIMO_AL_GIORNO } = await import('./registroErrori')
+const { registraErrore, impostaContesto, dimenticaRegistro, descriviDispositivo, daIgnorare, preparaRiga, quandoCorto, testoPerWhatsapp, erroriRecenti, MASSIMO_AL_GIORNO } = await import('./registroErrori')
 
 beforeEach(() => {
   scritte.length = 0
@@ -119,5 +119,20 @@ describe('leggere il registro', () => {
       '  iPad · Safari 17.2 · versione 28/11 08:35 · abc1234',
     ].join('\n'))
     expect(testoPerWhatsapp([])).toBe('')
+  })
+})
+
+describe('gli errori recenti, per le segnalazioni', () => {
+  it('anche quelli non scritti (senza rete), al massimo cinque, solo dell\'ultima ora', async () => {
+    expect(erroriRecenti()).toBeNull()
+    impostaContesto({ pagina: 'turn' })
+    navigator.onLine = false
+    await registraErrore('avviso', 'Carico non salvato', '42501 · permission denied\naltra riga')
+    navigator.onLine = true
+    const testo = erroriRecenti()
+    expect(testo).toMatch(/^\d\d:\d\d · Seduta · Carico non salvato · 42501 · permission denied$/)
+    for (let i = 0; i < 7; i++) await registraErrore('errore', `errore ${i}`)
+    expect(erroriRecenti().split('\n')).toHaveLength(5)
+    expect(erroriRecenti(60, Date.now() + 2 * 3_600_000)).toBeNull()
   })
 })

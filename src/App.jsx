@@ -32,6 +32,7 @@ import { accessoSalvato, dimenticaCopie, pulisciCopie } from './lib/copiaDati'
 import { copiaDellaSettimana } from './lib/copie'
 import Cruscotto from './pages/Cruscotto'
 import RegistroErrori from './pages/RegistroErrori'
+import Segnalazioni from './pages/Segnalazioni'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -403,6 +404,7 @@ export default function App() {
     pulizia: Pulizia,
     cruscotto: Cruscotto,
     errori: RegistroErrori,
+    segnalazioni: Segnalazioni,
   }
 
   const Page = pages[current.page] || Home

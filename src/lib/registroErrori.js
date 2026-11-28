@@ -47,6 +47,11 @@ const LUNGHEZZE = { tipo: 20, messaggio: 300, dettaglio: 2000, pagina: 40, coach
 
 let contesto = { pagina: null, coach: null }
 const giaScritti = new Set()
+// Gli ultimi errori di questa apertura dell'app, anche quelli non scritti
+// (senza rete, o già scritti una volta): vanno con una segnalazione di un
+// problema, così chi la legge sa cosa ha visto quel telefono (vedi segnalazioni.js).
+const recenti = []
+const QUANTI_RECENTI = 5
 let tabellaAssente = false
 let dentro = false
 
@@ -144,8 +149,10 @@ const giornoDiOggi = () => new Date().toLocaleDateString('sv-SE') // 2026-11-28,
  * `tipo`: 'avviso' (quello rosso a schermo), 'errore', 'promessa', 'schermata'.
  */
 export async function registraErrore(tipo, messaggio, dettaglio) {
-  if (dentro || tabellaAssente) return false
   if (daIgnorare(messaggio, dettaglio)) return false
+  recenti.push({ quando: Date.now(), tipo, messaggio: String(messaggio), dettaglio: dettaglio ? String(dettaglio) : '', pagina: contesto.pagina })
+  if (recenti.length > QUANTI_RECENTI) recenti.shift()
+  if (dentro || tabellaAssente) return false
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
 
   const firma = `${tipo}|${messaggio}|${contesto.pagina || ''}`
@@ -209,7 +216,7 @@ export const NOMI_PAGINE = {
   home: 'Home', turn: 'Seduta', 'turn-atleti': 'Turno', cycles: 'Schede', 'cycle-form': 'Scheda',
   'cycle-share': 'Condividi scheda', settings: 'Impostazioni', turns: 'Turni', athletes: 'Atleti',
   'athlete-profile': 'Profilo atleta', pulizia: 'Mettere in ordine', errori: 'Registro errori',
-  cruscotto: 'Cruscotto',
+  cruscotto: 'Cruscotto', segnalazioni: 'Segnalazioni',
 }
 
 const dueCifre = n => String(n).padStart(2, '0')
@@ -251,8 +258,24 @@ export async function leggiErrori(adesso = new Date()) {
   return { righe: data || [], error }
 }
 
+/**
+ * Gli errori dell'ultima ora su questo telefono, uno per riga:
+ * «18:05 · Seduta · Carico non salvato · 42501 · permission denied».
+ * null se non ce ne sono.
+ */
+export function erroriRecenti(minuti = 60, adesso = Date.now()) {
+  const da = adesso - minuti * 60_000
+  const righe = recenti.filter(e => e.quando >= da).map(e => {
+    const d = new Date(e.quando)
+    const ora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    return [ora, NOMI_PAGINE[e.pagina] || e.pagina, e.messaggio, e.dettaglio.split('\n')[0]].filter(Boolean).join(' · ').slice(0, 380)
+  })
+  return righe.length ? righe.join('\n').slice(0, 2000) : null
+}
+
 /** Solo per i test: si riparte come appena aperta l'app. */
 export function dimenticaRegistro() {
+  recenti.length = 0
   giaScritti.clear()
   tabellaAssente = false
   dentro = false

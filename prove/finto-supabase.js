@@ -44,6 +44,7 @@ const db = {
   ],
   cycle_exercises: [], client_loads: [], client_notes: [], cycle_clients: [], client_visits: [], giorni_persona: [],
   errori_app: [],
+  segnalazioni: [],
   ultimi_allenamenti: [
     { client_id: 'p1', ultimo: '2026-11-25T18:00:00Z', pesi: 17 },
     { client_id: 'p2', ultimo: '2026-10-28T18:00:00Z', pesi: 1 },
@@ -93,6 +94,12 @@ db.client_loads.push({ id: 'lp2', client_id: 'p2', cycle_exercise_id: 'old_e1', 
 // La panca di Marco la settimana scorsa (la 9, extra): oggi si propone 30 + un ottavo → 35.
 db.client_loads.push({ id: 'lpanca9', client_id: 'p1', cycle_exercise_id: 's2_e2', week: 9, kg: 30, updated_at: '2026-11-20T13:40:00Z' })
 
+// ── I valori che il database mette da solo ───────────────────────────────
+const predefiniti = {
+  segnalazioni: () => ({ creata: new Date().toISOString(), stato: 'nuova', risposta: null, aggiornata: null, anche_io: [] }),
+  errori_app: () => ({ quando: new Date().toISOString() }),
+}
+
 // ── Le relazioni che l'app chiede insieme alle righe ─────────────────────
 function conRelazioni(riga, tabella) {
   const r = { ...riga }
@@ -140,11 +147,13 @@ function domanda(tabella, operazione, dati) {
         const data = righe.map(r => conRelazioni(r, tabella))
         risposta = { data: soloConteggio ? null : uno ? (data[0] ?? null) : data, count: tutte, error: null }
       } else if (operazione === 'insert' || operazione === 'upsert') {
-        const nuove = (Array.isArray(dati) ? dati : [dati]).map(x => ({ id: nuovoId('n'), ...x }))
+        const nuove = (Array.isArray(dati) ? dati : [dati]).map(x => ({ id: nuovoId('n'), ...(predefiniti[tabella]?.() || {}), ...x }))
         tab.push(...nuove)
         risposta = { data: nuove, error: null }
       } else if (operazione === 'update') {
-        righe.forEach(r => Object.assign(r, dati))
+        // Come il trigger della migrazione: stato o risposta cambiati → l'ora la mette il database.
+        const ora = tabella === 'segnalazioni' && ('stato' in dati || 'risposta' in dati) ? { aggiornata: new Date().toISOString() } : {}
+        righe.forEach(r => Object.assign(r, dati, ora))
         risposta = { data: righe, error: null }
       } else if (operazione === 'delete') {
         db[tabella] = tab.filter(r => !filtri.every(f => f(r)))
@@ -172,6 +181,10 @@ const storage = {
       return f ? { data: new Blob([f.corpo]), error: null } : { data: null, error: { message: 'Object not found' } }
     },
     getPublicUrl: () => ({ data: { publicUrl: '' } }),
+    createSignedUrl: async percorso => {
+      const f = cartelle[secchio]?.[percorso]
+      return f ? { data: { signedUrl: URL.createObjectURL(f.corpo) }, error: null } : { data: null, error: { message: 'Object not found' } }
+    },
   }),
 }
 
@@ -192,6 +205,15 @@ export const supabase = {
     signOut: async () => ({}),
   },
   storage,
+  // Le funzioni del database: per ora solo «✋ anche io».
+  rpc: async (nome, a) => {
+    if (nome !== 'segnalazione_anche_io') return { data: null, error: { message: `funzione ${nome} sconosciuta` } }
+    const s = db.segnalazioni.find(x => x.id === a.segnalazione)
+    if (!s) return { data: null, error: null }
+    const senza = (s.anche_io || []).filter(id => id !== a.chi)
+    s.anche_io = a.voglio ? [...senza, a.chi] : senza
+    return { data: s.anche_io, error: null }
+  },
 }
 
 // Per le prove: guardare dentro il database finto dalla pagina.

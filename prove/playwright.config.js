@@ -8,6 +8,8 @@ import path from 'node:path'
 export default defineConfig({
   testDir: '.',
   timeout: 30_000,
+  // L'app si apre una volta prima delle prove (vedi riscaldamento.js).
+  globalSetup: './riscaldamento.js',
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   webServer: [

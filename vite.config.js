@@ -6,14 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 // (ora italiana) e le prime lettere del commit, che Vercel passa durante la
 // build. Si vede nelle Impostazioni e finisce in ogni riga del registro degli
 // errori: così si capisce subito se un iPad è rimasto indietro.
+// Se Vercel non passa il commit resta la data, che basta a riconoscerla. In
+// sviluppo e nei test: «locale».
 const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7)
 const quando = new Date().toLocaleString('it-IT', {
   timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 }).replace(',', '')
-const VERSIONE = commit ? `${quando} · ${commit}` : 'locale'
 
-export default defineConfig({
-  define: { __VERSIONE__: JSON.stringify(VERSIONE) },
+export default defineConfig(({ command }) => ({
+  define: { __VERSIONE__: JSON.stringify(command === 'build' ? (commit ? `${quando} · ${commit}` : quando) : 'locale') },
   // 1,9 MB di sourcemap servite pubblicamente a ogni deploy. Il repo e' gia'
   // pubblico quindi non era un segreto, ma era peso inutile sul CDN.
   build: { sourcemap: false },
@@ -52,4 +53,4 @@ export default defineConfig({
       }
     })
   ]
-})
+}))

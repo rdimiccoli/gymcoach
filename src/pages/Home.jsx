@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { run } from '../lib/notify'
+import { comePulsante } from '../lib/stile'
 import { capacita } from '../lib/capacita'
 import { conOrdineDeiTurni, salvaOrdineTurni } from '../lib/ordineDb'
 import { spostaPerId } from '../lib/ordinePersone'
@@ -18,6 +19,7 @@ import { nomeECognome, nomeCompleto } from '../lib/nomi'
 import { chiManca, giornoCorto, GIORNI_ASSENZA } from '../lib/assenti'
 import { caricaUltimi, personeAttive } from '../lib/assentiDb'
 import StrisciaSenzaRete from '../components/StrisciaSenzaRete'
+import { contaNovita, sonoGestore, etichettaNovita } from '../lib/segnalazioni'
 import { turnoDOrigine } from '../lib/ospitiDb'
 
 const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
@@ -52,6 +54,8 @@ export default function Home({ navigate, goHome, session, coach }) {
   // database ha la colonna.
   const [ordineAttivo, setOrdineAttivo] = useState(false)
   const [riordina, setRiordina] = useState(false)
+  // In fondo, l'invito alle segnalazioni, con le risposte arrivate (vedi segnalazioni.js).
+  const [segnalazioni, setSegnalazioni] = useState(null) // null: sezione non ancora attiva
   // L'ordine che il database ha davvero, e l'ultimo chiesto dal coach: vedi muovi().
   const salvato = useRef([])
   const voluto = useRef(null)
@@ -77,6 +81,15 @@ export default function Home({ navigate, goHome, session, coach }) {
   // Il profilo arriva già scelto da App: cambiandolo questa schermata si
   // ricarica da capo con i turni dell'altro coach.
   useEffect(() => { loadData() }, [coach.id])
+  useEffect(() => {
+    let vivo = true
+    capacita().then(async c => {
+      if (!c.segnalazioni) return
+      const quante = await contaNovita({ coachId: coach.id, gestore: sonoGestore() })
+      if (vivo) setSegnalazioni(quante)
+    })
+    return () => { vivo = false }
+  }, [coach.id])
 
   /**
    * Sposta un turno di `passo` posti (negativo = più su). Il nuovo ordine va
@@ -328,6 +341,28 @@ export default function Home({ navigate, goHome, session, coach }) {
               Nessun peso segnato da tre settimane. Un messaggio adesso può fare la differenza.
             </div>
           </div>
+        )}
+
+        {/* Le segnalazioni: piccolo, in fondo, per chi ha qualcosa da dire.
+            Si accende quando c'è una risposta (o, al gestore, una nuova). */}
+        {segnalazioni !== null && !riordina && !loading && (
+          <button type="button" onClick={() => navigate('segnalazioni')} style={{
+            ...comePulsante, display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left',
+            marginTop: '22px', padding: '12px 14px', minHeight: '56px', borderRadius: '8px', cursor: 'pointer',
+            background: segnalazioni ? 'var(--acc-fondo)' : 'var(--sup)',
+            border: `1px solid ${segnalazioni ? 'var(--acc-bordo-forte)' : 'var(--sup-alta)'}`,
+          }}>
+            <span aria-hidden="true" style={{ fontSize: '22px' }}>📮</span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700' }}>
+                {segnalazioni ? `SEGNALAZIONI · ${etichettaNovita(segnalazioni, sonoGestore()).toUpperCase()}` : 'Qualcosa non va, o hai un\'idea?'}
+              </span>
+              <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '1px' }}>
+                {segnalazioni ? 'Tocca per leggere' : 'Scrivilo qui, invece che su WhatsApp'}
+              </span>
+            </span>
+            <span aria-hidden="true" style={{ color: segnalazioni ? 'var(--accento)' : 'var(--testo-fioco)', fontSize: '18px' }}>›</span>
+          </button>
         )}
 
         <div style={{ height: '14px' }} />

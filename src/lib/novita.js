@@ -27,6 +27,20 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-28-3',
+    data: '28 novembre',
+    schede: [
+      {
+        icona: '📮',
+        titolo: 'LE SEGNALAZIONI',
+        testo: 'Qualcosa non va, hai un\'idea o vorresti cambiare qualcosa? Scrivilo nell\'app invece che su WhatsApp. Puoi anche dettarlo col microfono della tastiera, e aggiungere una foto dello schermo.',
+        dove: ['HOME', 'IN FONDO', 'SEGNALAZIONI'],
+        nota: 'Lì vedi a che punto è e la risposta. Se un collega ha scritto la stessa cosa, tocca «✋ Anche io».',
+        serve: 'segnalazioni',
+      },
+    ],
+  },
+  {
     id: '2026-11-28-2',
     data: '28 novembre',
     schede: [

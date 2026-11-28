@@ -164,6 +164,64 @@ test.describe('telefono', () => {
     expect(errori).toEqual([])
   })
 
+  test('le segnalazioni: si scrive, il gestore risponde, chi l\'ha scritta lo vede', async ({ page }) => {
+    const errori = await apri(page)
+    // In fondo alla Home, l'invito
+    await page.getByRole('button', { name: /Qualcosa non va, o hai un'idea\?/ }).click()
+    await page.getByRole('button', { name: '＋ SCRIVI UNA SEGNALAZIONE' }).click()
+    await page.getByRole('radio', { name: /UN'IDEA/ }).click()
+    await page.getByLabel('COSA TI PIACEREBBE AVERE?').fill('Vedere il peso massimo di ognuno')
+    // una foto dello schermo, piccola
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'schermo.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    })
+    await expect(page.getByAltText('La foto che stai mandando')).toBeVisible()
+    await page.getByRole('button', { name: '✓ INVIA' }).click()
+    await expect(page.getByText('INVIATA, GRAZIE!')).toBeVisible()
+    const riga = await page.evaluate(() => window.__dbFinto.segnalazioni[0])
+    expect(riga).toMatchObject({ tipo: 'idea', testo: 'Vedere il peso massimo di ognuno', coach_id: 'c1', coach: 'Sandro', stato: 'nuova' })
+    expect(riga.foto).toMatch(/\.jpg$/)
+
+    // Il gestore, da questo telefono, la apre (diventa «letta») e risponde
+    await page.getByRole('button', { name: 'VEDI LE SEGNALAZIONI' }).click()
+    await page.getByRole('button', { name: /Sei tu che sistemi l'app\?/ }).click()
+    await page.getByRole('button', { name: '🛠️ SÌ, SONO IO' }).click()
+    await page.getByRole('button', { name: /Vedere il peso massimo/ }).click()
+    await expect.poll(() => page.evaluate(() => window.__dbFinto.segnalazioni[0].stato)).toBe('letta')
+    await page.getByRole('radio', { name: 'FATTA' }).click()
+    await page.getByLabel(/LA TUA RISPOSTA/).fill('Fatto: lo trovi nel profilo')
+    await page.getByRole('button', { name: '✓ SALVA' }).click()
+    await expect.poll(() => page.evaluate(() => window.__dbFinto.segnalazioni[0].stato)).toBe('fatta')
+
+    // Il coach: in Home la risposta si vede
+    await page.getByRole('button', { name: /Su questo telefono rispondi tu/ }).click()
+    await page.evaluate(() => localStorage.setItem('gymcoach.segnalazioni-visita', '0'))
+    await page.getByText('HOME', { exact: true }).last().click()
+    await expect(page.getByText('SEGNALAZIONI · 1 RISPOSTA')).toBeVisible()
+    await page.getByText('SEGNALAZIONI · 1 RISPOSTA').click()
+    // È fatta, quindi fra le chiuse: con una novità dentro, si aprono da sole.
+    await expect(page.getByRole('button', { name: /CHIUSE · 1/ })).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByText('● NOVITÀ')).toBeVisible()
+    await expect(page.getByText('↳ Fatto: lo trovi nel profilo')).toBeVisible()
+    expect(await scorreDiLato(page)).toBe(false)
+    expect(errori).toEqual([])
+  })
+
+  test('le segnalazioni: «anche io» su quella di un collega', async ({ page }) => {
+    await apri(page)
+    await page.evaluate(() => window.__dbFinto.segnalazioni.push({
+      id: 'sx', creata: new Date().toISOString(), tipo: 'problema', testo: 'Il timer del circuito non suona', coach_id: 'c2', coach: 'Manu',
+      stato: 'in_corso', risposta: null, aggiornata: null, anche_io: [], foto: null,
+    }))
+    await page.getByText('IMPOST.', { exact: true }).last().click()
+    await page.getByText('📮 Segnalazioni').click()
+    await page.getByRole('button', { name: /Il timer del circuito non suona/ }).click()
+    await page.getByRole('button', { name: '✋ ANCHE IO' }).click()
+    await expect(page.getByText('✋ Anche: tu')).toBeVisible()
+    expect(await page.evaluate(() => window.__dbFinto.segnalazioni[0].anche_io)).toEqual(['c1'])
+  })
+
   test('dopo un aggiornamento compaiono le novità', async ({ page }) => {
     await apri(page, { novitaViste: '2026-11-01' })
     await expect(page.getByText(/NOVITÀ 1 DI \d/)).toBeVisible()

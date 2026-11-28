@@ -14,6 +14,7 @@ import BottomNav from '../components/BottomNav'
 import { NOVITA } from '../lib/novita'
 import { MISURE, leggiTesto, scegliTesto } from '../lib/testo'
 import { VERSIONE } from '../lib/registroErrori'
+import { contaNovita, sonoGestore, etichettaNovita } from '../lib/segnalazioni'
 import { preparaCopia, elencoCopie, scaricaCopiaSalvata, consegnaFile, nomeCopia, quantoTempoFa, peso, serveCopia, GIORNI_TRA_COPIE } from '../lib/copie'
 
 export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili, apriNovita }) {
@@ -77,6 +78,10 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
   // Il cruscotto e il registro degli errori compaiono dopo la migrazione del
   // 28/11/2026; prima l'app non li mostra (vedi capacita.js).
   const [cruscottoAttivo, setCruscottoAttivo] = useState(false)
+  // Le segnalazioni: la riga compare dopo la loro migrazione, con accanto le
+  // novità (risposte per chi le ha scritte, nuove per il gestore).
+  const [segnalazioniAttive, setSegnalazioniAttive] = useState(false)
+  const [novitaSegnalazioni, setNovitaSegnalazioni] = useState(0)
   const [registroAttivo, setRegistroAttivo] = useState(false)
   const [erroriRecenti, setErroriRecenti] = useState(null)
   // Le copie di sicurezza (vedi copie.js): l'elenco di quelle automatiche,
@@ -96,6 +101,8 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
       setVistaSuProfilo(!!c.vistaCoach)
       setFotoDisponibile(!!c.fotoCoach)
       setCruscottoAttivo(!!c.andamento)
+      setSegnalazioniAttive(!!c.segnalazioni)
+      if (c.segnalazioni) contaNovita({ coachId: coach.id, gestore: sonoGestore() }).then(setNovitaSegnalazioni)
       setRegistroAttivo(!!c.registroErrori)
       // Quanti errori negli ultimi sette giorni: si vede accanto alla riga.
       if (c.registroErrori) {
@@ -843,6 +850,11 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
         )}
 
         <div style={titoloSezione}>L&apos;APP</div>
+        {segnalazioniAttive && (
+          <Riga etichetta="📮 Segnalazioni"
+            valore={etichettaNovita(novitaSegnalazioni, sonoGestore()) || 'Cosa non va, idee'}
+            onClick={() => navigate('segnalazioni')} />
+        )}
         {apriNovita && (
           <Riga etichetta="🆕 Cosa c'è di nuovo" valore={NOVITA[0]?.data} onClick={apriNovita} />
         )}
