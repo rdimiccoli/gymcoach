@@ -164,7 +164,7 @@ export default function Segnalazioni({ navigate, goBack, goHome, coach, coaches 
           INVIATA, GRAZIE!
         </div>
         <p style={{ color: 'var(--testo-forte)', fontSize: '16px', lineHeight: 1.5, margin: '12px auto 0', maxWidth: '320px' }}>
-          L'ha ricevuta chi sistema l'app. Quando risponde lo vedi qui, in
+          Ruggiero l'ha ricevuta. Quando risponde lo vedi qui, in
           SEGNALAZIONI, e in Home.
         </p>
         <button type="button" onClick={() => setVista('elenco')} style={{ ...grande, marginTop: '28px' }}>VEDI LE SEGNALAZIONI</button>
@@ -182,7 +182,7 @@ export default function Segnalazioni({ navigate, goBack, goHome, coach, coaches 
       <div style={scorrimento}>
         <button type="button" onClick={() => setVista('scrivi')} style={grande}>＋ SCRIVI UNA SEGNALAZIONE</button>
         <p style={{ ...nota, marginTop: '8px' }}>
-          Arriva a chi sistema l'app, e qui vedi a che punto è e la risposta. Al posto degli audio su WhatsApp.
+          Arriva dritta a Ruggiero, e qui vedi a che punto è e la sua risposta. Al posto degli audio su WhatsApp.
         </p>
 
         {righe === null && <div style={{ marginTop: '18px' }}><ScheletroElenco righe={4} /></div>}
