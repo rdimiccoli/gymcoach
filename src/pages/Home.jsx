@@ -19,7 +19,7 @@ import { nomeECognome, nomeCompleto } from '../lib/nomi'
 import { chiManca, giornoCorto, GIORNI_ASSENZA } from '../lib/assenti'
 import { caricaUltimi, personeAttive } from '../lib/assentiDb'
 import StrisciaSenzaRete from '../components/StrisciaSenzaRete'
-import { contaNovita, sonoGestore, etichettaNovita } from '../lib/segnalazioni'
+import { contaNovita, etichettaNovita } from '../lib/segnalazioni'
 import { turnoDOrigine } from '../lib/ospitiDb'
 
 const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
@@ -85,7 +85,7 @@ export default function Home({ navigate, goHome, session, coach }) {
     let vivo = true
     capacita().then(async c => {
       if (!c.segnalazioni) return
-      const quante = await contaNovita({ coachId: coach.id, gestore: sonoGestore() })
+      const quante = await contaNovita({ coachId: coach.id })
       if (vivo) setSegnalazioni(quante)
     })
     return () => { vivo = false }
@@ -344,7 +344,7 @@ export default function Home({ navigate, goHome, session, coach }) {
         )}
 
         {/* Le segnalazioni: piccolo, in fondo, per chi ha qualcosa da dire.
-            Si accende quando c'è una risposta (o, al gestore, una nuova). */}
+            Si accende quando una delle sue ha una risposta o un passo avanti. */}
         {segnalazioni !== null && !riordina && !loading && (
           <button type="button" onClick={() => navigate('segnalazioni')} style={{
             ...comePulsante, display: 'flex', alignItems: 'center', gap: '12px', width: '100%', textAlign: 'left',
@@ -355,7 +355,7 @@ export default function Home({ navigate, goHome, session, coach }) {
             <span aria-hidden="true" style={{ fontSize: '22px' }}>📮</span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', color: '#fff', fontFamily: 'Barlow Condensed, sans-serif', fontSize: '17px', fontWeight: '700' }}>
-                {segnalazioni ? `SEGNALAZIONI · ${etichettaNovita(segnalazioni, sonoGestore()).toUpperCase()}` : 'Qualcosa non va, o hai un\'idea?'}
+                {segnalazioni ? `SEGNALAZIONI · ${etichettaNovita(segnalazioni).toUpperCase()}` : 'Qualcosa non va, o hai un\'idea?'}
               </span>
               <span style={{ display: 'block', color: 'var(--testo-medio)', fontSize: '13px', marginTop: '1px' }}>
                 {segnalazioni ? 'Tocca per leggere' : 'Scrivilo qui, invece che su WhatsApp'}

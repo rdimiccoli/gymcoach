@@ -51,17 +51,20 @@ export const TABELLE = [
   { nome: 'client_attendance', ordine: ['id'] },
   { nome: 'turn_coaches', ordine: ['turn_id', 'coach_id'] },
   { nome: 'frasi_record', ordine: ['id'] },
+  // Le colonne una per una: il codice del pulsante RISPONDI non si legge.
+  { nome: 'segnalazioni', ordine: ['id'],
+    colonne: 'id, creata, tipo, testo, coach_id, coach, versione, dispositivo, errori, foto, stato, risposta, aggiornata, anche_io' },
 ]
 
 // Le tabelle che possono mancare in un database più vecchio: si saltano.
 const ASSENTE = new Set(['42P01', 'PGRST205'])
 
-async function leggiTabella({ nome, ordine }) {
+async function leggiTabella({ nome, ordine, colonne = '*' }) {
   const righe = []
   for (let da = 0; ; da += PAGINA) {
     // Dritto dal database: una copia di sicurezza non si fa con i dati
     // salvati sul telefono, e non deve riempirne la memoria (vedi copiaDati.js).
-    let q = supabase.from(nome).select('*').setHeader(SENZA_COPIA, '1')
+    let q = supabase.from(nome).select(colonne).setHeader(SENZA_COPIA, '1')
     for (const colonna of ordine) q = q.order(colonna)
     const { data, error } = await q.range(da, da + PAGINA - 1)
     if (error) return { righe: null, error }

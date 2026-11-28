@@ -164,13 +164,17 @@ test.describe('telefono', () => {
     expect(errori).toEqual([])
   })
 
-  test('le segnalazioni: si scrive, il gestore risponde, chi l\'ha scritta lo vede', async ({ page }) => {
+  test('le segnalazioni: si scrive, con la foto, e la bozza non si perde', async ({ page }) => {
     const errori = await apri(page)
     // In fondo alla Home, l'invito
     await page.getByRole('button', { name: /Qualcosa non va, o hai un'idea\?/ }).click()
     await page.getByRole('button', { name: '＋ SCRIVI UNA SEGNALAZIONE' }).click()
     await page.getByRole('radio', { name: /UN'IDEA/ }).click()
     await page.getByLabel('COSA TI PIACEREBBE AVERE?').fill('Vedere il peso massimo di ognuno')
+    // si esce per sbaglio e si rientra: il testo c'è ancora
+    await page.getByRole('button').first().click()
+    await page.getByRole('button', { name: '＋ SCRIVI UNA SEGNALAZIONE' }).click()
+    await expect(page.getByLabel('COSA TI PIACEREBBE AVERE?')).toHaveValue('Vedere il peso massimo di ognuno')
     // una foto dello schermo, piccola
     await page.locator('input[type="file"]').setInputFiles({
       name: 'schermo.png', mimeType: 'image/png',
@@ -182,28 +186,53 @@ test.describe('telefono', () => {
     const riga = await page.evaluate(() => window.__dbFinto.segnalazioni[0])
     expect(riga).toMatchObject({ tipo: 'idea', testo: 'Vedere il peso massimo di ognuno', coach_id: 'c1', coach: 'Sandro', stato: 'nuova' })
     expect(riga.foto).toMatch(/\.jpg$/)
-
-    // Il gestore, da questo telefono, la apre (diventa «letta») e risponde
     await page.getByRole('button', { name: 'VEDI LE SEGNALAZIONI' }).click()
-    await page.getByRole('button', { name: /Sei tu che sistemi l'app\?/ }).click()
-    await page.getByRole('button', { name: '🛠️ SÌ, SONO IO' }).click()
-    await page.getByRole('button', { name: /Vedere il peso massimo/ }).click()
+    await expect(page.getByText('Vedere il peso massimo di ognuno')).toBeVisible()
+    // nessun tasto per rispondere dentro l'app
+    await expect(page.getByText(/sistemi l'app\?/)).toHaveCount(0)
+    expect(await scorreDiLato(page)).toBe(false)
+    expect(errori).toEqual([])
+  })
+
+  test('le segnalazioni: dal pulsante RISPONDI dell\'email, poi il coach vede la risposta', async ({ page }) => {
+    const id = '6f1c2b0e-3a4d-4e5f-8a9b-0c1d2e3f4a5b'
+    const chiave = 'a0b1c2d3-e4f5-4a6b-8c7d-9e0f1a2b3c4d'
+    await page.addInitScript(([id, chiave]) => localStorage.setItem('gymcoach.prove.segnalazioni', JSON.stringify([{
+      id, chiave, creata: '2026-11-27T12:00:00Z', tipo: 'problema', testo: 'Il + non salva nel turno delle 18',
+      coach_id: 'c1', coach: 'Sandro', stato: 'nuova', risposta: null, aggiornata: null, anche_io: ['c2'], foto: null,
+      dispositivo: 'iPad · Safari 17.2 · app', versione: '28/11 10:54', errori: '17:58 · Seduta · Carico non salvato',
+    }])), [id, chiave])
+    const errori = []
+    page.on('pageerror', e => errori.push(e.message))
+    await page.clock.setFixedTime(new Date('2026-11-27T13:35:00'))
+    await page.addInitScript(() => {
+      localStorage.setItem('gymcoach.intro-vista', '1')
+      localStorage.setItem('gymcoach.coach-attivo.u1', 'c1')
+    })
+    await page.addInitScript(v => localStorage.setItem('gymcoach.novita-viste', v), NOVITA[0].id)
+
+    // Un codice sbagliato non apre niente
+    await page.goto(`${URL}?rispondi=${id}&chiave=b0b1c2d3-e4f5-4a6b-8c7d-9e0f1a2b3c4d`)
+    await expect(page.getByText(/Questo collegamento non funziona/)).toBeVisible()
+
+    // Quello giusto: la segnalazione, che diventa «letta»
+    await page.goto(`${URL}?rispondi=${id}&chiave=${chiave}`)
+    await expect(page.getByText('Il + non salva nel turno delle 18')).toBeVisible()
+    await expect(page.getByText(/17:58 · Seduta · Carico non salvato/)).toBeVisible()
     await expect.poll(() => page.evaluate(() => window.__dbFinto.segnalazioni[0].stato)).toBe('letta')
     await page.getByRole('radio', { name: 'FATTA' }).click()
-    await page.getByLabel(/LA TUA RISPOSTA/).fill('Fatto: lo trovi nel profilo')
+    await page.getByLabel(/LA TUA RISPOSTA/).fill('Fatto: ora salva subito')
     await page.getByRole('button', { name: '✓ SALVA' }).click()
-    await expect.poll(() => page.evaluate(() => window.__dbFinto.segnalazioni[0].stato)).toBe('fatta')
+    await expect(page.getByText('SALVATO')).toBeVisible()
+    expect(await page.evaluate(() => window.__dbFinto.segnalazioni[0])).toMatchObject({ stato: 'fatta', risposta: 'Fatto: ora salva subito' })
 
-    // Il coach: in Home la risposta si vede
-    await page.getByRole('button', { name: /Su questo telefono rispondi tu/ }).click()
-    await page.evaluate(() => localStorage.setItem('gymcoach.segnalazioni-visita', '0'))
-    await page.getByText('HOME', { exact: true }).last().click()
-    await expect(page.getByText('SEGNALAZIONI · 1 RISPOSTA')).toBeVisible()
-    await page.getByText('SEGNALAZIONI · 1 RISPOSTA').click()
-    // È fatta, quindi fra le chiuse: con una novità dentro, si aprono da sole.
+    // Si passa all'app: il coach (qui Sandro) vede la novità in Home
+    await page.getByRole('button', { name: 'APRI GYMCOACH' }).click()
+    expect(await page.evaluate(() => window.location.search)).toBe('')
+    await expect(page.getByText('SEGNALAZIONI · 1 NOVITÀ')).toBeVisible()
+    await page.getByText('SEGNALAZIONI · 1 NOVITÀ').click()
     await expect(page.getByRole('button', { name: /CHIUSE · 1/ })).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.getByText('● NOVITÀ')).toBeVisible()
-    await expect(page.getByText('↳ Fatto: lo trovi nel profilo')).toBeVisible()
+    await expect(page.getByText('↳ Fatto: ora salva subito')).toBeVisible()
     expect(await scorreDiLato(page)).toBe(false)
     expect(errori).toEqual([])
   })

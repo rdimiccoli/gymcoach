@@ -18,7 +18,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 // L'ordine in cui si rimettono: prima le tabelle a cui le altre si appoggiano.
 const ORDINE = ['coaches', 'turns', 'clients', 'exercises', 'cycles', 'cycle_exercises', 'client_loads',
-  'client_notes', 'cycle_clients', 'giorni_persona', 'client_visits', 'client_attendance', 'turn_coaches', 'frasi_record']
+  'client_notes', 'cycle_clients', 'giorni_persona', 'client_visits', 'client_attendance', 'turn_coaches', 'frasi_record',
+  'segnalazioni']
 const PER_VOLTA = 500
 
 export function valoreSql(v) {

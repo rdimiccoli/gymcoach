@@ -96,7 +96,7 @@ db.client_loads.push({ id: 'lpanca9', client_id: 'p1', cycle_exercise_id: 's2_e2
 
 // ── I valori che il database mette da solo ───────────────────────────────
 const predefiniti = {
-  segnalazioni: () => ({ creata: new Date().toISOString(), stato: 'nuova', risposta: null, aggiornata: null, anche_io: [] }),
+  segnalazioni: () => ({ creata: new Date().toISOString(), stato: 'nuova', risposta: null, aggiornata: null, anche_io: [], chiave: crypto.randomUUID() }),
   errori_app: () => ({ quando: new Date().toISOString() }),
 }
 
@@ -207,17 +207,38 @@ export const supabase = {
   storage,
   // Le funzioni del database: per ora solo «✋ anche io».
   rpc: async (nome, a) => {
-    if (nome !== 'segnalazione_anche_io') return { data: null, error: { message: `funzione ${nome} sconosciuta` } }
-    const s = db.segnalazioni.find(x => x.id === a.segnalazione)
-    if (!s) return { data: null, error: null }
-    const senza = (s.anche_io || []).filter(id => id !== a.chi)
-    s.anche_io = a.voglio ? [...senza, a.chi] : senza
-    return { data: s.anche_io, error: null }
+    if (nome === 'segnalazione_anche_io') {
+      const s = db.segnalazioni.find(x => x.id === a.segnalazione)
+      if (!s) return { data: null, error: null }
+      const senza = (s.anche_io || []).filter(id => id !== a.chi)
+      s.anche_io = a.voglio ? [...senza, a.chi] : senza
+      return { data: s.anche_io, error: null }
+    }
+    // Il pulsante RISPONDI dell'email: come le due funzioni della migrazione.
+    const s = db.segnalazioni.find(x => x.id === a.quale && x.chiave === a.codice)
+    if (nome === 'segnalazione_da_rispondere') {
+      if (!s) return { data: null, error: null }
+      if (s.stato === 'nuova') s.stato = 'letta'
+      const { chiave: _nascosta, ...visibile } = s
+      return { data: { ...visibile, anche_io: (s.anche_io || []).length }, error: null }
+    }
+    if (nome === 'segnalazione_rispondi') {
+      if (!s) return { data: false, error: null }
+      const risposta = a.testo_risposta?.trim() || null
+      if (risposta !== s.risposta || (a.nuovo_stato !== s.stato && a.nuovo_stato !== 'letta')) s.aggiornata = new Date().toISOString()
+      Object.assign(s, { stato: a.nuovo_stato, risposta })
+      return { data: true, error: null }
+    }
+    return { data: null, error: { message: `funzione ${nome} sconosciuta` } }
   },
 }
 
-// Per le prove: guardare dentro il database finto dalla pagina.
-if (typeof window !== 'undefined') window.__dbFinto = db
+// Per le prove: guardare dentro il database finto dalla pagina, e partire
+// con delle segnalazioni già scritte (il pulsante RISPONDI ricarica la pagina).
+if (typeof window !== 'undefined') {
+  window.__dbFinto = db
+  try { db.segnalazioni.push(...JSON.parse(localStorage.getItem('gymcoach.prove.segnalazioni') || '[]')) } catch { /* niente */ }
+}
 
 // Per le prove con il collegamento vero (rete.spec.js): gli stessi dati,
 // serviti come li servirebbe Supabase.

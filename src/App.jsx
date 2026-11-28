@@ -33,6 +33,8 @@ import { copiaDellaSettimana } from './lib/copie'
 import Cruscotto from './pages/Cruscotto'
 import RegistroErrori from './pages/RegistroErrori'
 import Segnalazioni from './pages/Segnalazioni'
+import RispondiSegnalazione from './pages/RispondiSegnalazione'
+import { parametriRisposta } from './lib/segnalazioni'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -77,6 +79,10 @@ function dimenticaNavigazione() {
   try { sessionStorage.removeItem(CHIAVE_NAVIGAZIONE) } catch { /* niente da fare */ }
 }
 
+// Il pulsante RISPONDI dell'email di una segnalazione apre l'app con
+// «?rispondi=…&chiave=…» (vedi RispondiSegnalazione.jsx).
+const DA_RISPONDERE = parametriRisposta(window.location.search)
+
 const INITIAL_IS_RECOVERY = window.location.hash.includes('type=recovery')
 if (INITIAL_IS_RECOVERY) {
   window.history.replaceState(null, '', window.location.pathname)
@@ -87,6 +93,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [isRecovery, setIsRecovery] = useState(INITIAL_IS_RECOVERY)
   const [stack, setStack] = useState(() => leggiNavigazione() || HOME)
+  const [daRispondere, setDaRispondere] = useState(DA_RISPONDERE)
   const [showExitModal, setShowExitModal] = useState(false)
   const [sbloccato, setSbloccato] = useState(false)
   const [intro, setIntro] = useState(introDaMostrare)
@@ -286,6 +293,19 @@ export default function App() {
   const navigate = (page, params = {}) => setStack(prev => [...prev, { page, params }])
   const goBack = () => setStack(prev => prev.length > 1 ? prev.slice(0, -1) : prev)
   const goHome = () => setStack(HOME)
+
+  // Dall'email: la pagina RISPONDI, anche senza essere entrati nell'app.
+  if (daRispondere) {
+    return (
+      <>
+        <RispondiSegnalazione parametri={daRispondere} onFine={() => {
+          window.history.replaceState(null, '', window.location.pathname)
+          setDaRispondere(null)
+        }} />
+        <Notifier />
+      </>
+    )
+  }
 
   if (loading) return <Splash />
 

@@ -9,8 +9,8 @@ globalThis.localStorage = {
 vi.mock('../supabaseClient', () => ({ supabase: {} }))
 
 const {
-  novitaPer, etichettaNovita, ordina, testoSegnalazioni, tipoDi, aperta,
-  sonoGestore, impostaGestore, leggiBozza, salvaBozza, dimenticaBozza, ultimaVisita, segnaVisita,
+  novitaPer, etichettaNovita, ordina, tipoDi, aperta, parametriRisposta,
+  leggiBozza, salvaBozza, dimenticaBozza, ultimaVisita, segnaVisita,
 } = await import('./segnalazioni')
 
 beforeEach(() => memoria.clear())
@@ -28,20 +28,14 @@ describe('le novità', () => {
   const visita = new Date('2026-11-26T00:00:00Z').getTime()
 
   it('a un coach: solo le sue, cambiate dopo la sua ultima visita', () => {
-    expect(novitaPer(elenco, { coachId: 'c1', gestore: false, visita }).map(x => x.id)).toEqual(['b'])
-    expect(novitaPer(elenco, { coachId: 'c2', gestore: false, visita }).map(x => x.id)).toEqual(['d'])
+    expect(novitaPer(elenco, { coachId: 'c1', visita }).map(x => x.id)).toEqual(['b'])
+    expect(novitaPer(elenco, { coachId: 'c2', visita }).map(x => x.id)).toEqual(['d'])
   })
 
-  it('al gestore: tutte quelle ancora nuove', () => {
-    expect(novitaPer(elenco, { coachId: 'c1', gestore: true, visita }).map(x => x.id)).toEqual(['a', 'e'])
-  })
-
-  it('le parole giuste, al singolare e al plurale', () => {
-    expect(etichettaNovita(0, false)).toBe('')
-    expect(etichettaNovita(1, false)).toBe('1 risposta')
-    expect(etichettaNovita(2, false)).toBe('2 risposte')
-    expect(etichettaNovita(1, true)).toBe('1 nuova')
-    expect(etichettaNovita(3, true)).toBe('3 nuove')
+  it('le parole giuste', () => {
+    expect(etichettaNovita(0)).toBe('')
+    expect(etichettaNovita(1)).toBe('1 novità')
+    expect(etichettaNovita(3)).toBe('3 novità')
   })
 })
 
@@ -65,31 +59,23 @@ describe('l\'ordine', () => {
   })
 })
 
-describe('il testo da copiare', () => {
-  it('solo le aperte, con chi ha detto anche io e la risposta', () => {
-    const testo = testoSegnalazioni([
-      s('a', { tipo: 'problema', testo: 'Il + non salva\nnel turno delle 18', anche_io: ['c2'], stato: 'in_corso', risposta: 'Ci guardo' }),
-      s('b', { stato: 'fatta' }),
-    ], { c2: 'Manu' })
-    expect(testo).toContain('GymCoach · segnalazioni aperte (1)')
-    expect(testo).toContain('🐞 QUALCOSA NON VA · Sandro · 20/11 · In lavorazione')
-    expect(testo).toContain('Il + non salva / nel turno delle 18')
-    expect(testo).toContain('✋ anche: Manu')
-    expect(testo).toContain('↳ Ci guardo')
-    expect(testo).not.toContain('testo b')
-    expect(testoSegnalazioni([s('x', { stato: 'no' })])).toBe('')
+describe('il pulsante RISPONDI dell\'email', () => {
+  const id = '6f1c2b0e-3a4d-4e5f-8a9b-0c1d2e3f4a5b'
+  const codice = 'a0b1c2d3-e4f5-4a6b-8c7d-9e0f1a2b3c4d'
+
+  it('legge segnalazione e codice dall\'indirizzo', () => {
+    expect(parametriRisposta(`?rispondi=${id}&chiave=${codice}`)).toEqual({ id, codice })
+  })
+
+  it('un indirizzo incompleto o strano non apre niente', () => {
+    expect(parametriRisposta('')).toBeNull()
+    expect(parametriRisposta(`?rispondi=${id}`)).toBeNull()
+    expect(parametriRisposta(`?rispondi=${id}&chiave=abc`)).toBeNull()
+    expect(parametriRisposta('?type=recovery')).toBeNull()
   })
 })
 
 describe('quello che resta sul telefono', () => {
-  it('il telefono del gestore', () => {
-    expect(sonoGestore()).toBe(false)
-    impostaGestore(true)
-    expect(sonoGestore()).toBe(true)
-    impostaGestore(false)
-    expect(sonoGestore()).toBe(false)
-  })
-
   it('la bozza non si perde, e si butta dopo l\'invio', () => {
     expect(leggiBozza()).toBeNull()
     salvaBozza({ tipo: 'idea', testo: 'vorrei' })

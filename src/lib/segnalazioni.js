@@ -9,8 +9,11 @@
  *    della tastiera) e, se vuole, aggiunge una foto dello schermo;
  *  - l'app aggiunge da sola chi è, il telefono, la versione e, per un
  *    problema, gli ultimi errori di quel telefono;
- *  - chi sistema l'app, da un telefono «gestore», dice com'è messa e risponde;
+ *  - a chi sistema l'app arriva un'email (la manda il database, vedi la
+ *    migrazione), con un pulsante RISPONDI: apre una pagina dell'app, anche
+ *    senza entrare, dove si dice a che punto è e si risponde;
  *  - chi l'ha scritta vede la risposta, e gli altri possono dire «anche io».
+ *  Ai coach non arriva nessun avviso: l'email è solo per chi sistema l'app.
  *
  * Una segnalazione non si cancella: quando è chiusa (fatta, o non si fa)
  * scende fra le chiuse.
@@ -45,7 +48,6 @@ export const RISPOSTA_MASSIMA = 1000
 
 // ── Quello che resta sul telefono ───────────────────────────────────────────
 
-const CHIAVE_GESTORE = 'gymcoach.segnalazioni-gestore'
 const CHIAVE_VISITA = 'gymcoach.segnalazioni-visita'
 const CHIAVE_BOZZA = 'gymcoach.segnalazioni-bozza'
 
@@ -53,15 +55,6 @@ function leggi(chiave) { try { return localStorage.getItem(chiave) } catch { ret
 function scrivi(chiave, valore) {
   try { valore == null ? localStorage.removeItem(chiave) : localStorage.setItem(chiave, valore) } catch { /* modalità privata */ }
 }
-
-/**
- * Il telefono di chi sistema l'app: lì compaiono i tasti per dire com'è
- * messa una segnalazione e per rispondere. Vale solo su questo telefono.
- * Non è una protezione (la password è una per tutti): serve a non mettere
- * davanti ai coach dei tasti che non li riguardano.
- */
-export const sonoGestore = () => leggi(CHIAVE_GESTORE) === '1'
-export const impostaGestore = si => scrivi(CHIAVE_GESTORE, si ? '1' : null)
 
 /** Quando si è aperta l'ultima volta la sezione, su questo telefono (ms). */
 export const ultimaVisita = () => Number(leggi(CHIAVE_VISITA)) || 0
@@ -82,22 +75,16 @@ export const dimenticaBozza = () => scrivi(CHIAVE_BOZZA, null)
 const ms = d => (d ? new Date(d).getTime() : 0)
 
 /**
- * Le novità per chi guarda:
- *  - al gestore, le segnalazioni nuove (ancora da leggere);
- *  - a un coach, le sue che hanno cambiato stato o risposta dopo la sua
- *    ultima visita.
+ * Le novità di un coach: le sue segnalazioni con una risposta o un passo
+ * avanti arrivati dopo la sua ultima visita. (L'ora la mette il database,
+ * e «letta» da sola non conta: vedi la migrazione.)
  */
-export function novitaPer(elenco, { coachId, gestore, visita = 0 }) {
-  if (gestore) return (elenco || []).filter(s => s.stato === 'nuova')
+export function novitaPer(elenco, { coachId, visita = 0 }) {
   return (elenco || []).filter(s => s.coach_id === coachId && ms(s.aggiornata) > visita)
 }
 
-/** «1 nuova», «3 nuove», «1 risposta», «2 risposte»; vuoto se zero. */
-export function etichettaNovita(quante, gestore) {
-  if (!quante) return ''
-  if (gestore) return `${quante} ${quante === 1 ? 'nuova' : 'nuove'}`
-  return `${quante} ${quante === 1 ? 'risposta' : 'risposte'}`
-}
+/** «1 novità», «3 novità»; vuoto se zero. */
+export const etichettaNovita = quante => (quante ? `${quante} novità` : '')
 
 /** Aperte prima (dalla più recente), poi le chiuse (dalla chiusa da meno). */
 export function ordina(elenco) {
@@ -105,26 +92,6 @@ export function ordina(elenco) {
   const chiuse = (elenco || []).filter(s => !aperta(s))
     .sort((a, b) => (ms(b.aggiornata) || ms(b.creata)) - (ms(a.aggiornata) || ms(a.creata)))
   return { aperte, chiuse }
-}
-
-const due = n => String(n).padStart(2, '0')
-const giornoCorto = d => `${due(d.getDate())}/${due(d.getMonth() + 1)}`
-
-/** Le segnalazioni aperte come testo, da incollare su WhatsApp o da girare a chi sistema l'app. */
-export function testoSegnalazioni(elenco, nomiCoach = {}) {
-  const { aperte } = ordina(elenco)
-  if (!aperte.length) return ''
-  const righe = aperte.map(s => {
-    const tipo = tipoDi(s.tipo)
-    const altri = (s.anche_io || []).map(id => nomiCoach[id]).filter(Boolean)
-    return [
-      `${tipo.icona} ${tipo.nome.toUpperCase()} · ${s.coach || '?'} · ${giornoCorto(new Date(s.creata))} · ${STATI[s.stato]?.nome || s.stato}`,
-      `  ${s.testo.replace(/\s*\n\s*/g, ' / ')}`,
-      altri.length ? `  ✋ anche: ${altri.join(', ')}` : null,
-      s.risposta ? `  ↳ ${s.risposta}` : null,
-    ].filter(Boolean).join('\n')
-  })
-  return [`GymCoach · segnalazioni aperte (${aperte.length})`, '', ...righe].join('\n\n').replace(/\n\n\n/g, '\n\n')
 }
 
 // ── Il database ─────────────────────────────────────────────────────────────
@@ -139,10 +106,12 @@ export async function caricaSegnalazioni() {
 }
 
 /** Solo quello che serve per contare le novità (Home e Impostazioni). */
-export async function contaNovita({ coachId, gestore }) {
-  const { data, error } = await supabase.from('segnalazioni').select('id, stato, coach_id, aggiornata').limit(300)
+export async function contaNovita({ coachId }) {
+  if (!coachId) return 0
+  const { data, error } = await supabase.from('segnalazioni').select('id, coach_id, aggiornata')
+    .eq('coach_id', coachId).limit(300)
   if (error) return 0
-  return novitaPer(data, { coachId, gestore, visita: ultimaVisita() }).length
+  return novitaPer(data, { coachId, visita: ultimaVisita() }).length
 }
 
 function dispositivo() {
@@ -208,13 +177,34 @@ export async function inviaSegnalazione({ tipo, testo, coach, foto }) {
   return { riga: Array.isArray(data) ? data[0] : data, errore: null }
 }
 
-/** Il gestore dice com'è messa, e risponde. */
-export async function aggiornaSegnalazione(id, { stato, risposta }) {
-  const modifiche = {}
-  if (stato) modifiche.stato = stato
-  if (risposta !== undefined) modifiche.risposta = risposta?.trim() ? risposta.trim().slice(0, RISPOSTA_MASSIMA) : null
-  const { error } = await supabase.from('segnalazioni').update(modifiche).eq('id', id)
-  return { errore: error }
+// ── Il pulsante RISPONDI dell'email ─────────────────────────────────────────
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Dall'indirizzo del pulsante RISPONDI («?rispondi=…&chiave=…») la
+ * segnalazione e il suo codice; null se l'indirizzo non è quello.
+ */
+export function parametriRisposta(cerca) {
+  try {
+    const p = new URLSearchParams(cerca || '')
+    const id = p.get('rispondi'), codice = p.get('chiave')
+    return id && codice && UUID.test(id) && UUID.test(codice) ? { id, codice } : null
+  } catch { return null }
+}
+
+/** La segnalazione, letta con il codice dell'email (e da qui segnata come letta). */
+export async function leggiDaRispondere({ id, codice }) {
+  const { data, error } = await supabase.rpc('segnalazione_da_rispondere', { quale: id, codice })
+  return { segnalazione: data || null, errore: error }
+}
+
+/** A che punto è, e la risposta. Torna { fatto, errore }. */
+export async function rispondi({ id, codice }, { stato, risposta }) {
+  const { data, error } = await supabase.rpc('segnalazione_rispondi', {
+    quale: id, codice, nuovo_stato: stato, testo_risposta: (risposta || '').trim().slice(0, RISPOSTA_MASSIMA),
+  })
+  return { fatto: data === true, errore: error }
 }
 
 /** «✋ Anche io», o toglierlo. Torna il nuovo elenco di chi lo vuole. */
@@ -223,9 +213,12 @@ export async function ancheIo(id, coachId, voglio) {
   return { elenco: Array.isArray(data) ? data : null, errore: error }
 }
 
-/** L'indirizzo per vedere una foto, valido un'ora (lo spazio è privato). */
-export async function indirizzoFotoSegnalazione(percorso) {
+/**
+ * L'indirizzo per vedere una foto. Il nome del file è lungo e casuale, e lo
+ * spazio è leggibile senza entrare: serve alla pagina RISPONDI, che si apre
+ * dall'email anche senza accesso.
+ */
+export function indirizzoFotoSegnalazione(percorso) {
   if (!percorso) return null
-  const { data, error } = await supabase.storage.from('segnalazioni').createSignedUrl(percorso, 3600)
-  return error ? null : data?.signedUrl || null
+  try { return supabase.storage.from('segnalazioni').getPublicUrl(percorso).data?.publicUrl || null } catch { return null }
 }
