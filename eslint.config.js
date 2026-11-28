@@ -52,4 +52,10 @@ export default [
     files: ['api/**/*.js'],
     languageOptions: { globals: { ...globals.node } },
   },
+
+  {
+    // Le prove nel browser: la configurazione gira su Node.
+    files: ['prove/**/*.js', '*.config.js'],
+    languageOptions: { globals: { ...globals.node } },
+  },
 ]

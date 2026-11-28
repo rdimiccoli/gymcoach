@@ -6,6 +6,8 @@ export default defineConfig({
   // 1,9 MB di sourcemap servite pubblicamente a ogni deploy. Il repo e' gia'
   // pubblico quindi non era un segreto, ma era peso inutile sul CDN.
   build: { sourcemap: false },
+  // Le prove nel browser (cartella prove/) le lancia Playwright, non Vitest.
+  test: { exclude: ['prove/**', 'node_modules/**', 'dist/**'] },
   plugins: [
     react(),
     VitePWA({

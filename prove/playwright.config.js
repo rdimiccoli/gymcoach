@@ -1,0 +1,26 @@
+import { defineConfig } from '@playwright/test'
+import path from 'node:path'
+
+/**
+ * Le prove dell'app vera nel browser, con il database finto.
+ * In locale: `npm run e2e`. Su GitHub girano da sole (.github/workflows).
+ */
+export default defineConfig({
+  testDir: '.',
+  timeout: 30_000,
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? 'github' : 'list',
+  webServer: {
+    command: 'npx vite --config prove/vite.config.js',
+    cwd: path.resolve(import.meta.dirname, '..'),
+    url: 'http://localhost:5199/prove/index.html',
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+  },
+  use: {
+    baseURL: 'http://localhost:5199',
+    locale: 'it-IT',
+    timezoneId: 'Europe/Rome',
+    trace: 'off',
+  },
+})

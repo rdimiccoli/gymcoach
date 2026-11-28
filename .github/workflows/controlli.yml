@@ -1,0 +1,45 @@
+# I controlli automatici di GymCoach.
+#
+# A ogni modifica caricata su GitHub, su qualsiasi ramo, qui si controlla da
+# soli che l'app sia sana PRIMA che arrivi ai coach:
+#   1. le regole di scrittura del codice (lint: gli errori fermano, gli avvisi no);
+#   2. i test delle funzioni (vitest);
+#   3. che l'app si costruisca (build);
+#   4. le prove nel browser vero, con un database finto (cartella prove/),
+#      a misura di telefono e di iPad.
+# Se qualcosa non va, su GitHub la modifica ha una ✗ rossa e si sa cosa.
+# Il database vero della palestra non viene mai toccato.
+
+name: Controlli
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  codice:
+    name: Lint, test e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src
+      - run: npm test
+      - run: npm run build
+
+  browser:
+    name: Prove nel browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
