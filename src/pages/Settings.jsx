@@ -13,6 +13,8 @@ import TopBar from '../components/TopBar'
 import BottomNav from '../components/BottomNav'
 import { NOVITA } from '../lib/novita'
 import { MISURE, leggiTesto, scegliTesto } from '../lib/testo'
+import { VERSIONE } from '../lib/registroErrori'
+import { preparaCopia, elencoCopie, scaricaCopiaSalvata, consegnaFile, nomeCopia, quantoTempoFa, peso, serveCopia, GIORNI_TRA_COPIE } from '../lib/copie'
 
 export default function Settings({ navigate, goHome, session, coach, coaches = [], cambiaCoach, aggiornaCoach, ricaricaProfili, apriNovita }) {
   const [stats, setStats] = useState({ turns: 0, clients: 0 })
@@ -72,6 +74,18 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
   const [misuraTesto, setMisuraTesto] = useState(leggiTesto)
   const [bioInCorso, setBioInCorso] = useState(false)
 
+  // Il cruscotto e il registro degli errori compaiono dopo la migrazione del
+  // 28/11/2026; prima l'app non li mostra (vedi capacita.js).
+  const [cruscottoAttivo, setCruscottoAttivo] = useState(false)
+  const [registroAttivo, setRegistroAttivo] = useState(false)
+  const [erroriRecenti, setErroriRecenti] = useState(null)
+  // Le copie di sicurezza (vedi copie.js): l'elenco di quelle automatiche,
+  // `null` finché non arriva, e cosa sta facendo il pulsante.
+  const [copie, setCopie] = useState(null)
+  const [copieAssenti, setCopieAssenti] = useState(false)
+  const [preparoCopia, setPreparoCopia] = useState(false)
+  const [scaricoCopia, setScaricoCopia] = useState(null)
+
   useEffect(() => { loadData() }, [coach.id])
   // Cambiando profilo cambia anche la sua vista.
   useEffect(() => { setVista(vistaTurni(coach)) }, [coach])
@@ -81,8 +95,43 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
       setEmojiDisponibile(!!c.emojiCoach)
       setVistaSuProfilo(!!c.vistaCoach)
       setFotoDisponibile(!!c.fotoCoach)
+      setCruscottoAttivo(!!c.andamento)
+      setRegistroAttivo(!!c.registroErrori)
+      // Quanti errori negli ultimi sette giorni: si vede accanto alla riga.
+      if (c.registroErrori) {
+        supabase.from('errori_app').select('id', { count: 'exact', head: true })
+          .gte('quando', new Date(Date.now() - 7 * 86_400_000).toISOString())
+          .then(({ count, error }) => { if (!error) setErroriRecenti(count ?? 0) })
+      }
     })
   }, [])
+
+  async function apriCopie() {
+    setView('copie')
+    setCopie(null)
+    const { copie: elenco, errore } = await elencoCopie(5)
+    setCopieAssenti(!!errore)
+    setCopie(elenco || [])
+  }
+
+  /** «Scarica una copia di tutto»: legge tutto adesso e lo consegna al telefono. */
+  async function scaricaTutto() {
+    setPreparoCopia(true)
+    const { copia, errore } = await preparaCopia({ coach: coach.name })
+    if (!copia) { setPreparoCopia(false); notifyError(errore || 'Copia non riuscita. Riprova.'); return }
+    const righe = Object.values(copia.righe).reduce((a, b) => a + b, 0)
+    const esito = await consegnaFile(new Blob([JSON.stringify(copia)], { type: 'application/json' }), nomeCopia())
+    setPreparoCopia(false)
+    if (esito !== 'annullata') notifyOk(`Copia pronta: ${righe.toLocaleString('it-IT')} righe`)
+  }
+
+  async function scaricaSalvata(nome) {
+    setScaricoCopia(nome)
+    const { file, errore } = await scaricaCopiaSalvata(nome)
+    setScaricoCopia(null)
+    if (errore) { notifyError('Copia non scaricata. Riprova.'); return }
+    await consegnaFile(file, nome)
+  }
 
   /** Tocca la stessa emoji per toglierla: niente pulsante in piu da cercare. */
   async function scegliEmoji(emoji) {
@@ -547,6 +596,87 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
     </div>
   )
 
+  // ── COPIE DI SICUREZZA ────────────────────────────────────────────────────
+  if (view === 'copie') {
+    const ultima = copie?.[0]
+    return (
+      <div style={page}>
+        <TopBar title="COPIE DI SICUREZZA" onBack={() => setView('main')} />
+        <div style={scroll}>
+          <div style={{ color: 'var(--testo-forte)', fontSize: '15px', lineHeight: 1.5, marginBottom: '16px' }}>
+            Una volta a settimana l'app mette <strong>da sola</strong> una copia di tutti i
+            dati (persone, schede, pesi, note) in uno spazio privato di Supabase.
+            Dall'app nessuno può cancellarla.
+          </div>
+
+          <div style={{ ...riga, cursor: 'default', display: 'block' }}>
+            <div style={fieldLabel}>ULTIMA COPIA AUTOMATICA</div>
+            {copie === null && <div style={{ color: 'var(--testo-debole)', fontSize: '14px' }}>Guardo…</div>}
+            {copie !== null && copieAssenti && (
+              <div style={{ color: 'var(--testo-forte)', fontSize: '14px', lineHeight: 1.45 }}>
+                Non ancora attiva: parte dopo la migrazione del 28 novembre, da lanciare
+                una volta su Supabase. Il pulsante qui sotto funziona già.
+              </div>
+            )}
+            {copie !== null && !copieAssenti && !ultima && (
+              <div style={{ color: 'var(--testo-forte)', fontSize: '14px', lineHeight: 1.45 }}>
+                Ancora nessuna: la prima la fa da solo il primo telefono che apre l'app.
+              </div>
+            )}
+            {ultima && (<>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: '24px', fontWeight: '900', color: '#fff' }}>
+                {quantoTempoFa(ultima.created_at).toUpperCase()}
+              </div>
+              <div style={{ color: 'var(--testo-medio)', fontSize: '13px', marginTop: '2px' }}>
+                {new Date(ultima.created_at).toLocaleString('it-IT', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                {ultima.metadata?.size ? ` · ${peso(ultima.metadata.size)}` : ''}
+                {serveCopia(ultima) ? ' · la prossima parte a breve' : ` · la prossima fra ${GIORNI_TRA_COPIE} giorni da questa`}
+              </div>
+            </>)}
+          </div>
+
+          <button onClick={scaricaTutto} disabled={preparoCopia} style={{ ...bigBtn, marginTop: '14px', minHeight: '52px', fontSize: '15px', opacity: preparoCopia ? 0.6 : 1 }}>
+            {preparoCopia ? 'PREPARO LA COPIA…' : '💾 SCARICA UNA COPIA DI TUTTO'}
+          </button>
+          <div style={{ color: 'var(--testo-medio)', fontSize: '13px', lineHeight: 1.45, marginTop: '8px' }}>
+            La salva su questo telefono o computer (su iPad: «Salva su File»). Tienine
+            una sul computer ogni tanto: è quella che resta anche se un giorno sparisse
+            tutto Supabase.
+          </div>
+
+          {copie?.length > 0 && (<>
+            <div style={{ ...titoloSezione, marginTop: '26px' }}>LE ULTIME COPIE AUTOMATICHE</div>
+            {copie.map(c => (
+              <div key={c.name} style={{ ...riga, cursor: 'default' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={etichettaRiga}>
+                    {new Date(c.created_at).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </div>
+                  <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', marginTop: '2px' }}>
+                    {quantoTempoFa(c.created_at)}{c.metadata?.size ? ` · ${peso(c.metadata.size)}` : ''}
+                  </div>
+                </div>
+                <button onClick={() => scaricaSalvata(c.name)} disabled={!!scaricoCopia} style={{
+                  flexShrink: 0, minHeight: '44px', padding: '0 14px', borderRadius: '4px', cursor: 'pointer',
+                  background: 'var(--sup-alta)', border: '1px solid var(--bordo)', color: 'var(--testo-chiaro)',
+                  fontFamily: 'Barlow Condensed, sans-serif', fontSize: '13px', fontWeight: '700', letterSpacing: '1px',
+                  opacity: scaricoCopia && scaricoCopia !== c.name ? 0.4 : 1,
+                }}>{scaricoCopia === c.name ? '...' : 'SCARICA'}</button>
+              </div>
+            ))}
+          </>)}
+
+          <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', lineHeight: 1.45, marginTop: '18px' }}>
+            Per rimettere i dati da una copia: istruzioni nel file
+            supabase/come-rimettere-una-copia.md. Si aggiungono le righe che mancano,
+            senza cancellare né cambiare quelle che ci sono.
+          </div>
+        </div>
+        <BottomNav active="settings" navigate={navigate} goHome={goHome} />
+      </div>
+    )
+  }
+
   // ── CHANGE PASSWORD ───────────────────────────────────────────────────────
   if (view === 'changePassword') return (
     <div style={page}>
@@ -652,7 +782,11 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
           <Riga etichetta="Cambia coach" valore={coach.name} onClick={cambiaCoach} />
         )}
         <Riga etichetta="Aggiungi coach" onClick={() => setView('addCoach')} />
+        {cruscottoAttivo && (
+          <Riga etichetta="📊 Cruscotto" valore="Settimana per settimana" onClick={() => navigate('cruscotto')} />
+        )}
         <Riga etichetta="🧹 Mettere in ordine" onClick={() => navigate('pulizia')} />
+        <Riga etichetta="💾 Copie di sicurezza" onClick={apriCopie} />
         {coaches.filter(c => c.id !== coach.id && c.nascosto !== true).length > 0 && (
           <Riga etichetta="Archivia coach"
             onClick={() => { setDaArchiviare(null); setView('archivia') }} />
@@ -712,6 +846,15 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
         {apriNovita && (
           <Riga etichetta="🆕 Cosa c'è di nuovo" valore={NOVITA[0]?.data} onClick={apriNovita} />
         )}
+        {registroAttivo && (
+          <Riga etichetta="🩺 Registro degli errori"
+            valore={erroriRecenti === null ? undefined : erroriRecenti === 0 ? 'Nessuno in 7 giorni' : `${erroriRecenti} in 7 giorni`}
+            onClick={() => navigate('errori')} />
+        )}
+        {/* Quale versione gira qui: se un iPad è rimasto indietro si vede. */}
+        <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', margin: '2px 2px 0' }}>
+          Versione dell'app: {VERSIONE}
+        </div>
 
         <div style={titoloSezione}>ACCOUNT</div>
         <Riga etichetta="Modifica password" onClick={() => setView('changePassword')} />

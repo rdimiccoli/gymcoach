@@ -27,6 +27,48 @@
 
 export const NOVITA = [
   {
+    id: '2026-11-28-2',
+    data: '28 novembre',
+    schede: [
+      {
+        icona: '💡',
+        titolo: 'IL PESO PROPOSTO',
+        testo: 'Dove oggi non c\'è ancora un peso, al posto del trattino compare quello che probabilmente farà, con il punto di domanda: «55?». Un tocco e si segna. Se è diverso, + e − partono da lì.',
+        dove: ['APRI UN TURNO', 'TOCCA UN ESERCIZIO', '55?'],
+        nota: 'È solo una proposta: finché non la tocchi non si salva niente. Per rifare lo stesso peso c\'è sempre PREC. ↵',
+      },
+      {
+        icona: '📡',
+        titolo: 'IL TURNO SI APRE ANCHE SENZA RETE',
+        testo: 'Se il wifi cade, la Home e i turni si aprono lo stesso, con i dati dell\'ultima volta che c\'era rete. In cima compare «SENZA RETE» con l\'ora dei dati.',
+        dove: ['HOME', 'APRI UN TURNO'],
+        nota: 'I pesi che segni restano sul telefono e partono da soli appena torna la rete.',
+      },
+      {
+        icona: '📊',
+        titolo: 'IL CRUSCOTTO',
+        testo: 'Quante persone si sono allenate questa settimana e nelle ultime dieci, coach per coach, gli ospiti e chi non si vede da tre settimane.',
+        dove: ['IMPOST.', 'CRUSCOTTO'],
+        serve: 'andamento',
+      },
+      {
+        icona: '💾',
+        titolo: 'LE COPIE DI SICUREZZA',
+        testo: 'Una volta a settimana l\'app fa da sola una copia di tutti i dati. E quando vuoi puoi scaricarne una sul telefono o sul computer.',
+        dove: ['IMPOST.', 'COPIE DI SICUREZZA'],
+        nota: 'Dall\'app nessuno può cancellare le copie.',
+        serve: 'copie',
+      },
+      {
+        icona: '🩺',
+        titolo: 'IL REGISTRO DEGLI ERRORI',
+        testo: 'Se qualcosa va storto, l\'app lo annota da sola: quando, in quale schermata e su che telefono. Non devi ricordarti il messaggio: basta copiare il registro e mandarlo su WhatsApp.',
+        dove: ['IMPOST.', 'REGISTRO DEGLI ERRORI', 'COPIA PER WHATSAPP'],
+        serve: 'registroErrori',
+      },
+    ],
+  },
+  {
     id: '2026-11-28',
     data: '28 novembre',
     schede: [

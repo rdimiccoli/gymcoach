@@ -1,5 +1,8 @@
+import StrisciaSenzaRete from './StrisciaSenzaRete'
+
 export default function TopBar({ title, subtitle, onBack }) {
   return (
+    <>
     <div style={{
       padding: '10px 18px 10px',
       display: 'flex', alignItems: 'center', gap: '12px',
@@ -30,5 +33,8 @@ export default function TopBar({ title, subtitle, onBack }) {
       </div>
       <img src="/logo_OAD.png" alt="OAD" style={{ height: '32px', mixBlendMode: 'screen', flexShrink: 0, opacity: 0.85 }} />
     </div>
+    {/* Senza rete, subito sotto il titolo: si sa di quando sono i dati. */}
+    <StrisciaSenzaRete />
+    </>
   )
 }

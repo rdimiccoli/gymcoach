@@ -4,7 +4,7 @@ import { describe, it, expect, vi } from 'vitest'
 // solo come legge l'esito, non come lo ottiene.
 vi.mock('../supabaseClient', () => ({ supabase: {} }))
 
-const { leggiEsito } = await import('./capacita')
+const { leggiEsito, leggiEsitoSpazio } = await import('./capacita')
 
 describe('leggiEsito', () => {
   it('nessun errore significa che la funzione c’è', () => {
@@ -33,5 +33,17 @@ describe('leggiEsito', () => {
   it('un permesso negato non è una prova di assenza', () => {
     // 42501 = insufficient_privilege: la tabella c'è, la policy dice di no.
     expect(leggiEsito({ code: '42501' })).toBe(true)
+  })
+})
+
+describe('leggiEsitoSpazio', () => {
+  it('«Bucket not found» vuol dire che lo spazio file non c\'è', () => {
+    expect(leggiEsitoSpazio({ statusCode: '404', message: 'Bucket not found' })).toBe(false)
+    expect(leggiEsitoSpazio({ status: 400, message: 'Bucket not found' })).toBe(false)
+  })
+
+  it('nessun errore, o la rete che manca, non lo fanno sparire', () => {
+    expect(leggiEsitoSpazio(null)).toBe(true)
+    expect(leggiEsitoSpazio({ message: 'Failed to fetch' })).toBe(true)
   })
 })

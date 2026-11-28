@@ -27,6 +27,11 @@ import { coachScelto, scegliCoach, decidiCoach } from './lib/coachAttivo'
 const BloccoBiometrico = lazy(() => import('./components/BloccoBiometrico'))
 import { bloccoAttivo, disattivaBlocco, MINUTI_RIBLOCCO } from './lib/biometria'
 import { avviaSincronizzazioneAutomatica } from './lib/coda'
+import { impostaContesto } from './lib/registroErrori'
+import { accessoSalvato, dimenticaCopie, pulisciCopie } from './lib/copiaDati'
+import { copiaDellaSettimana } from './lib/copie'
+import Cruscotto from './pages/Cruscotto'
+import RegistroErrori from './pages/RegistroErrori'
 import { supabase } from './supabaseClient'
 
 // Da app installata non c'è nessuna pagina precedente a cui tornare: la
@@ -117,18 +122,32 @@ export default function App() {
     scriviNavigazione(stack)
   }, [stack])
 
+  // Il registro degli errori scrive in che schermata si era e chi era il
+  // coach (vedi registroErrori.js): glielo si dice a ogni cambio.
+  const paginaAttuale = stack[stack.length - 1]?.page
+  const nomeCoach = coaches?.find(c => c.id === coachId)?.name || null
+  useEffect(() => { impostaContesto({ pagina: paginaAttuale, coach: nomeCoach }) }, [paginaAttuale, nomeCoach])
+
   useEffect(() => {
+    // Senza rete il rinnovo dell'accesso non riesce e la libreria risponde
+    // «nessun accesso», ma lo tiene salvato sul telefono: non è un'uscita, e
+    // vale quello salvato (vedi accessoSalvato in copiaDati.js). Prima, aprire
+    // l'app senza rete dopo un'ora mostrava la schermata della password.
+    const diRiserva = () => accessoSalvato(supabase.auth.storageKey)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
+      setSession(session || diRiserva())
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nuova) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsRecovery(true)
         window.history.replaceState(null, '', window.location.pathname)
       }
+      const session = nuova || (event === 'SIGNED_OUT' ? null : diRiserva())
       setSession(session)
       if (!session) {
+        // Uscendo dall'account sul telefono non restano copie dei dati.
+        dimenticaCopie()
         // La posizione salvata va dimenticata all'uscita, altrimenti chi entra
         // dopo si ritroverebbe dentro la schermata dell'account precedente.
         dimenticaNavigazione()
@@ -188,6 +207,22 @@ export default function App() {
   // I carichi rimasti in coda partono da soli: al ritorno della rete, alla
   // riapertura dell'app e comunque ogni minuto.
   useEffect(() => avviaSincronizzazioneAutomatica(!!session?.user?.id), [session?.user?.id])
+
+  // Le copie dei dati più vecchie di due settimane si buttano, con calma
+  // dopo l'avvio (vedi copiaDati.js).
+  useEffect(() => {
+    const t = setTimeout(() => { pulisciCopie().catch(() => {}) }, 8000)
+    return () => clearTimeout(t)
+  }, [])
+
+  // La copia di sicurezza della settimana (vedi copie.js): la fa da solo il
+  // primo telefono che apre l'app dopo sette giorni dall'ultima. Aspetta un
+  // po' dopo l'avvio, per non rubare la rete a chi apre subito un turno.
+  useEffect(() => {
+    if (!session?.user?.id || !nomeCoach) return
+    const t = setTimeout(() => { copiaDellaSettimana({ coach: nomeCoach }) }, 45_000)
+    return () => clearTimeout(t)
+  }, [session?.user?.id, nomeCoach])
 
   // ── I profili coach ───────────────────────────────────────────────────────
   // Da ottobre 2026 l'account non dice più per chi si lavora: la credenziale è
@@ -366,6 +401,8 @@ export default function App() {
     athletes: Athletes,
     'athlete-profile': AthleteProfile,
     pulizia: Pulizia,
+    cruscotto: Cruscotto,
+    errori: RegistroErrori,
   }
 
   const Page = pages[current.page] || Home

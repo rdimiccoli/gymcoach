@@ -15,10 +15,13 @@ import '@fontsource/barlow-condensed/latin-800.css'
 import '@fontsource/barlow-condensed/latin-900.css'
 import './index.css'
 import { applicaTesto } from './lib/testo'
+import { avviaRegistro } from './lib/registroErrori'
 
 // La grandezza del testo scelta su questo telefono, prima di disegnare
 // qualsiasi cosa: niente pagina che salta dal piccolo al grande.
 applicaTesto()
+// Da qui in poi ogni errore si scrive da solo nel registro (vedi registroErrori.js).
+avviaRegistro()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <ErrorBoundary>

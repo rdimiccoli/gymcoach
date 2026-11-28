@@ -17,6 +17,7 @@ import BottomNav from '../components/BottomNav'
 import { nomeECognome, nomeCompleto } from '../lib/nomi'
 import { chiManca, giornoCorto, GIORNI_ASSENZA } from '../lib/assenti'
 import { caricaUltimi, personeAttive } from '../lib/assentiDb'
+import StrisciaSenzaRete from '../components/StrisciaSenzaRete'
 import { turnoDOrigine } from '../lib/ospitiDb'
 
 const GIORNI = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
@@ -176,6 +177,7 @@ export default function Home({ navigate, goHome, session, coach }) {
 
   return (
     <div style={pagina}>
+      <StrisciaSenzaRete />
       <div style={scorrimento} data-scorre>
 
         <div style={testata}>

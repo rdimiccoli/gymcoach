@@ -40,12 +40,29 @@ async function presente(tabella, colonna) {
   return leggiEsito(error)
 }
 
+/**
+ * Come leggiEsito, per uno spazio file: «Bucket not found» vuol dire che non
+ * c'è; la rete che manca, come sempre, non è una prova.
+ */
+export function leggiEsitoSpazio(error) {
+  if (!error) return true
+  const stato = String(error.statusCode ?? error.status ?? '')
+  return !(stato === '404' || /not found/i.test(String(error.message || '')))
+}
+
+async function presenteSpazio(nome) {
+  try {
+    const { error } = await supabase.storage.from(nome).list('', { limit: 1 })
+    return leggiEsitoSpazio(error)
+  } catch { return true }
+}
+
 let richiesta = null
 
 /**
  * Le capacità disponibili. La prima chiamata interroga il database, le
- * successive riusano la stessa promessa: quattro richieste in tutto, per
- * sessione.
+ * successive riusano la stessa promessa: una richiesta piccola per funzione,
+ * tutte insieme, una volta per sessione.
  *
  * Due funzioni sono uscite da questo elenco, e vale la pena ricordare perché.
  *
@@ -65,7 +82,7 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, giorniPersona, notaPersona, ultimiAllenamenti] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, giorniPersona, notaPersona, ultimiAllenamenti, registroErrori, andamento, copie] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -82,6 +99,9 @@ export function capacita() {
       presente('giorni_persona', 'cycle_id'),
       presente('clients', 'nota'),
       presente('ultimi_allenamenti', 'client_id'),
+      presente('errori_app', 'id'),
+      presente('andamento_settimane', 'settimana'),
+      presenteSpazio('copie'),
     ])
     // Il Silver da solo non serve a niente: il segno esiste per poter essere
     // ospiti. Si accende solo se ci sono entrambi i pezzi.
@@ -96,7 +116,13 @@ export function capacita() {
       // La nota accanto al nome («nuova», «over»).
       notaPersona,
       // Quando ognuno ha segnato l'ultimo peso: chi non si vede, la pulizia.
-      ultimiAllenamenti }
+      ultimiAllenamenti,
+      // Il registro degli errori, da leggere nelle impostazioni.
+      registroErrori,
+      // Pesi e persone settimana per settimana: il cruscotto.
+      andamento,
+      // Lo spazio privato delle copie di sicurezza automatiche.
+      copie }
   })()
   return richiesta
 }

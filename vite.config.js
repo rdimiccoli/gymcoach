@@ -2,7 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Quale versione dell'app gira su un telefono: la data della pubblicazione
+// (ora italiana) e le prime lettere del commit, che Vercel passa durante la
+// build. Si vede nelle Impostazioni e finisce in ogni riga del registro degli
+// errori: così si capisce subito se un iPad è rimasto indietro.
+const commit = (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7)
+const quando = new Date().toLocaleString('it-IT', {
+  timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+}).replace(',', '')
+const VERSIONE = commit ? `${quando} · ${commit}` : 'locale'
+
 export default defineConfig({
+  define: { __VERSIONE__: JSON.stringify(VERSIONE) },
   // 1,9 MB di sourcemap servite pubblicamente a ogni deploy. Il repo e' gia'
   // pubblico quindi non era un segreto, ma era peso inutile sul CDN.
   build: { sourcemap: false },

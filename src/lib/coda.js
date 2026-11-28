@@ -58,6 +58,16 @@ export function inAttesa() {
   return leggiCoda().length
 }
 
+/**
+ * I pesi in attesa, uno per uno: { client_id, cycle_exercise_id, kg, week }.
+ * Senza rete la seduta si riapre dalla copia salvata sul telefono, che non li
+ * contiene: senza questi, un peso segnato dieci minuti prima sembrerebbe
+ * sparito, e il coach lo segnerebbe di nuovo.
+ */
+export function pesiInAttesa() {
+  return leggiCoda().map(({ client_id, cycle_exercise_id, kg, week }) => ({ client_id, cycle_exercise_id, kg, week }))
+}
+
 // ── decidere se accodare o segnalare ────────────────────────────────────────
 /**
  * Un errore di rete si riprova; un rifiuto del server no, altrimenti la coda

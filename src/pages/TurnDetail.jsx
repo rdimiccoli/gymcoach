@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense, Fragment } from 'react'
 import { supabase } from '../supabaseClient'
 import { run, notifyOk, notifyError } from '../lib/notify'
-import { salvaCarichi } from '../lib/coda'
+import { salvaCarichi, pesiInAttesa } from '../lib/coda'
 import { comePulsante } from '../lib/stile'
 import { tocco, conferma, festa } from '../lib/aptico'
 import { repsPerSettimana, raggruppaEsercizi, secondiDaTesto, settimanaDaCalendario, settimanaVera } from '../lib/schede'
@@ -16,6 +16,7 @@ import { caricaAssegnazioni } from '../lib/assegnazioniDb'
 import { tutteLeRighe } from '../lib/tutteLeRighe'
 import { storicoEsercizi } from '../lib/storicoDb'
 import { passiDalloStorico, scriviPasso } from '../lib/passoPeso'
+import { pesoProposto, scriviKg } from '../lib/pesoProposto'
 import { useSchermoLargo } from '../lib/schermo'
 import { mappaGiorni, dividiPerGiorno, etichettaGiorni } from '../lib/giorniPersona'
 import { caricaGiorniPersona } from '../lib/giorniPersonaDb'
@@ -222,6 +223,13 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
       loadData?.forEach(l => {
         loadMap[`${l.client_id}_${l.cycle_exercise_id}_${l.week}`] = l.kg
       })
+      // Sopra, i pesi segnati e non ancora partiti (vedi pesiInAttesa).
+      const persone = new Set(clIds), righeScheda = new Set(exIds)
+      pesiInAttesa().forEach(v => {
+        if (persone.has(v.client_id) && righeScheda.has(v.cycle_exercise_id)) {
+          loadMap[`${v.client_id}_${v.cycle_exercise_id}_${v.week}`] = v.kg
+        }
+      })
       setLoads(loadMap)
 
       // ── Record personali e carichi delle schede prima ─────────────────
@@ -334,14 +342,27 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
   // aggiorna subito — il tocco deve rispondere all'istante — e la scrittura
   // parte dopo una pausa, così tenere premuto +5 volte non fa cinque richieste.
   function modificaCarico(client, ex, delta) {
-    const chiave = `${client.id}_${ex.id}_${settimana}`
-    const attuale = parseFloat(loads[chiave])
-    // Settimana nuova, ancora vuota: si parte dal carico della volta prima,
-    // che è scritto lì accanto («prec. 27.5»). Partire da zero voleva dire
-    // che + dava 1 kg, e per arrivare a 28 bisognava aprire DETTAGLI.
-    const precedente = parseFloat(getLoadInfo(client, ex).prevKg)
-    const base = Number.isFinite(attuale) ? attuale : Number.isFinite(precedente) ? precedente : 0
+    const info = getLoadInfo(client, ex)
+    const attuale = parseFloat(info.currentKg)
+    // Settimana nuova, ancora vuota: si parte dal peso proposto («55?»), che è
+    // scritto nella casella; senza proposta, dal carico della volta prima
+    // («prec. 27.5»). Partire da zero voleva dire che + dava 1 kg, e per
+    // arrivare a 28 bisognava aprire DETTAGLI.
+    const proposta = propostaPer(client, ex, info)
+    const precedente = parseFloat(info.prevKg)
+    const base = Number.isFinite(attuale) ? attuale
+      : proposta != null ? proposta
+      : Number.isFinite(precedente) ? precedente : 0
     impostaCarico(client, ex, Math.max(0, parseFloat((base + delta).toFixed(2))))
+  }
+
+  /**
+   * Il peso proposto per oggi (vedi pesoProposto.js): solo con la cella di
+   * oggi vuota e un peso della settimana SUBITO prima, in questa scheda.
+   */
+  function propostaPer(client, ex, info = getLoadInfo(client, ex)) {
+    if (info.currentKg !== undefined || info.daPrima || info.prevWeek !== settimana - 1) return null
+    return pesoProposto(info.prevKg, passi[ex.exercise_id] || 1)
   }
 
   /**
@@ -480,7 +501,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
     }
     const prevKg = prevWeek !== null ? loads[`${client.id}_${ex.id}_${prevWeek}`] : undefined
     const prevReps = prevWeek !== null ? repsPerSettimana(ex, prevWeek, totale, passo) : undefined
-    return { currentKg, prevKg, prevReps }
+    return { currentKg, prevKg, prevReps, prevWeek }
   }
 
   const groups = raggruppaEsercizi(exercises)
@@ -656,7 +677,9 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                             (mezzi chili e nota). */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                           {group.exercises.map(ex => {
-                            const { currentKg, prevKg, prevReps, daPrima } = getLoadInfo(client, ex)
+                            const info = getLoadInfo(client, ex)
+                            const { currentKg, prevKg, prevReps, daPrima } = info
+                            const proposta = propostaPer(client, ex, info)
                             // Un carico di 0 kg (corpo libero, macchina assistita) è
                             // un dato vero: prima veniva scartato come se mancasse.
                             const diff = (currentKg !== undefined && prevKg !== undefined) ? parseFloat((currentKg - prevKg).toFixed(2)) : null
@@ -746,6 +769,23 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                     style={{ ...tastoCarico, ...((passi[ex.exercise_id] || 1) !== 1 && tastoConNumero) }}>
                                     {(passi[ex.exercise_id] || 1) !== 1 ? `−${scriviPasso(passi[ex.exercise_id])}` : '−'}
                                   </button>
+                                  {/* Cella vuota con un peso la settimana prima: al
+                                      posto del trattino la proposta per oggi, con il
+                                      punto di domanda e il bordo tratteggiato perché
+                                      non sembri un peso già segnato. Un tocco la
+                                      segna (vedi pesoProposto.js). */}
+                                  {proposta != null ? (
+                                    <button type="button" onClick={() => impostaCarico(client, ex, proposta)}
+                                      aria-label={`Proposta per oggi: ${scriviKg(proposta)} chili. Tocca per segnarla`}
+                                      style={{ ...comePulsante, ...casellaProposta }}>
+                                      <span style={{ color: 'var(--testo-chiaro)', fontSize: '18px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800', lineHeight: 1 }}>
+                                        {proposta}?
+                                      </span>
+                                      <span style={{ color: 'var(--testo-medio)', fontSize: '10px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '700', letterSpacing: '0.5px', lineHeight: 1, marginTop: '3px' }}>
+                                        PROPOSTA
+                                      </span>
+                                    </button>
+                                  ) : (
                                   <button type="button" onClick={() => setEditModal({ client, group })}
                                     style={{ ...comePulsante, minWidth: '52px', textAlign: 'center', cursor: 'pointer', padding: '2px 0' }}>
                                     <span key={saltelli[`${client.id}_${ex.id}_${settimana}`] || 0}
@@ -755,6 +795,7 @@ export default function TurnDetail({ navigate, goBack, goHome, params, incorpora
                                     </span>
                                     <span style={{ color: 'var(--testo-debole)', fontSize: '12px', marginLeft: '2px', fontFamily: 'Barlow Condensed, sans-serif' }}>kg</span>
                                   </button>
+                                  )}
                                   <button onClick={() => modificaCarico(client, ex, passi[ex.exercise_id] || 1)}
                                     aria-label={`Più ${scriviPasso(passi[ex.exercise_id] || 1)} chili`}
                                     style={{ ...tastoCarico, ...((passi[ex.exercise_id] || 1) !== 1 && tastoConNumero), background: 'var(--acc-riempimento)', borderColor: 'var(--acc-bordo-forte)', color: 'var(--accento)' }}>
@@ -1150,6 +1191,8 @@ const scroll = { flex: 1, overflowY: 'auto', padding: '10px 16px', WebkitOverflo
 // si stringe, perché ci stia senza andare a capo.
 const tastoConNumero = { width: 'auto', minWidth: '48px', padding: '0 4px', fontSize: '15px', fontFamily: 'Barlow Condensed, sans-serif', fontWeight: '800' }
 const tastoCarico = { width: '44px', height: '44px', flexShrink: 0, background: 'var(--sup-alta)', border: '1px solid var(--bordo-forte)', borderRadius: '5px', color: 'var(--testo-forte)', fontSize: '20px', fontWeight: '700', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'manipulation', cursor: 'pointer' }
+// La casella col peso proposto: tratteggiata, così non si confonde con un peso segnato.
+const casellaProposta = { minWidth: '52px', minHeight: '44px', padding: '2px 4px', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--bordo-forte)', borderRadius: '5px', cursor: 'pointer', touchAction: 'manipulation' }
 
 // Quanto aspetta l'avviso del record dopo l'ultimo salvataggio (che a sua
 // volta parte quasi un secondo dopo l'ultimo tocco): il tempo di finire di

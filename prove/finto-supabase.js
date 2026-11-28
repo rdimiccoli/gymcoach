@@ -51,14 +51,20 @@ const db = {
     { client_id: 'dup', ultimo: '2026-11-21T13:30:00Z', pesi: 2 },
   ],
   andamento_settimane: [
-    { settimana: '2026-10-26', coach_id: 'c1', persone: 12, pesi: 60 },
-    { settimana: '2026-11-02', coach_id: 'c1', persone: 30, pesi: 150 },
-    { settimana: '2026-11-09', coach_id: 'c1', persone: 52, pesi: 300 },
-    { settimana: '2026-11-16', coach_id: 'c1', persone: 61, pesi: 320 },
-    { settimana: '2026-11-23', coach_id: 'c1', persone: 58, pesi: 280 },
-    { settimana: '2026-11-09', coach_id: 'c2', persone: 40, pesi: 210 },
-    { settimana: '2026-11-16', coach_id: 'c2', persone: 44, pesi: 230 },
-    { settimana: '2026-11-23', coach_id: 'c2', persone: 41, pesi: 190 },
+    { settimana: '2026-10-26', coach_id: 'c1', tutti: false, persone: 12, pesi: 60 },
+    { settimana: '2026-11-02', coach_id: 'c1', tutti: false, persone: 30, pesi: 150 },
+    { settimana: '2026-11-09', coach_id: 'c1', tutti: false, persone: 52, pesi: 300 },
+    { settimana: '2026-11-16', coach_id: 'c1', tutti: false, persone: 61, pesi: 320 },
+    { settimana: '2026-11-23', coach_id: 'c1', tutti: false, persone: 58, pesi: 280 },
+    { settimana: '2026-11-09', coach_id: 'c2', tutti: false, persone: 40, pesi: 210 },
+    { settimana: '2026-11-16', coach_id: 'c2', tutti: false, persone: 44, pesi: 230 },
+    { settimana: '2026-11-23', coach_id: 'c2', tutti: false, persone: 41, pesi: 190 },
+    // I totali della palestra: chi si allena con due coach conta una volta.
+    { settimana: '2026-10-26', coach_id: null, tutti: true, persone: 12, pesi: 60 },
+    { settimana: '2026-11-02', coach_id: null, tutti: true, persone: 30, pesi: 150 },
+    { settimana: '2026-11-09', coach_id: null, tutti: true, persone: 90, pesi: 510 },
+    { settimana: '2026-11-16', coach_id: null, tutti: true, persone: 103, pesi: 550 },
+    { settimana: '2026-11-23', coach_id: null, tutti: true, persone: 97, pesi: 470 },
   ],
 }
 
@@ -84,6 +90,8 @@ for (const [ex, parti] of Object.entries(storico)) {
   }))
 }
 db.client_loads.push({ id: 'lp2', client_id: 'p2', cycle_exercise_id: 'old_e1', week: 3, kg: 70, updated_at: '2026-10-28T18:00:00Z' })
+// La panca di Marco la settimana scorsa (la 9, extra): oggi si propone 30 + un ottavo → 35.
+db.client_loads.push({ id: 'lpanca9', client_id: 'p1', cycle_exercise_id: 's2_e2', week: 9, kg: 30, updated_at: '2026-11-20T13:40:00Z' })
 
 // ── Le relazioni che l'app chiede insieme alle righe ─────────────────────
 function conRelazioni(riga, tabella) {
@@ -115,7 +123,7 @@ function domanda(tabella, operazione, dati) {
     not(k) { filtri.push(r => r[k] != null); return q },
     gte(k, v) { filtri.push(r => r[k] == null || r[k] >= v); return q },
     lte(k, v) { filtri.push(r => r[k] == null || r[k] <= v); return q },
-    is() { return q }, ilike() { return q }, or() { return q }, limit() { return q },
+    is() { return q }, ilike() { return q }, or() { return q }, limit() { return q }, setHeader() { return q },
     range(a, z) { pagina = [a, z]; return q },
     order(k, o) { ordine.push([k, o?.ascending !== false]); return q },
     maybeSingle() { uno = true; return q }, single() { uno = true; return q },
@@ -188,3 +196,7 @@ export const supabase = {
 
 // Per le prove: guardare dentro il database finto dalla pagina.
 if (typeof window !== 'undefined') window.__dbFinto = db
+
+// Per le prove con il collegamento vero (rete.spec.js): gli stessi dati,
+// serviti come li servirebbe Supabase.
+export { db as datiFinti, conRelazioni }

@@ -85,6 +85,85 @@ test.describe('telefono', () => {
     expect(errori).toEqual([])
   })
 
+  test('il peso proposto: «35?» al posto del trattino, un tocco e si segna', async ({ page }) => {
+    const errori = await apri(page)
+    await page.getByText('13:30').first().click()
+    await page.getByRole('button', { name: /^Panca piana$/ }).click()
+    // La settimana scorsa 30 kg: si propone un ottavo in più, al disco (35).
+    const proposta = page.getByRole('button', { name: 'Proposta per oggi: 35 chili. Tocca per segnarla' })
+    await expect(proposta).toHaveText(/35\?\s*PROPOSTA/)
+    await proposta.click()
+    await expect(proposta).toHaveCount(0)
+    await expect(page.getByText('35', { exact: true })).toBeVisible()
+    await expect.poll(() => page.evaluate(() =>
+      window.__dbFinto.client_loads.find(l => l.client_id === 'p1' && l.cycle_exercise_id === 's2_e2' && l.week === 10)?.kg)).toBe(35)
+    expect(await scorreDiLato(page)).toBe(false)
+    expect(errori).toEqual([])
+  })
+
+  test('il cruscotto: la settimana, le dieci prima, coach per coach', async ({ page }) => {
+    const errori = await apri(page)
+    await page.getByText('IMPOST.', { exact: true }).last().click()
+    await page.getByText('📊 Cruscotto').click()
+    await expect(page.getByText('QUESTA SETTIMANA · DA LUNEDÌ 23/11')).toBeVisible()
+    await expect(page.getByText('97', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('Questa settimana', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Settimana del 16/11: 103 persone, 550 pesi' }).click()
+    await expect(page.getByText(/Settimana del 16\/11: 103 persone · 550 pesi/)).toBeVisible()
+    await expect(page.getByText('Sandro', { exact: true })).toBeVisible()
+    await expect(page.getByText('Manu', { exact: true })).toBeVisible()
+    await expect(page.getByText(/persona non si vede da 3 settimane/)).toBeVisible()
+    await page.getByRole('button', { name: 'Vedi i numeri ›' }).click()
+    await expect(page.getByRole('cell', { name: '23/11 (in corso)' })).toBeVisible()
+    expect(await scorreDiLato(page)).toBe(false)
+    expect(errori).toEqual([])
+  })
+
+  test('il registro degli errori: si scrive da solo e si legge', async ({ page }) => {
+    await apri(page)
+    // Un errore del programma che nessuno gestisce finisce nel registro.
+    // (Una promessa e non un timer: l'orologio finto delle prove si tiene
+    // gli errori dei timer e non li fa arrivare alla pagina.)
+    await page.addScriptTag({ content: "Promise.reject(new Error('prova del registro'))" })
+    await expect.poll(() => page.evaluate(() => window.__dbFinto.errori_app.map(e => e.messaggio).join('|'))).toContain('prova del registro')
+    await page.getByText('IMPOST.', { exact: true }).last().click()
+    await page.getByText('🩺 Registro degli errori').click()
+    await expect(page.getByText('prova del registro')).toBeVisible()
+    await expect(page.getByRole('button', { name: '📋 COPIA PER WHATSAPP' })).toBeVisible()
+    expect(await scorreDiLato(page)).toBe(false)
+  })
+
+  test('le copie di sicurezza: scaricare una copia di tutto', async ({ page }) => {
+    const errori = await apri(page)
+    await page.getByText('IMPOST.', { exact: true }).last().click()
+    await page.getByText('💾 Copie di sicurezza').click()
+    await expect(page.getByText(/Ancora nessuna/)).toBeVisible()
+    const [scaricata] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: '💾 SCARICA UNA COPIA DI TUTTO' }).click(),
+    ])
+    expect(scaricata.suggestedFilename()).toMatch(/^gymcoach-copia-2026-11-27-\d{4}\.json$/)
+    const testo = await (await scaricata.createReadStream()).toArray().then(pezzi => Buffer.concat(pezzi).toString('utf8'))
+    const copia = JSON.parse(testo)
+    expect(copia.app).toBe('GymCoach')
+    expect(copia.tabelle.client_loads.length).toBeGreaterThan(10)
+    expect(copia.tabelle.clients.length).toBe(7)
+    expect(errori).toEqual([])
+  })
+
+  test('senza rete: la striscia in cima, e il turno si apre', async ({ page, context }) => {
+    const errori = await apri(page)
+    await expect(page.getByText('ORA IN CORSO')).toBeVisible()
+    await context.setOffline(true)
+    await expect(page.getByText('SENZA RETE')).toBeVisible()
+    await page.getByText('13:30').first().click()
+    await expect(page.getByText('SCHEDA FINITA')).toBeVisible()
+    await expect(page.getByText('SENZA RETE')).toBeVisible()
+    await context.setOffline(false)
+    await expect(page.getByText('SENZA RETE')).toHaveCount(0)
+    expect(errori).toEqual([])
+  })
+
   test('dopo un aggiornamento compaiono le novità', async ({ page }) => {
     await apri(page, { novitaViste: '2026-11-01' })
     await expect(page.getByText(/NOVITÀ 1 DI \d/)).toBeVisible()

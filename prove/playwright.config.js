@@ -10,13 +10,23 @@ export default defineConfig({
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  webServer: {
-    command: 'npx vite --config prove/vite.config.js',
-    cwd: path.resolve(import.meta.dirname, '..'),
-    url: 'http://localhost:5199/prove/index.html',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: 'npx vite --config prove/vite.config.js',
+      cwd: path.resolve(import.meta.dirname, '..'),
+      url: 'http://localhost:5199/prove/index.html',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      // Il collegamento vero, verso un Supabase finto (rete.spec.js).
+      command: 'npx vite --config prove/vite.rete.config.js',
+      cwd: path.resolve(import.meta.dirname, '..'),
+      url: 'http://localhost:5198/prove/index.html',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
   use: {
     baseURL: 'http://localhost:5199',
     locale: 'it-IT',

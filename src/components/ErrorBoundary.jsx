@@ -1,9 +1,16 @@
 import { Component } from 'react'
+import { registraErrore } from '../lib/registroErrori'
 
 export default class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null } }
   static getDerivedStateFromError(error) { return { hasError: true, error } }
-  componentDidCatch(error, info) { console.error('App error:', error, info) }
+  componentDidCatch(error, info) {
+    console.error('App error:', error, info)
+    // La schermata «Qualcosa è andato storto» è l'errore peggiore che un coach
+    // possa vedere: finisce nel registro con il punto esatto in cui è successo.
+    registraErrore('schermata', error?.message || String(error),
+      [error?.stack, info?.componentStack].filter(Boolean).join('\n'))
+  }
   render() {
     if (!this.state.hasError) return this.props.children
     return (
