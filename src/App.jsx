@@ -31,7 +31,6 @@ import { impostaContesto } from './lib/registroErrori'
 import { accessoSalvato, dimenticaCopie, pulisciCopie } from './lib/copiaDati'
 import { copiaDellaSettimana } from './lib/copie'
 import Cruscotto from './pages/Cruscotto'
-import RegistroErrori from './pages/RegistroErrori'
 import Segnalazioni from './pages/Segnalazioni'
 import RispondiSegnalazione from './pages/RispondiSegnalazione'
 import { parametriRisposta } from './lib/segnalazioni'
@@ -423,7 +422,6 @@ export default function App() {
     'athlete-profile': AthleteProfile,
     pulizia: Pulizia,
     cruscotto: Cruscotto,
-    errori: RegistroErrori,
     segnalazioni: Segnalazioni,
   }
 

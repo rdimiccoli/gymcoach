@@ -82,8 +82,6 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
   // novità sulle segnalazioni scritte da questo coach.
   const [segnalazioniAttive, setSegnalazioniAttive] = useState(false)
   const [novitaSegnalazioni, setNovitaSegnalazioni] = useState(0)
-  const [registroAttivo, setRegistroAttivo] = useState(false)
-  const [erroriRecenti, setErroriRecenti] = useState(null)
   // Le copie di sicurezza (vedi copie.js): l'elenco di quelle automatiche,
   // `null` finché non arriva, e cosa sta facendo il pulsante.
   const [copie, setCopie] = useState(null)
@@ -103,13 +101,6 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
       setCruscottoAttivo(!!c.andamento)
       setSegnalazioniAttive(!!c.segnalazioni)
       if (c.segnalazioni) contaNovita({ coachId: coach.id }).then(setNovitaSegnalazioni)
-      setRegistroAttivo(!!c.registroErrori)
-      // Quanti errori negli ultimi sette giorni: si vede accanto alla riga.
-      if (c.registroErrori) {
-        supabase.from('errori_app').select('id', { count: 'exact', head: true })
-          .gte('quando', new Date(Date.now() - 7 * 86_400_000).toISOString())
-          .then(({ count, error }) => { if (!error) setErroriRecenti(count ?? 0) })
-      }
     })
   }, [])
 
@@ -857,11 +848,6 @@ export default function Settings({ navigate, goHome, session, coach, coaches = [
         )}
         {apriNovita && (
           <Riga etichetta="🆕 Cosa c'è di nuovo" valore={NOVITA[0]?.data} onClick={apriNovita} />
-        )}
-        {registroAttivo && (
-          <Riga etichetta="🩺 Registro degli errori"
-            valore={erroriRecenti === null ? undefined : erroriRecenti === 0 ? 'Nessuno in 7 giorni' : `${erroriRecenti} in 7 giorni`}
-            onClick={() => navigate('errori')} />
         )}
         {/* Quale versione gira qui: se un iPad è rimasto indietro si vede. */}
         <div style={{ color: 'var(--testo-fioco)', fontSize: '12px', margin: '2px 2px 0' }}>

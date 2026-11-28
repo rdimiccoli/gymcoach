@@ -82,7 +82,7 @@ let richiesta = null
  */
 export function capacita() {
   richiesta ||= (async () => {
-    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, giorniPersona, notaPersona, ultimiAllenamenti, registroErrori, andamento, copie, segnalazioni] = await Promise.all([
+    const [categorie, assegnazioni, colonnaSilver, ospiti, emojiCoach, vistaCoach, fotoCoach, giorniScheda, ordinePersone, settimaneScheda, colonnaOgni, colonnaFasi, ordineTurni, giorniPersona, notaPersona, ultimiAllenamenti, andamento, copie, segnalazioni] = await Promise.all([
       presente('exercises', 'muscle_group'),
       presente('cycle_clients', 'cycle_id'),
       presente('clients', 'silver'),
@@ -99,7 +99,6 @@ export function capacita() {
       presente('giorni_persona', 'cycle_id'),
       presente('clients', 'nota'),
       presente('ultimi_allenamenti', 'client_id'),
-      presente('errori_app', 'id'),
       presente('andamento_settimane', 'settimana'),
       presenteSpazio('copie'),
       presente('segnalazioni', 'id'),
@@ -118,8 +117,6 @@ export function capacita() {
       notaPersona,
       // Quando ognuno ha segnato l'ultimo peso: chi non si vede, la pulizia.
       ultimiAllenamenti,
-      // Il registro degli errori, da leggere nelle impostazioni.
-      registroErrori,
       // Pesi e persone settimana per settimana: il cruscotto.
       andamento,
       // Lo spazio privato delle copie di sicurezza automatiche.

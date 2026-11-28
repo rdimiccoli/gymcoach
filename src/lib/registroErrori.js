@@ -7,9 +7,11 @@
  * guardare: «ieri sera mi è uscito un messaggio rosso, non so cosa diceva».
  *
  * Adesso l'app lo scrive da sola nella tabella `errori_app`: cosa, quando,
- * in quale schermata, su che telefono e con quale versione dell'app. Si
- * legge dalle Impostazioni («Registro degli errori») e si copia per
- * WhatsApp in un tocco.
+ * in quale schermata, su che telefono e con quale versione dell'app.
+ * Nell'app non si vede: ai coach non serve (deciso il 28/11/2026). Lo legge
+ * chi sviluppa l'app, dal pannello di Supabase o chiedendolo a Claude; e gli
+ * ultimi errori di un telefono vanno da soli nell'email di una segnalazione
+ * «Qualcosa non va» (vedi erroriRecenti e segnalazioni.js).
  *
  * Cosa finisce nel registro:
  *  - ogni avviso rosso che il coach vede a schermo (con il codice
@@ -215,7 +217,7 @@ export function avviaRegistro() {
 export const NOMI_PAGINE = {
   home: 'Home', turn: 'Seduta', 'turn-atleti': 'Turno', cycles: 'Schede', 'cycle-form': 'Scheda',
   'cycle-share': 'Condividi scheda', settings: 'Impostazioni', turns: 'Turni', athletes: 'Atleti',
-  'athlete-profile': 'Profilo atleta', pulizia: 'Mettere in ordine', errori: 'Registro errori',
+  'athlete-profile': 'Profilo atleta', pulizia: 'Mettere in ordine',
   cruscotto: 'Cruscotto', segnalazioni: 'Segnalazioni',
 }
 
@@ -231,31 +233,6 @@ export function quandoCorto(iso, adesso = new Date()) {
   if (giorno(d) === giorno(adesso)) return `oggi ${ora}`
   if (giorno(d) === giorno(ieri)) return `ieri ${ora}`
   return `${dueCifre(d.getDate())}/${dueCifre(d.getMonth() + 1)} ${ora}`
-}
-
-/** Il registro come testo da incollare su WhatsApp: i più recenti in cima. */
-export function testoPerWhatsapp(righe, adesso = new Date(), quanti = 30) {
-  if (!righe?.length) return ''
-  const elenco = righe.slice(0, quanti).map(r => {
-    const dove = [NOMI_PAGINE[r.pagina] || r.pagina, r.coach].filter(Boolean).join(' · ')
-    const sotto = [r.dispositivo, r.versione && `versione ${r.versione}`].filter(Boolean).join(' · ')
-    return [`• ${quandoCorto(r.quando, adesso)}${dove ? ` · ${dove}` : ''}`, `  ${r.messaggio}`,
-      r.dettaglio ? `  ${r.dettaglio.split('\n')[0].slice(0, 200)}` : null, sotto ? `  ${sotto}` : null]
-      .filter(Boolean).join('\n')
-  })
-  const titolo = `GymCoach · registro errori (${righe.length > quanti ? `ultimi ${quanti} di ${righe.length}` : righe.length})`
-  return [titolo, '', ...elenco].join('\n')
-}
-
-export const GIORNI_REGISTRO = 30
-
-/** Gli errori degli ultimi GIORNI_REGISTRO giorni, i più recenti in cima. */
-export async function leggiErrori(adesso = new Date()) {
-  const da = new Date(adesso.getTime() - GIORNI_REGISTRO * 86_400_000).toISOString()
-  const { data, error } = await supabase.from('errori_app')
-    .select('id, quando, tipo, messaggio, dettaglio, pagina, coach, versione, dispositivo')
-    .gte('quando', da).order('quando', { ascending: false }).limit(200)
-  return { righe: data || [], error }
 }
 
 /**

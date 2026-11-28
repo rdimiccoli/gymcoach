@@ -20,7 +20,7 @@ Object.defineProperty(globalThis, 'navigator', {
   configurable: true,
 })
 
-const { registraErrore, impostaContesto, dimenticaRegistro, descriviDispositivo, daIgnorare, preparaRiga, quandoCorto, testoPerWhatsapp, erroriRecenti, MASSIMO_AL_GIORNO } = await import('./registroErrori')
+const { registraErrore, impostaContesto, dimenticaRegistro, descriviDispositivo, daIgnorare, preparaRiga, quandoCorto, erroriRecenti, MASSIMO_AL_GIORNO } = await import('./registroErrori')
 
 beforeEach(() => {
   scritte.length = 0
@@ -109,17 +109,6 @@ describe('leggere il registro', () => {
     expect(quandoCorto(new Date(2026, 10, 25, 17, 0).toISOString(), adesso)).toBe('25/11 17:00')
   })
 
-  it('il testo per WhatsApp: titolo, poi un errore per blocco', () => {
-    const testo = testoPerWhatsapp([
-      { quando: new Date(2026, 10, 28, 8, 5).toISOString(), pagina: 'turn', coach: 'Sandro', messaggio: 'Carico non salvato', dettaglio: '42501 · permission denied\nseconda riga', dispositivo: 'iPad · Safari 17.2', versione: '28/11 08:35 · abc1234' },
-    ], adesso)
-    expect(testo).toBe([
-      'GymCoach · registro errori (1)', '',
-      '• oggi 08:05 · Seduta · Sandro', '  Carico non salvato', '  42501 · permission denied',
-      '  iPad · Safari 17.2 · versione 28/11 08:35 · abc1234',
-    ].join('\n'))
-    expect(testoPerWhatsapp([])).toBe('')
-  })
 })
 
 describe('gli errori recenti, per le segnalazioni', () => {

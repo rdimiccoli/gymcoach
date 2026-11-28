@@ -89,13 +89,6 @@ export const NOVITA = [
         nota: 'Dall\'app nessuno può cancellare le copie.',
         serve: 'copie',
       },
-      {
-        icona: '🩺',
-        titolo: 'IL REGISTRO DEGLI ERRORI',
-        testo: 'Se qualcosa va storto, l\'app lo annota da sola: quando, in quale schermata e su che telefono. Non devi ricordarti il messaggio: basta copiare il registro e mandarlo su WhatsApp.',
-        dove: ['IMPOST.', 'REGISTRO DEGLI ERRORI', 'COPIA PER WHATSAPP'],
-        serve: 'registroErrori',
-      },
     ],
   },
   {

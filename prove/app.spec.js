@@ -119,18 +119,17 @@ test.describe('telefono', () => {
     expect(errori).toEqual([])
   })
 
-  test('il registro degli errori: si scrive da solo e si legge', async ({ page }) => {
+  test('il registro degli errori: si scrive da solo, e nell\'app non si vede', async ({ page }) => {
     await apri(page)
     // Un errore del programma che nessuno gestisce finisce nel registro.
     // (Una promessa e non un timer: l'orologio finto delle prove si tiene
     // gli errori dei timer e non li fa arrivare alla pagina.)
     await page.addScriptTag({ content: "Promise.reject(new Error('prova del registro'))" })
     await expect.poll(() => page.evaluate(() => window.__dbFinto.errori_app.map(e => e.messaggio).join('|'))).toContain('prova del registro')
+    // Ai coach non serve: nelle impostazioni non c'è.
     await page.getByText('IMPOST.', { exact: true }).last().click()
-    await page.getByText('🩺 Registro degli errori').click()
-    await expect(page.getByText('prova del registro')).toBeVisible()
-    await expect(page.getByRole('button', { name: '📋 COPIA PER WHATSAPP' })).toBeVisible()
-    expect(await scorreDiLato(page)).toBe(false)
+    await expect(page.getByText(/Versione dell'app/)).toBeVisible()
+    await expect(page.getByText(/Registro degli errori/i)).toHaveCount(0)
   })
 
   test('le copie di sicurezza: scaricare una copia di tutto', async ({ page }) => {
