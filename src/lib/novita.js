@@ -33,7 +33,7 @@ export const NOVITA = [
       {
         icona: '📮',
         titolo: 'BASTA AUDIO DA QUATTRO MINUTI',
-        testo: 'Roger vi vuole bene, ma gli audio di Manu mentre fa cose o Ilaria con la FOMO sono difficili anche per i migliori 😄 Da oggi le segnalazioni si scrivono qui: arrivano dritte a lui e non si perdono tra i messaggi del gruppo.',
+        testo: 'Roger vi vuole bene, ma gli audio di Manu mentre fa cose o Ilaria con la FOMO sono difficili anche per i migliori 😄 Da oggi le segnalazioni si scrivono qui: arrivano dritte a lui.',
         dove: ['HOME', 'IN FONDO', 'SEGNALAZIONI'],
         nota: 'Qualcosa non va, un\'idea, una cosa da cambiare: va bene tutto. Anche le lamentele (anche parolacce vanno bene).',
         serve: 'segnalazioni',
